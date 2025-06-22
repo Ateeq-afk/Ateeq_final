@@ -1,0 +1,265 @@
+import { useState, useCallback } from 'react';
+import { supabase } from '@/lib/supabaseClient';
+import { useNotificationSystem } from '@/hooks/useNotificationSystem';
+import { useAuth } from '@/contexts/AuthContext';
+import { useBookings } from '@/hooks/useBookings';
+
+export function usePOD() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+  const { showSuccess, showError } = useNotificationSystem();
+  const { getCurrentUserBranch } = useAuth();
+  const { updateBookingStatus } = useBookings();
+  const userBranch = getCurrentUserBranch();
+
+  // Get bookings that need POD
+  const getPendingPODBookings = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const effectiveBranchId = userBranch?.id;
+      
+      if (!effectiveBranchId) {
+        throw new Error('No branch ID available');
+      }
+      
+      console.log('Getting bookings pending POD, branchId:', effectiveBranchId);
+      
+      // Get bookings that are in 'in_transit' status and have pod_status 'pending'
+      const { data, error: fetchError } = await supabase
+        .from('bookings')
+        .select(`
+          *,
+          sender:customers!sender_id(id, name, mobile, email, type),
+          receiver:customers!receiver_id(id, name, mobile, email, type),
+          article:articles(id, name, description, base_rate),
+          from_branch_details:branches!from_branch(id, name, city, state),
+          to_branch_details:branches!to_branch(id, name, city, state)
+        `)
+        .eq('to_branch', effectiveBranchId)
+        .eq('status', 'in_transit')
+        .eq('pod_status', 'pending')
+        .order('created_at', { ascending: false });
+      
+      if (fetchError) {
+        console.error('Error fetching bookings pending POD:', fetchError);
+        throw fetchError;
+      }
+      
+      console.log('Bookings pending POD:', data?.length);
+      return data || [];
+    } catch (err) {
+      console.error('Failed to get bookings pending POD:', err);
+      setError(err instanceof Error ? err : new Error('Failed to get bookings pending POD'));
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  }, [userBranch]);
+
+  // Submit POD for a booking
+  const submitPOD = async (data: {
+    bookingId: string;
+    receiverName: string;
+    receiverPhone: string;
+    receiverDesignation?: string;
+    signatureImage?: string;
+    photoEvidence?: string;
+    remarks?: string;
+  }) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      console.log('Submitting POD:', data);
+      
+      // 1. Create POD record
+      const { data: podRecord, error: podError } = await supabase
+        .from('pod_records')
+        .insert({
+          booking_id: data.bookingId,
+          delivered_by: 'Admin User', // In a real app, this would be the current user
+          receiver_name: data.receiverName,
+          receiver_phone: data.receiverPhone,
+          receiver_designation: data.receiverDesignation,
+          signature_image_url: data.signatureImage,
+          photo_evidence_url: data.photoEvidence,
+          remarks: data.remarks
+        })
+        .select()
+        .single();
+      
+      if (podError) {
+        console.error('Error creating POD record:', podError);
+        throw podError;
+      }
+      
+      console.log('POD record created:', podRecord);
+      
+      // 2. Update booking status
+      await updateBookingStatus(
+        data.bookingId, 
+        'delivered', 
+        { 
+          pod_status: 'completed',
+          pod_record_id: podRecord.id,
+          delivery_date: new Date().toISOString().split('T')[0],
+          pod_data: {
+            receiverName: data.receiverName,
+            receiverPhone: data.receiverPhone,
+            receiverDesignation: data.receiverDesignation,
+            signatureImage: data.signatureImage,
+            photoEvidence: data.photoEvidence,
+            remarks: data.remarks,
+            deliveredAt: new Date().toISOString()
+          }
+        }
+      );
+      
+      showSuccess('POD Submitted', 'Proof of delivery has been recorded successfully');
+      return podRecord;
+    } catch (err) {
+      console.error('Failed to submit POD:', err);
+      setError(err instanceof Error ? err : new Error('Failed to submit POD'));
+      showError('POD Submission Failed', err instanceof Error ? err.message : 'Failed to submit POD');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Get POD history
+  const getPODHistory = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const effectiveBranchId = userBranch?.id;
+      
+      if (!effectiveBranchId) {
+        throw new Error('No branch ID available');
+      }
+      
+      console.log('Getting POD history, branchId:', effectiveBranchId);
+      
+      const { data, error: fetchError } = await supabase
+        .from('pod_records')
+        .select(`
+          *,
+          booking:bookings(
+            *,
+            sender:customers!sender_id(id, name, mobile, email, type),
+            receiver:customers!receiver_id(id, name, mobile, email, type),
+            article:articles(id, name, description, base_rate),
+            from_branch_details:branches!from_branch(id, name, city, state),
+            to_branch_details:branches!to_branch(id, name, city, state)
+          )
+        `)
+        .order('created_at', { ascending: false });
+      
+      if (fetchError) {
+        console.error('Error fetching POD history:', fetchError);
+        throw fetchError;
+      }
+      
+      // Filter to only include PODs for bookings delivered to this branch
+      const filteredData = data?.filter(pod => 
+        pod.booking?.to_branch === effectiveBranchId
+      ) || [];
+      
+      console.log('POD history:', filteredData.length);
+      return filteredData;
+    } catch (err) {
+      console.error('Failed to get POD history:', err);
+      setError(err instanceof Error ? err : new Error('Failed to get POD history'));
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  }, [userBranch]);
+
+  // Get POD statistics
+  const getPODStats = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const effectiveBranchId = userBranch?.id;
+      
+      if (!effectiveBranchId) {
+        throw new Error('No branch ID available');
+      }
+      
+      console.log('Getting POD stats, branchId:', effectiveBranchId);
+      
+      // Get total delivered bookings
+      const { count: totalDelivered, error: deliveredError } = await supabase
+        .from('bookings')
+        .select('*', { count: 'exact', head: true })
+        .eq('to_branch', effectiveBranchId)
+        .eq('status', 'delivered');
+      
+      if (deliveredError) {
+        console.error('Error fetching total delivered count:', deliveredError);
+        throw deliveredError;
+      }
+      
+      // Get total pending PODs
+      const { count: totalPending, error: pendingError } = await supabase
+        .from('bookings')
+        .select('*', { count: 'exact', head: true })
+        .eq('to_branch', effectiveBranchId)
+        .eq('status', 'in_transit')
+        .eq('pod_status', 'pending');
+      
+      if (pendingError) {
+        console.error('Error fetching pending POD count:', pendingError);
+        throw pendingError;
+      }
+      
+      // Get total PODs with signature
+      const { data: podData, error: podError } = await supabase
+        .from('pod_records')
+        .select('id, signature_image_url, photo_evidence_url')
+        .not('signature_image_url', 'is', null);
+      
+      if (podError) {
+        console.error('Error fetching POD signature count:', podError);
+        throw podError;
+      }
+      
+      const withSignature = podData?.length || 0;
+      const withPhoto = podData?.filter(pod => pod.photo_evidence_url).length || 0;
+      
+      return {
+        totalDelivered: totalDelivered || 0,
+        totalPending: totalPending || 0,
+        withSignature,
+        withPhoto,
+        completionRate: totalDelivered ? (withSignature / totalDelivered) * 100 : 0
+      };
+    } catch (err) {
+      console.error('Failed to get POD stats:', err);
+      setError(err instanceof Error ? err : new Error('Failed to get POD stats'));
+      return {
+        totalDelivered: 0,
+        totalPending: 0,
+        withSignature: 0,
+        withPhoto: 0,
+        completionRate: 0
+      };
+    } finally {
+      setLoading(false);
+    }
+  }, [userBranch]);
+
+  return {
+    loading,
+    error,
+    getPendingPODBookings,
+    submitPOD,
+    getPODHistory,
+    getPODStats
+  };
+}
