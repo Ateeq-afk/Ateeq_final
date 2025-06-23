@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { Download, X, FileText, CheckCircle2, Loader2 } from 'lucide-react';
+import Papa from 'papaparse';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { Article } from '@/types';
+import { useNotificationSystem } from '@/hooks/useNotificationSystem';
 
 interface Props {
   articles: Article[];
@@ -29,6 +31,7 @@ export default function ArticleExport({ articles, onClose, onSuccess }: Props) {
     requires_special_handling: true,
     notes: true
   });
+  const { showError } = useNotificationSystem();
 
   const toggleField = (field: string) => {
     setSelectedFields(prev => ({
@@ -53,25 +56,26 @@ export default function ArticleExport({ articles, onClose, onSuccess }: Props) {
     try {
       setLoading(true);
       setStep('exporting');
-      
+
       // Get selected fields
       const fields = Object.entries(selectedFields)
         .filter(([_, selected]) => selected)
         .map(([field]) => field);
-      
-      // Create CSV content
-      let content = fields.join(',') + '\n';
-      
-      articles.forEach(article => {
-        const row = fields.map(field => {
+
+      const rows = articles.map(article => {
+        const row: Record<string, any> = {};
+        fields.forEach(field => {
           if (field === 'branch') {
-            return article.branch_name || '';
+            row[field] = article.branch_name || '';
+          } else {
+            row[field] = article[field] !== undefined ? article[field] : '';
           }
-          return article[field] !== undefined ? article[field] : '';
         });
-        content += row.join(',') + '\n';
+        return row;
       });
-      
+
+      const content = Papa.unparse(rows, { columns: fields });
+
       // Create download link
       const blob = new Blob([content], { type: 'text/csv' });
       const url = URL.createObjectURL(blob);
@@ -91,7 +95,7 @@ export default function ArticleExport({ articles, onClose, onSuccess }: Props) {
         onSuccess();
       }, 1500);
     } catch (err) {
-      console.error('Failed to export articles:', err);
+      showError('Export Failed', 'There was a problem exporting the articles');
     } finally {
       setLoading(false);
     }

@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { Upload, AlertTriangle, CheckCircle2, X, Download, FileText, Loader2 } from 'lucide-react';
+import Papa from 'papaparse';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useArticles } from '@/hooks/useArticles';
 import { useBranches } from '@/hooks/useBranches';
+import { useNotificationSystem } from '@/hooks/useNotificationSystem';
 
 interface Props {
   onClose: () => void;
@@ -17,8 +19,10 @@ export default function ArticleImport({ onClose, onSuccess }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<'upload' | 'preview' | 'importing' | 'complete'>('upload');
+  const [processed, setProcessed] = useState(0);
   const { createArticle } = useArticles();
   const { branches } = useBranches();
+  const { showError } = useNotificationSystem();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -37,90 +41,68 @@ export default function ArticleImport({ onClose, onSuccess }: Props) {
     reader.onload = (event) => {
       try {
         const csv = event.target?.result as string;
-        const lines = csv.split('\n');
-        const headers = lines[0].split(',').map(h => h.trim());
-        
-        // Validate headers
+        const result = Papa.parse<any>(csv, { header: true, skipEmptyLines: true });
+
+        const headers = result.meta.fields || [];
         const requiredHeaders = ['name', 'base_rate'];
         const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
-        
+
         if (missingHeaders.length > 0) {
           setError(`Missing required headers: ${missingHeaders.join(', ')}`);
           return;
         }
-        
-        // Parse data
-        const data = [];
-        for (let i = 1; i < lines.length; i++) {
-          if (!lines[i].trim()) continue;
-          
-          const values = lines[i].split(',').map(v => v.trim());
-          const row: any = {};
-          
-          headers.forEach((header, index) => {
-            row[header] = values[index] || '';
-          });
-          
-          // Validate required fields
-          if (!row.name || !row.base_rate) {
-            continue;
+
+        const data = result.data.map(row => {
+          const r: any = { ...row };
+
+          r.base_rate = parseFloat(r.base_rate);
+          if (isNaN(r.base_rate)) r.base_rate = 0;
+
+          if (r.tax_rate) {
+            r.tax_rate = parseFloat(r.tax_rate);
+            if (isNaN(r.tax_rate)) r.tax_rate = 0;
           }
-          
-          // Convert numeric fields
-          row.base_rate = parseFloat(row.base_rate);
-          if (isNaN(row.base_rate)) {
-            row.base_rate = 0;
+
+          if (r.min_quantity) {
+            r.min_quantity = parseInt(r.min_quantity);
+            if (isNaN(r.min_quantity)) r.min_quantity = 1;
           }
-          
-          if (row.tax_rate) {
-            row.tax_rate = parseFloat(row.tax_rate);
-            if (isNaN(row.tax_rate)) {
-              row.tax_rate = 0;
-            }
+
+          if (r.is_fragile) {
+            r.is_fragile = r.is_fragile.toLowerCase() === 'true' || r.is_fragile === '1';
           }
-          
-          if (row.min_quantity) {
-            row.min_quantity = parseInt(row.min_quantity);
-            if (isNaN(row.min_quantity)) {
-              row.min_quantity = 1;
-            }
+
+          if (r.requires_special_handling) {
+            r.requires_special_handling = r.requires_special_handling.toLowerCase() === 'true' || r.requires_special_handling === '1';
           }
-          
-          // Convert boolean fields
-          if (row.is_fragile) {
-            row.is_fragile = row.is_fragile.toLowerCase() === 'true' || row.is_fragile === '1';
-          }
-          
-          if (row.requires_special_handling) {
-            row.requires_special_handling = row.requires_special_handling.toLowerCase() === 'true' || row.requires_special_handling === '1';
-          }
-          
-          data.push(row);
-        }
-        
+
+          return r;
+        }).filter(row => row.name && row.base_rate !== undefined);
+
         setPreview(data);
         setError(null);
         setStep('preview');
       } catch (err) {
-        console.error('Failed to parse CSV:', err);
         setError('Failed to parse CSV file. Please check the format.');
+        showError('CSV Parse Failed', 'Failed to parse CSV file. Please check the format.');
       }
     };
-    
+
     reader.readAsText(selectedFile);
   };
 
   const handleImport = async () => {
     try {
       setLoading(true);
+      setProcessed(0);
       setStep('importing');
-      
+
       // Import articles
       for (const article of preview) {
         // Find branch by name if provided
         let branchId = null;
         if (article.branch) {
-          const branch = branches.find(b => 
+          const branch = branches.find(b =>
             b.name.toLowerCase() === article.branch.toLowerCase() ||
             b.code.toLowerCase() === article.branch.toLowerCase()
           );
@@ -142,6 +124,8 @@ export default function ArticleImport({ onClose, onSuccess }: Props) {
           requires_special_handling: article.requires_special_handling || false,
           notes: article.notes || ''
         });
+
+        setProcessed((p) => p + 1);
       }
       
       setStep('complete');
@@ -149,8 +133,8 @@ export default function ArticleImport({ onClose, onSuccess }: Props) {
         onSuccess();
       }, 2000);
     } catch (err) {
-      console.error('Failed to import articles:', err);
       setError(err instanceof Error ? err.message : 'Failed to import articles');
+      showError('Import Failed', 'There was a problem importing the articles');
       setStep('preview');
     } finally {
       setLoading(false);
@@ -158,13 +142,52 @@ export default function ArticleImport({ onClose, onSuccess }: Props) {
   };
 
   const downloadTemplate = () => {
-    const headers = ['name', 'description', 'base_rate', 'branch', 'hsn_code', 'tax_rate', 'unit_of_measure', 'min_quantity', 'is_fragile', 'requires_special_handling', 'notes'];
-    const csv = [
-      headers.join(','),
-      'Cloth Bundle,Standard cloth bundles,100,Mumbai HQ,6302,18,bundle,1,false,false,Handle with care',
-      'Garments,Ready-made garments,200,Delhi Branch,6309,12,pcs,1,true,true,Fragile items'
-    ].join('\n');
-    
+    const headers = [
+      'name',
+      'description',
+      'base_rate',
+      'branch',
+      'hsn_code',
+      'tax_rate',
+      'unit_of_measure',
+      'min_quantity',
+      'is_fragile',
+      'requires_special_handling',
+      'notes'
+    ];
+
+    const csv = Papa.unparse(
+      [
+        {
+          name: 'Cloth Bundle',
+          description: 'Standard cloth bundles',
+          base_rate: 100,
+          branch: 'Mumbai HQ',
+          hsn_code: 6302,
+          tax_rate: 18,
+          unit_of_measure: 'bundle',
+          min_quantity: 1,
+          is_fragile: false,
+          requires_special_handling: false,
+          notes: 'Handle with care'
+        },
+        {
+          name: 'Garments',
+          description: 'Ready-made garments',
+          base_rate: 200,
+          branch: 'Delhi Branch',
+          hsn_code: 6309,
+          tax_rate: 12,
+          unit_of_measure: 'pcs',
+          min_quantity: 1,
+          is_fragile: true,
+          requires_special_handling: true,
+          notes: 'Fragile items'
+        }
+      ],
+      { columns: headers }
+    );
+
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -296,10 +319,18 @@ export default function ArticleImport({ onClose, onSuccess }: Props) {
       )}
 
       {step === 'importing' && (
-        <div className="py-12 flex flex-col items-center justify-center">
+        <div className="py-12 flex flex-col items-center justify-center w-full">
           <Loader2 className="h-12 w-12 text-blue-600 animate-spin mb-4" />
           <h3 className="text-lg font-medium text-gray-900">Importing Articles</h3>
-          <p className="text-gray-500 mt-1">Please wait while we import your articles...</p>
+          <p className="text-gray-500 mt-1">
+            Imported {processed} / {preview.length} articles
+          </p>
+          <div className="w-full max-w-sm mt-4 h-2 bg-gray-200 rounded-full">
+            <div
+              className="h-2 bg-blue-600 rounded-full transition-all"
+              style={{ width: `${(processed / preview.length) * 100}%` }}
+            ></div>
+          </div>
         </div>
       )}
 

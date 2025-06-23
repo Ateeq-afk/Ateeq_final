@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import type { Branch } from '@/types/index';
+import { useNotificationSystem } from '@/hooks/useNotificationSystem';
 
 // UUID validation regex
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -14,6 +15,7 @@ export function useBranches() {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const { showSuccess, showError } = useNotificationSystem();
 
   const loadBranches = useCallback(async () => {
     try {
@@ -27,7 +29,6 @@ export function useBranches() {
 
       if (fetchError) throw fetchError;
       setBranches(data || []);
-      console.log('Branches loaded:', data?.length);
     } catch (err) {
       console.error('Failed to load branches:', err);
       setError(err instanceof Error ? err : new Error('Failed to load branches'));
@@ -42,7 +43,6 @@ export function useBranches() {
 
   const createBranch = async (branchData: Omit<Branch, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      console.log('Creating branch:', branchData);
       
       const { data, error: createError } = await supabase
         .from('branches')
@@ -51,11 +51,13 @@ export function useBranches() {
         .single();
       
       if (createError) throw createError;
-      
+
       setBranches(prev => [...prev, data]);
+      showSuccess('Branch Created', 'Branch created successfully');
       return data;
     } catch (err) {
       console.error('Failed to create branch:', err);
+      showError('Create Branch Failed', err instanceof Error ? err.message : 'Failed to create branch');
       throw err instanceof Error ? err : new Error('Failed to create branch');
     }
   };
@@ -66,7 +68,6 @@ export function useBranches() {
         throw new Error('Invalid branch ID format');
       }
 
-      console.log(`Updating branch ${id}:`, updates);
       
       const { data, error: updateError } = await supabase
         .from('branches')
@@ -76,11 +77,13 @@ export function useBranches() {
         .single();
       
       if (updateError) throw updateError;
-      
+
       setBranches(prev => prev.map(branch => branch.id === id ? data : branch));
+      showSuccess('Branch Updated', 'Branch updated successfully');
       return data;
     } catch (err) {
       console.error('Failed to update branch:', err);
+      showError('Update Branch Failed', err instanceof Error ? err.message : 'Failed to update branch');
       throw err instanceof Error ? err : new Error('Failed to update branch');
     }
   };
@@ -91,7 +94,6 @@ export function useBranches() {
         throw new Error('Invalid branch ID format');
       }
 
-      console.log(`Deleting branch ${id}`);
       
       // Check for associated data
       const { count: bookingsCount, error: bookingsError } = await supabase
@@ -124,10 +126,12 @@ export function useBranches() {
         .eq('id', id);
       
       if (deleteError) throw deleteError;
-      
+
       setBranches(prev => prev.filter(branch => branch.id !== id));
+      showSuccess('Branch Deleted', 'Branch deleted successfully');
     } catch (err) {
       console.error('Failed to delete branch:', err);
+      showError('Delete Branch Failed', err instanceof Error ? err.message : 'Failed to delete branch');
       throw err instanceof Error ? err : new Error('Failed to delete branch');
     }
   };

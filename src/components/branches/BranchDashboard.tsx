@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { 
   Building2, 
   Package, 
@@ -32,11 +32,12 @@ import { useVehicles } from '@/hooks/useVehicles';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useBranches } from '@/hooks/useBranches';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBranchSelection } from '@/contexts/BranchSelectionContext';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
 export default function BranchDashboard() {
-  const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
+  const { selectedBranch, setSelectedBranch } = useBranchSelection();
   const [dateRange, setDateRange] = useState('last_month');
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(false);
@@ -53,18 +54,14 @@ export default function BranchDashboard() {
   // Set user's branch as default selected branch
   useEffect(() => {
     if (userBranch && !selectedBranch) {
-      console.log('Setting user branch as default:', userBranch.id);
       setSelectedBranch(userBranch.id);
     } else if (branches.length > 0 && !selectedBranch) {
-      console.log('Setting first branch as default:', branches[0].id);
       setSelectedBranch(branches[0].id);
     }
   }, [userBranch, branches, selectedBranch]);
   
   // Get current branch details
   const currentBranch = useMemo(() => {
-    console.log('Finding branch with ID:', selectedBranch);
-    console.log('Available branches:', branches.map(b => ({ id: b.id, name: b.name })));
     return branches.find(branch => branch.id === selectedBranch);
   }, [branches, selectedBranch]);
   
@@ -184,7 +181,6 @@ export default function BranchDashboard() {
   
   // Handle branch change
   const handleBranchChange = (branchId: string) => {
-    console.log('Branch changed to:', branchId);
     setSelectedBranch(branchId);
   };
   

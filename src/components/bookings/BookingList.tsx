@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import {
   Search,
   MoreVertical,
@@ -24,7 +23,7 @@ import {
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '../ui/select';
 import StatusBadge from '../ui/StatusBadge';
 
-import { fetchBookings } from '../../services/bookings';
+import { useBookings } from '@/hooks/useBookings';
 import { useBranches } from '../../hooks/useBranches';
 import { useFilteredSortedBookings } from '../../hooks/useFilteredSortedBookings';
 import { printBookings, downloadBookingLR } from '../../utils/printUtils';
@@ -51,12 +50,8 @@ export default function BookingList() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [showAll, setShowAll] = useState(false);
 
-  // Data Fetching via React Query
-  const { data: bookings = [], isLoading, isError, refetch } = useQuery({
-  queryKey: ['bookings'],
-  queryFn: fetchBookings,
-  staleTime: 300_000,
-});
+  // Data Fetching via custom hook
+  const { bookings, loading: isLoading, error, refresh } = useBookings();
 
   const { branches } = useBranches();
 
@@ -85,39 +80,42 @@ export default function BookingList() {
     }
   };
 
-  const handleRefresh = () => refetch();
+  const handleRefresh = () => refresh();
   const handlePrint = () => printBookings(selectedIds.length ? filtered.filter(b => selectedIds.includes(b.id)) : filtered);
   const handleDownload = (booking: Booking) => downloadBookingLR(booking);
 
   if (isLoading) return <div>Loading…</div>;
-  if (isError) return <div>Error loading bookings.</div>;
+  if (error) return <div>Error loading bookings.</div>;
 
   return (
     <div className="space-y-6">
       {/* Header & Actions */}
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+      <div className="bg-gradient-to-r from-brand-600 to-brand-800 text-white p-6 rounded-2xl shadow-sm flex flex-col sm:flex-row justify-between items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold">Bookings</h2>
-          <p className="text-gray-600">{filtered.length} found</p>
+          <p className="text-white/80">{filtered.length} found</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setShowAll(!showAll)}>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" className="border-white/30 text-white hover:bg-white/10" onClick={() => setShowAll(!showAll)}>
             {showAll ? 'Paginated' : 'Show All'}
           </Button>
-          <Button variant="outline" onClick={handlePrint}>
-            <Printer /><span>Print</span>
+          <Button variant="outline" className="border-white/30 text-white hover:bg-white/10" onClick={handlePrint}>
+            <Printer className="mr-1 h-4 w-4" />
+            <span>Print</span>
           </Button>
-          <Button variant="outline" onClick={handleRefresh}>
-            <RefreshCw /><span>Refresh</span>
+          <Button variant="outline" className="border-white/30 text-white hover:bg-white/10" onClick={handleRefresh}>
+            <RefreshCw className="mr-1 h-4 w-4" />
+            <span>Refresh</span>
           </Button>
-          <Button onClick={() => navigate('/dashboard/new-booking')}>
-            <Plus /><span>New Booking</span>
+          <Button className="bg-white text-brand-700 hover:bg-brand-50" onClick={() => navigate('/dashboard/new-booking')}>
+            <Plus className="mr-1 h-4 w-4" />
+            <span>New Booking</span>
           </Button>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="bg-white p-4 rounded shadow-sm grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 grid grid-cols-1 md:grid-cols-5 gap-4">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <Input
@@ -164,49 +162,48 @@ export default function BookingList() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded shadow-sm overflow-x-auto">
-        <table className="w-full">
-          <thead className="bg-gray-50">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-gradient-to-r from-brand-50 to-blue-50 text-brand-800">
             <tr>
-              <th><input type="checkbox" checked={selectedIds.length === filtered.length} onChange={toggleSelectAll} /></th>
-              <th onClick={() => handleSort('lr_number')}>LR Number</th>
-              <th onClick={() => handleSort('created_at')}>Date</th>
-              <th>From</th>
-              <th>To</th>
-              <th>Sender</th>
-              <th>Receiver</th>
-              <th>Status</th>
-              <th onClick={() => handleSort('total_amount')}>Amount</th>
-              <th>Actions</th>
+              <th className="px-4 py-3 text-left"><input type="checkbox" checked={selectedIds.length === filtered.length} onChange={toggleSelectAll} /></th>
+              <th className="px-4 py-3 text-left cursor-pointer" onClick={() => handleSort('lr_number')}>LR Number</th>
+              <th className="px-4 py-3 text-left cursor-pointer" onClick={() => handleSort('created_at')}>Date</th>
+              <th className="px-4 py-3 text-left">From</th>
+              <th className="px-4 py-3 text-left">To</th>
+              <th className="px-4 py-3 text-left">Sender</th>
+              <th className="px-4 py-3 text-left">Receiver</th>
+              <th className="px-4 py-3 text-left">Status</th>
+              <th className="px-4 py-3 text-left cursor-pointer" onClick={() => handleSort('total_amount')}>Amount</th>
+              <th className="px-4 py-3 text-right">Actions</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-gray-100">
             {(showAll ? filtered : filtered.slice(0, 100)).map(booking => (
               <tr key={booking.id} className="hover:bg-gray-50">
-                <td><input type="checkbox" checked={selectedIds.includes(booking.id)} onChange={() => toggleSelect(booking.id)} /></td>
-                <td className="text-blue-600 font-medium cursor-pointer" onClick={() => navigate(`/dashboard/bookings/${booking.id}`)}>{booking.lr_number}</td>
-                <td>
+                <td className="px-4 py-3"><input type="checkbox" checked={selectedIds.includes(booking.id)} onChange={() => toggleSelect(booking.id)} /></td>
+                <td className="px-4 py-3 text-blue-600 font-medium cursor-pointer" onClick={() => navigate(`/dashboard/bookings/${booking.id}`)}>{booking.lr_number}</td>
+                <td className="px-4 py-3">
                   <div>{new Date(booking.created_at).toLocaleDateString()}</div>
                   <div className="text-gray-500 text-xs">{new Date(booking.created_at).toLocaleTimeString()}</div>
                 </td>
-                <td>{booking.from_branch_details?.name}</td>
-                <td>{booking.to_branch_details?.name}</td>
-                <td>{booking.sender?.name}</td>
-                <td>{booking.receiver?.name}</td>
-                <td><StatusBadge status={booking.status} /></td>
-                <td>₹{booking.total_amount}</td>
-                <td>
+                <td className="px-4 py-3">{booking.from_branch_details?.name}</td>
+                <td className="px-4 py-3">{booking.to_branch_details?.name}</td>
+                <td className="px-4 py-3">{booking.sender?.name}</td>
+                <td className="px-4 py-3">{booking.receiver?.name}</td>
+                <td className="px-4 py-3"><StatusBadge status={booking.status} /></td>
+                <td className="px-4 py-3">₹{booking.total_amount}</td>
+                <td className="px-4 py-3">
                   <div className="flex gap-1 justify-end">
-                    <Button variant="ghost" size="icon" onClick={() => navigate(`/dashboard/bookings/${booking.id}`)}><Eye /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => navigate(`/dashboard/bookings/${booking.id}`)}><Eye className="h-4 w-4" /></Button>
                     <DropdownMenu>
-                      <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical /></Button></DropdownMenuTrigger>
+                      <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        {/* No status-change actions since SMS and status props removed */}
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => handleDownload(booking)}><Download />Download LR</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDownload(booking)}><Download className="mr-2 h-4 w-4" />Download LR</DropdownMenuItem>
                         {(['booked','in_transit'] as Booking['status'][]).includes(booking.status) && <>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-red-600" onClick={() => setShowCancelId(booking.id)}><X />Cancel Booking</DropdownMenuItem>
+                          <DropdownMenuItem className="text-red-600" onClick={() => setShowCancelId(booking.id)}><X className="mr-2 h-4 w-4" />Cancel Booking</DropdownMenuItem>
                         </>}
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -227,9 +224,9 @@ export default function BookingList() {
       </div>
 
       {/* Modals */}
-      {showModifyId && <BookingModification bookingId={showModifyId} onClose={() => setShowModifyId(null)} onSubmit={() => refetch()} />}
-      {showCancelId && <BookingCancellation bookingId={showCancelId} onClose={() => setShowCancelId(null)} onSubmit={() => refetch()} />}
-      {showPODId && <ProofOfDelivery bookingId={showPODId} onClose={() => setShowPODId(null)} onSubmit={() => refetch()} />}
+      {showModifyId && <BookingModification bookingId={showModifyId} onClose={() => setShowModifyId(null)} onSubmit={() => refresh()} />}
+      {showCancelId && <BookingCancellation bookingId={showCancelId} onClose={() => setShowCancelId(null)} onSubmit={() => refresh()} />}
+      {showPODId && <ProofOfDelivery bookingId={showPODId} onClose={() => setShowPODId(null)} onSubmit={() => refresh()} />}
     </div>
   );
 }

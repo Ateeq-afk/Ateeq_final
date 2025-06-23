@@ -269,8 +269,58 @@ function DashboardStats() {
   const COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
   const handleExport = () => {
-    // TODO: Implement export functionality
+    // Notify user that export has started
     showSuccess('Export Started', 'Your dashboard data is being exported');
+
+    // Prepare CSV content for the currently filtered bookings
+    const headers = [
+      'LR Number',
+      'Date',
+      'From Branch',
+      'To Branch',
+      'Customer',
+      'Status',
+      'Amount'
+    ];
+
+    let csv = headers.join(',') + '\n';
+
+    filteredBookings.forEach(b => {
+      const customerName =
+        b.from_branch === currentBranch?.id
+          ? b.receiver?.name || ''
+          : b.sender?.name || '';
+
+      const row = [
+        b.lr_number,
+        new Date(b.created_at).toLocaleDateString(),
+        b.from_branch_details?.name || '',
+        b.to_branch_details?.name || '',
+        customerName,
+        b.status.replace('_', ' '),
+        b.total_amount?.toString() || ''
+      ];
+
+      csv +=
+        row
+          .map(value => `"${String(value).replace(/"/g, '""')}"`)
+          .join(',') +
+        '\n';
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `dashboard_export_${new Date()
+      .toISOString()
+      .split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    showSuccess('Export Complete', 'Dashboard data exported successfully');
   };
 
   const handleRefresh = () => {
