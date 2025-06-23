@@ -29,6 +29,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { useBranches } from '@/hooks/useBranches'
+import { useAuth } from '@/contexts/AuthContext'
 
 import type { Article } from '@/types'
 import { useArticles } from '@/hooks/useArticles'
@@ -55,6 +58,27 @@ export default function ArticleList() {
   const [page, setPage]                   = useState(1)
   const perPage = 12
 
+  const [selectedBranch, setSelectedBranch] = useState<string | null>(null)
+
+  const { branches } = useBranches()
+  const { getCurrentUserBranch } = useAuth()
+
+  const userBranch = getCurrentUserBranch()
+
+  useEffect(() => {
+    if (userBranch && !selectedBranch) {
+      setSelectedBranch(userBranch.id)
+    } else if (branches.length > 0 && !selectedBranch) {
+      setSelectedBranch(branches[0].id)
+    }
+  }, [userBranch, branches, selectedBranch])
+
+  useEffect(() => {
+    if (selectedBranch) {
+      refresh()
+    }
+  }, [selectedBranch])
+
   // —— Data Hooks ——  
   const {
     articles,
@@ -64,7 +88,7 @@ export default function ArticleList() {
     updateArticle,
     deleteArticle,
     refresh,
-  } = useArticles()
+  } = useArticles(selectedBranch)
   const { showSuccess, showError } = useNotificationSystem()
 
   // Reset page on filter/sort change
@@ -162,7 +186,20 @@ export default function ArticleList() {
       {/* Header + Actions */}
       <div className="flex flex-wrap justify-between items-center">
         <h2 className="text-2xl font-bold">Articles ({filtered.length})</h2>
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex items-center gap-3">
+          <Select value={selectedBranch || ''} onValueChange={setSelectedBranch}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Select branch" />
+            </SelectTrigger>
+            <SelectContent>
+              {branches.map((branch) => (
+                <SelectItem key={branch.id} value={branch.id}>
+                  {branch.name} - {branch.city}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="flex gap-2 flex-wrap">
           <Button variant="outline" onClick={() => refresh().then(() => showSuccess('Refreshed','List updated'))}>
             <RefreshCw className="h-4 w-4" /> Refresh
           </Button>
