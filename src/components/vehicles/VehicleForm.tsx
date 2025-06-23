@@ -18,7 +18,7 @@ import { useBranches } from '@/hooks/useBranches';
 import { motion } from 'framer-motion';
 
 const formSchema = z.object({
-  vehicle_number: z.string().regex(/^[A-Z]{2}\d{2}[A-Z]{1,2}\d{4}$/, {
+  vehicle_number: z.string().regex(/^[A-Z]{2}\d{2}[A-Z]{1,2}\d{4}$/i, {
     message: 'Invalid vehicle number format (e.g., KA01AB1234)',
   }),
   type: z.enum(['own', 'hired', 'attached']),
@@ -65,6 +65,7 @@ export default function VehicleForm({ onSubmit, onCancel, initialData }: Props) 
     setValue,
     watch,
     reset,
+    trigger,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -99,7 +100,21 @@ export default function VehicleForm({ onSubmit, onCancel, initialData }: Props) 
     alert(message);
   };
 
-  const nextStep = () => {
+  const nextStep = async () => {
+    if (currentStep === 1) {
+      const valid = await trigger([
+        'branch_id',
+        'vehicle_number',
+        'type',
+        'make',
+        'model',
+        'year',
+        'status',
+      ]);
+      if (!valid) {
+        return;
+      }
+    }
     setCurrentStep((prev) => Math.min(prev + 1, totalSteps));
   };
 
@@ -204,7 +219,12 @@ export default function VehicleForm({ onSubmit, onCancel, initialData }: Props) 
                 <div className="relative">
                   <Tag className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                   <Input
-                    {...register('vehicle_number')}
+                    {...register('vehicle_number', {
+                      setValueAs: (val: string) =>
+                        val
+                          ? val.toUpperCase().replace(/[^A-Z0-9]/g, '')
+                          : '',
+                    })}
                     placeholder="Enter vehicle number"
                     className="pl-10 uppercase"
                   />
