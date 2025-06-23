@@ -39,7 +39,8 @@
     "recharts": "^2.12.2",
     "tailwind-merge": "^2.2.1",
     "tailwindcss-animate": "^1.0.7",
-    "zod": "^3.22.4"
+    "zod": "^3.22.4",
+    "papaparse": "^5.4.1"
   },
   "devDependencies": {
     "@types/node": "^20.11.24",

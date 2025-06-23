@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Download, X, FileText, CheckCircle2, Loader2 } from 'lucide-react';
+import Papa from 'papaparse';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
@@ -53,25 +54,26 @@ export default function ArticleExport({ articles, onClose, onSuccess }: Props) {
     try {
       setLoading(true);
       setStep('exporting');
-      
+
       // Get selected fields
       const fields = Object.entries(selectedFields)
         .filter(([_, selected]) => selected)
         .map(([field]) => field);
-      
-      // Create CSV content
-      let content = fields.join(',') + '\n';
-      
-      articles.forEach(article => {
-        const row = fields.map(field => {
+
+      const rows = articles.map(article => {
+        const row: Record<string, any> = {};
+        fields.forEach(field => {
           if (field === 'branch') {
-            return article.branch_name || '';
+            row[field] = article.branch_name || '';
+          } else {
+            row[field] = article[field] !== undefined ? article[field] : '';
           }
-          return article[field] !== undefined ? article[field] : '';
         });
-        content += row.join(',') + '\n';
+        return row;
       });
-      
+
+      const content = Papa.unparse(rows, { columns: fields });
+
       // Create download link
       const blob = new Blob([content], { type: 'text/csv' });
       const url = URL.createObjectURL(blob);

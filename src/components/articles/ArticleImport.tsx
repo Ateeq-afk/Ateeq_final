@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Upload, AlertTriangle, CheckCircle2, X, Download, FileText, Loader2 } from 'lucide-react';
+import Papa from 'papaparse';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -37,67 +38,44 @@ export default function ArticleImport({ onClose, onSuccess }: Props) {
     reader.onload = (event) => {
       try {
         const csv = event.target?.result as string;
-        const lines = csv.split('\n');
-        const headers = lines[0].split(',').map(h => h.trim());
-        
-        // Validate headers
+        const result = Papa.parse<any>(csv, { header: true, skipEmptyLines: true });
+
+        const headers = result.meta.fields || [];
         const requiredHeaders = ['name', 'base_rate'];
         const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
-        
+
         if (missingHeaders.length > 0) {
           setError(`Missing required headers: ${missingHeaders.join(', ')}`);
           return;
         }
-        
-        // Parse data
-        const data = [];
-        for (let i = 1; i < lines.length; i++) {
-          if (!lines[i].trim()) continue;
-          
-          const values = lines[i].split(',').map(v => v.trim());
-          const row: any = {};
-          
-          headers.forEach((header, index) => {
-            row[header] = values[index] || '';
-          });
-          
-          // Validate required fields
-          if (!row.name || !row.base_rate) {
-            continue;
+
+        const data = result.data.map(row => {
+          const r: any = { ...row };
+
+          r.base_rate = parseFloat(r.base_rate);
+          if (isNaN(r.base_rate)) r.base_rate = 0;
+
+          if (r.tax_rate) {
+            r.tax_rate = parseFloat(r.tax_rate);
+            if (isNaN(r.tax_rate)) r.tax_rate = 0;
           }
-          
-          // Convert numeric fields
-          row.base_rate = parseFloat(row.base_rate);
-          if (isNaN(row.base_rate)) {
-            row.base_rate = 0;
+
+          if (r.min_quantity) {
+            r.min_quantity = parseInt(r.min_quantity);
+            if (isNaN(r.min_quantity)) r.min_quantity = 1;
           }
-          
-          if (row.tax_rate) {
-            row.tax_rate = parseFloat(row.tax_rate);
-            if (isNaN(row.tax_rate)) {
-              row.tax_rate = 0;
-            }
+
+          if (r.is_fragile) {
+            r.is_fragile = r.is_fragile.toLowerCase() === 'true' || r.is_fragile === '1';
           }
-          
-          if (row.min_quantity) {
-            row.min_quantity = parseInt(row.min_quantity);
-            if (isNaN(row.min_quantity)) {
-              row.min_quantity = 1;
-            }
+
+          if (r.requires_special_handling) {
+            r.requires_special_handling = r.requires_special_handling.toLowerCase() === 'true' || r.requires_special_handling === '1';
           }
-          
-          // Convert boolean fields
-          if (row.is_fragile) {
-            row.is_fragile = row.is_fragile.toLowerCase() === 'true' || row.is_fragile === '1';
-          }
-          
-          if (row.requires_special_handling) {
-            row.requires_special_handling = row.requires_special_handling.toLowerCase() === 'true' || row.requires_special_handling === '1';
-          }
-          
-          data.push(row);
-        }
-        
+
+          return r;
+        }).filter(row => row.name && row.base_rate !== undefined);
+
         setPreview(data);
         setError(null);
         setStep('preview');
@@ -106,7 +84,7 @@ export default function ArticleImport({ onClose, onSuccess }: Props) {
         setError('Failed to parse CSV file. Please check the format.');
       }
     };
-    
+
     reader.readAsText(selectedFile);
   };
 
@@ -158,13 +136,52 @@ export default function ArticleImport({ onClose, onSuccess }: Props) {
   };
 
   const downloadTemplate = () => {
-    const headers = ['name', 'description', 'base_rate', 'branch', 'hsn_code', 'tax_rate', 'unit_of_measure', 'min_quantity', 'is_fragile', 'requires_special_handling', 'notes'];
-    const csv = [
-      headers.join(','),
-      'Cloth Bundle,Standard cloth bundles,100,Mumbai HQ,6302,18,bundle,1,false,false,Handle with care',
-      'Garments,Ready-made garments,200,Delhi Branch,6309,12,pcs,1,true,true,Fragile items'
-    ].join('\n');
-    
+    const headers = [
+      'name',
+      'description',
+      'base_rate',
+      'branch',
+      'hsn_code',
+      'tax_rate',
+      'unit_of_measure',
+      'min_quantity',
+      'is_fragile',
+      'requires_special_handling',
+      'notes'
+    ];
+
+    const csv = Papa.unparse(
+      [
+        {
+          name: 'Cloth Bundle',
+          description: 'Standard cloth bundles',
+          base_rate: 100,
+          branch: 'Mumbai HQ',
+          hsn_code: 6302,
+          tax_rate: 18,
+          unit_of_measure: 'bundle',
+          min_quantity: 1,
+          is_fragile: false,
+          requires_special_handling: false,
+          notes: 'Handle with care'
+        },
+        {
+          name: 'Garments',
+          description: 'Ready-made garments',
+          base_rate: 200,
+          branch: 'Delhi Branch',
+          hsn_code: 6309,
+          tax_rate: 12,
+          unit_of_measure: 'pcs',
+          min_quantity: 1,
+          is_fragile: true,
+          requires_special_handling: true,
+          notes: 'Fragile items'
+        }
+      ],
+      { columns: headers }
+    );
+
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
