@@ -45,6 +45,13 @@ function sanitizeVehicleData(data: Record<string, any>): VehicleInsert {
   const sanitized: Partial<VehicleInsert> = {};
   for (const key of VEHICLE_COLUMNS) {
     if (key in data) {
+      const value = data[key];
+      if (value === '') {
+        sanitized[key] = null as any;
+      } else if (value !== undefined) {
+        sanitized[key] = value;
+      }
+
       sanitized[key] = data[key];
     }
   }
