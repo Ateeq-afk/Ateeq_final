@@ -19,6 +19,7 @@ export default function ArticleImport({ onClose, onSuccess }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<'upload' | 'preview' | 'importing' | 'complete'>('upload');
+  const [processed, setProcessed] = useState(0);
   const { createArticle } = useArticles();
   const { branches } = useBranches();
   const { showError } = useNotificationSystem();
@@ -93,14 +94,15 @@ export default function ArticleImport({ onClose, onSuccess }: Props) {
   const handleImport = async () => {
     try {
       setLoading(true);
+      setProcessed(0);
       setStep('importing');
-      
+
       // Import articles
       for (const article of preview) {
         // Find branch by name if provided
         let branchId = null;
         if (article.branch) {
-          const branch = branches.find(b => 
+          const branch = branches.find(b =>
             b.name.toLowerCase() === article.branch.toLowerCase() ||
             b.code.toLowerCase() === article.branch.toLowerCase()
           );
@@ -122,6 +124,8 @@ export default function ArticleImport({ onClose, onSuccess }: Props) {
           requires_special_handling: article.requires_special_handling || false,
           notes: article.notes || ''
         });
+
+        setProcessed((p) => p + 1);
       }
       
       setStep('complete');
@@ -315,10 +319,18 @@ export default function ArticleImport({ onClose, onSuccess }: Props) {
       )}
 
       {step === 'importing' && (
-        <div className="py-12 flex flex-col items-center justify-center">
+        <div className="py-12 flex flex-col items-center justify-center w-full">
           <Loader2 className="h-12 w-12 text-blue-600 animate-spin mb-4" />
           <h3 className="text-lg font-medium text-gray-900">Importing Articles</h3>
-          <p className="text-gray-500 mt-1">Please wait while we import your articles...</p>
+          <p className="text-gray-500 mt-1">
+            Imported {processed} / {preview.length} articles
+          </p>
+          <div className="w-full max-w-sm mt-4 h-2 bg-gray-200 rounded-full">
+            <div
+              className="h-2 bg-blue-600 rounded-full transition-all"
+              style={{ width: `${(processed / preview.length) * 100}%` }}
+            ></div>
+          </div>
         </div>
       )}
 
