@@ -1,5 +1,7 @@
 // src/components/articles/ArticleList.tsx
 import React, { useState, useEffect, useMemo } from 'react'
+import { FixedSizeList as List, ListChildComponentProps } from 'react-window'
+import clsx from 'clsx'
 import {
   Plus,
   Package,
@@ -55,6 +57,20 @@ export default function ArticleList() {
   const [page, setPage]                   = useState(1)
   const perPage = 12
 
+  // Determine columns for responsive grid
+  const [columns, setColumns] = useState(1)
+  useEffect(() => {
+    const update = () => {
+      const w = window.innerWidth
+      if (w >= 1024) setColumns(3)
+      else if (w >= 640) setColumns(2)
+      else setColumns(1)
+    }
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [])
+
   // —— Data Hooks ——  
   const {
     articles,
@@ -94,9 +110,57 @@ export default function ArticleList() {
     })
   }, [articles, search, sortField, sortDir])
 
-  // —— Pagination ——  
+  // —— Pagination ——
   const totalPages = Math.ceil(filtered.length / perPage)
   const pageItems = filtered.slice((page - 1) * perPage, page * perPage)
+  const rowCount = Math.ceil(pageItems.length / columns)
+
+  const Row = ({ index, style }: ListChildComponentProps) => {
+    const start = index * columns
+    const items = pageItems.slice(start, start + columns)
+    const rowClass = clsx('grid gap-6', {
+      'grid-cols-1': columns === 1,
+      'grid-cols-2': columns === 2,
+      'grid-cols-3': columns === 3,
+    })
+    return (
+      <div style={style} className={rowClass}>
+        {items.map(a => (
+          <div key={a.id} className="border rounded-xl p-4 hover:shadow">
+            <div className="flex justify-between">
+              <div onClick={() => setDetailsId(a.id)} className="flex gap-3 cursor-pointer">
+                <div className="p-2 bg-blue-100 rounded-xl">
+                  <Package className="h-6 w-6 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold">{a.name}</h3>
+                  {a.description && <p className="text-sm text-gray-500">{a.description}</p>}
+                  <Badge variant="success" className="mt-2">₹{a.base_rate.toFixed(2)}</Badge>
+                </div>
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon"><MoreVertical /></Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setDetailsId(a.id)}>
+                    <Package className="h-4 w-4 mr-2" /> View Details
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => { setEditArticle(a); setShowForm(true) }}>
+                    <Edit className="h-4 w-4 mr-2" /> Edit
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => handleDelete(a.id)} className="text-red-600">
+                    <Trash className="h-4 w-4 mr-2" /> Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+  }
 
   // —— Handlers ——  
   const handleCreate = async (data: Omit<Article,'id'|'created_at'|'updated_at'>) => {
@@ -189,47 +253,17 @@ export default function ArticleList() {
         prefix={<Search className="h-4 w-4 text-gray-400" />}
       />
 
-      {/* Grid of Cards */}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {pageItems.length ? pageItems.map(a => (
-          <div key={a.id} className="border rounded-xl p-4 hover:shadow">
-            <div className="flex justify-between">
-              <div onClick={() => setDetailsId(a.id)} className="flex gap-3 cursor-pointer">
-                <div className="p-2 bg-blue-100 rounded-xl">
-                  <Package className="h-6 w-6 text-blue-600" />
-                </div>
-                <div>
-                  <h3 className="font-semibold">{a.name}</h3>
-                  {a.description && <p className="text-sm text-gray-500">{a.description}</p>}
-                  <Badge variant="success" className="mt-2">₹{a.base_rate.toFixed(2)}</Badge>
-                </div>
-              </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon"><MoreVertical /></Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => setDetailsId(a.id)}>
-                    <Package className="h-4 w-4 mr-2" /> View Details
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => { setEditArticle(a); setShowForm(true) }}>
-                    <Edit className="h-4 w-4 mr-2" /> Edit
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => handleDelete(a.id)} className="text-red-600">
-                    <Trash className="h-4 w-4 mr-2" /> Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
-        )) : (
-          <div className="col-span-full text-center py-12">
-            <Package className="h-12 w-12 text-gray-400 mx-auto" />
-            <p className="mt-2 text-gray-600">No articles found</p>
-          </div>
-        )}
-      </div>
+      {/* Virtualized List */}
+      {pageItems.length ? (
+        <List height={600} itemCount={rowCount} itemSize={220} width="100%">
+          {Row}
+        </List>
+      ) : (
+        <div className="text-center py-12">
+          <Package className="h-12 w-12 text-gray-400 mx-auto" />
+          <p className="mt-2 text-gray-600">No articles found</p>
+        </div>
+      )}
 
       {/* Pagination Controls */}
       {totalPages > 1 && (
