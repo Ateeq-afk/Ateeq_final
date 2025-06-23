@@ -99,23 +99,11 @@ export default function ArticleImport({ onClose, onSuccess }: Props) {
 
       // Import articles
       for (const article of preview) {
-        // Find branch by name if provided
-        let branchId = null;
-        if (article.branch) {
-          const branch = branches.find(b =>
-            b.name.toLowerCase() === article.branch.toLowerCase() ||
-            b.code.toLowerCase() === article.branch.toLowerCase()
-          );
-          if (branch) {
-            branchId = branch.id;
-          }
-        }
-        
         await createArticle({
           name: article.name,
           description: article.description || '',
           base_rate: article.base_rate,
-          branch_id: branchId || branches[0]?.id,
+          branch_id: branches[0]?.id,
           hsn_code: article.hsn_code || '',
           tax_rate: article.tax_rate || 0,
           unit_of_measure: article.unit_of_measure || '',
@@ -146,7 +134,6 @@ export default function ArticleImport({ onClose, onSuccess }: Props) {
       'name',
       'description',
       'base_rate',
-      'branch',
       'hsn_code',
       'tax_rate',
       'unit_of_measure',
@@ -162,7 +149,6 @@ export default function ArticleImport({ onClose, onSuccess }: Props) {
           name: 'Cloth Bundle',
           description: 'Standard cloth bundles',
           base_rate: 100,
-          branch: 'Mumbai HQ',
           hsn_code: 6302,
           tax_rate: 18,
           unit_of_measure: 'bundle',
@@ -175,7 +161,6 @@ export default function ArticleImport({ onClose, onSuccess }: Props) {
           name: 'Garments',
           description: 'Ready-made garments',
           base_rate: 200,
-          branch: 'Delhi Branch',
           hsn_code: 6309,
           tax_rate: 12,
           unit_of_measure: 'pcs',
@@ -229,7 +214,7 @@ export default function ArticleImport({ onClose, onSuccess }: Props) {
               <p className="text-blue-800 font-medium">CSV Format Requirements</p>
               <p className="text-blue-600 text-sm mt-1">
                 Your CSV file must include the following columns: name and base_rate.
-                Optional columns: description, branch, hsn_code, tax_rate, unit_of_measure, min_quantity, is_fragile, requires_special_handling, notes.
+                Optional columns: description, hsn_code, tax_rate, unit_of_measure, min_quantity, is_fragile, requires_special_handling, notes.
               </p>
             </div>
           </div>
@@ -286,7 +271,6 @@ export default function ArticleImport({ onClose, onSuccess }: Props) {
                     <th className="text-left text-xs font-medium text-gray-500 uppercase px-4 py-2">Name</th>
                     <th className="text-left text-xs font-medium text-gray-500 uppercase px-4 py-2">Description</th>
                     <th className="text-right text-xs font-medium text-gray-500 uppercase px-4 py-2">Base Rate</th>
-                    <th className="text-left text-xs font-medium text-gray-500 uppercase px-4 py-2">Branch</th>
                     <th className="text-left text-xs font-medium text-gray-500 uppercase px-4 py-2">HSN Code</th>
                     <th className="text-right text-xs font-medium text-gray-500 uppercase px-4 py-2">Tax Rate</th>
                   </tr>
@@ -297,7 +281,6 @@ export default function ArticleImport({ onClose, onSuccess }: Props) {
                       <td className="px-4 py-2 text-sm">{article.name}</td>
                       <td className="px-4 py-2 text-sm">{article.description || '-'}</td>
                       <td className="px-4 py-2 text-sm text-right">₹{article.base_rate.toFixed(2)}</td>
-                      <td className="px-4 py-2 text-sm">{article.branch || '-'}</td>
                       <td className="px-4 py-2 text-sm">{article.hsn_code || '-'}</td>
                       <td className="px-4 py-2 text-sm text-right">{article.tax_rate || '0'}%</td>
                     </tr>
