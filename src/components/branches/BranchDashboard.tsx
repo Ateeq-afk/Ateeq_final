@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { 
   Building2, 
   Package, 
@@ -32,11 +32,12 @@ import { useVehicles } from '@/hooks/useVehicles';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useBranches } from '@/hooks/useBranches';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBranchSelection } from '@/contexts/BranchSelectionContext';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
 export default function BranchDashboard() {
-  const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
+  const { selectedBranch, setSelectedBranch } = useBranchSelection();
   const [dateRange, setDateRange] = useState('last_month');
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(false);
