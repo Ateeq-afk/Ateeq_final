@@ -49,10 +49,14 @@ function sanitizeVehicleData(data: Record<string, any>): VehicleInsert {
       if (value === '') {
         sanitized[key] = null as any;
       } else if (value !== undefined) {
-        sanitized[key] = value;
+        if (key === 'vehicle_number' && typeof value === 'string') {
+          sanitized[key] = value
+            .toUpperCase()
+            .replace(/[^A-Z0-9]/g, '') as any;
+        } else {
+          sanitized[key] = value;
+        }
       }
-
-      sanitized[key] = data[key];
     }
   }
   return sanitized as VehicleInsert;
