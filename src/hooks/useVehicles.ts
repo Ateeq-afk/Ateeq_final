@@ -17,9 +17,17 @@ export interface Vehicle {
   make: string;
   model: string;
   year: number;
+  color: string | null;
+  fuel_type: string | null;
+  capacity: string | null;
+  registration_date: string | null;
   status: 'active' | 'maintenance' | 'inactive';
+  insurance_expiry: string | null;
+  fitness_expiry: string | null;
+  permit_expiry: string | null;
   last_maintenance_date: string | null;
   next_maintenance_date: string | null;
+  notes: string | null;
   created_at: string;
   updated_at: string;
 }
