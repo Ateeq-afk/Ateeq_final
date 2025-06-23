@@ -90,20 +90,20 @@ export default function BookingList() {
   return (
     <div className="space-y-6">
       {/* Header & Actions */}
-      <div className="bg-gradient-to-r from-brand-600 to-brand-800 text-white p-6 rounded-2xl shadow-sm flex flex-col sm:flex-row justify-between items-center gap-4">
+      <div className="bg-gradient-to-r from-brand-50 to-brand-100 p-6 rounded-2xl shadow-sm flex flex-col sm:flex-row justify-between items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold">Bookings</h2>
-          <p className="text-white/80">{filtered.length} found</p>
+          <h2 className="text-2xl font-bold text-brand-800">Bookings</h2>
+          <p className="text-brand-600">{filtered.length} found</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" className="border-white/30 text-white hover:bg-white/10" onClick={() => setShowAll(!showAll)}>
+          <Button variant="outline" className="border-brand-300 text-brand-700 hover:bg-brand-50" onClick={() => setShowAll(!showAll)}>
             {showAll ? 'Paginated' : 'Show All'}
           </Button>
-          <Button variant="outline" className="border-white/30 text-white hover:bg-white/10" onClick={handlePrint}>
+          <Button variant="outline" className="border-brand-300 text-brand-700 hover:bg-brand-50" onClick={handlePrint}>
             <Printer className="mr-1 h-4 w-4" />
             <span>Print</span>
           </Button>
-          <Button variant="outline" className="border-white/30 text-white hover:bg-white/10" onClick={handleRefresh}>
+          <Button variant="outline" className="border-brand-300 text-brand-700 hover:bg-brand-50" onClick={handleRefresh}>
             <RefreshCw className="mr-1 h-4 w-4" />
             <span>Refresh</span>
           </Button>
