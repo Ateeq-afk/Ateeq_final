@@ -24,6 +24,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useBookings } from '@/hooks/useBookings';
 import { useState as useHookState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface NavItemProps {
   icon: React.ElementType;
@@ -56,6 +57,7 @@ function Sidebar({ onNavigate, currentPage }: SidebarProps) {
   });
   const [showRecentBookings, setShowRecentBookings] = useState(false);
   const { bookings } = useBookings();
+  const { signOut } = useAuth();
 
   // Get the 5 most recent bookings
   const recentBookings = bookings.slice(0, 5);
@@ -508,7 +510,11 @@ function Sidebar({ onNavigate, currentPage }: SidebarProps) {
             <p className="text-xs text-gray-500 truncate">Mumbai Branch</p>
           </div>
         </div>
-        <Button variant="ghost" className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50 mt-2">
+        <Button
+          variant="ghost"
+          className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50 mt-2"
+          onClick={() => signOut()}
+        >
           <LogOut className="h-4 w-4 mr-2" />
           Sign Out
         </Button>
