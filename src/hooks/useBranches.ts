@@ -27,7 +27,6 @@ export function useBranches() {
 
       if (fetchError) throw fetchError;
       setBranches(data || []);
-      console.log('Branches loaded:', data?.length);
     } catch (err) {
       console.error('Failed to load branches:', err);
       setError(err instanceof Error ? err : new Error('Failed to load branches'));
@@ -42,7 +41,6 @@ export function useBranches() {
 
   const createBranch = async (branchData: Omit<Branch, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      console.log('Creating branch:', branchData);
       
       const { data, error: createError } = await supabase
         .from('branches')
@@ -66,7 +64,6 @@ export function useBranches() {
         throw new Error('Invalid branch ID format');
       }
 
-      console.log(`Updating branch ${id}:`, updates);
       
       const { data, error: updateError } = await supabase
         .from('branches')
@@ -91,7 +88,6 @@ export function useBranches() {
         throw new Error('Invalid branch ID format');
       }
 
-      console.log(`Deleting branch ${id}`);
       
       // Check for associated data
       const { count: bookingsCount, error: bookingsError } = await supabase

@@ -129,8 +129,6 @@ export default function BranchTransferForm() {
       // For demo purposes, we'll simulate a delay
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      console.log('Branch transfer data:', data);
-      
       setSuccess(true);
       showSuccess('Transfer Created', 'Branch transfer has been created successfully');
       
