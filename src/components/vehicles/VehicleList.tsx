@@ -257,7 +257,7 @@ export default function VehicleList() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-6 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Vehicles</h2>
@@ -364,7 +364,7 @@ export default function VehicleList() {
                     )}
                   </div>
                 </th>
-                <th 
+                <th
                   className="text-left text-sm font-medium text-gray-600 px-6 py-4 cursor-pointer"
                   onClick={() => handleSort('year')}
                 >
@@ -377,6 +377,7 @@ export default function VehicleList() {
                     )}
                   </div>
                 </th>
+                <th className="text-left text-sm font-medium text-gray-600 px-6 py-4">Capacity</th>
                 <th className="text-left text-sm font-medium text-gray-600 px-6 py-4">Type</th>
                 <th 
                   className="text-left text-sm font-medium text-gray-600 px-6 py-4 cursor-pointer"
@@ -418,6 +419,7 @@ export default function VehicleList() {
                     </div>
                   </td>
                   <td className="px-6 py-4">{vehicle.year}</td>
+                  <td className="px-6 py-4">{vehicle.capacity || '-'}</td>
                   <td className="px-6 py-4">
                     <Badge variant={
                       vehicle.type === 'own' ? 'default' : 
