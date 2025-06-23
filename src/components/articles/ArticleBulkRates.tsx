@@ -380,7 +380,7 @@ adjustValue > 0
                   }`}
                 >
                   {adjustType === 'percentage'
-                    ? `${adjustValue}% (₹${(100 * adjustValue) / 100 .toFixed(2)})`
+                    ? `${adjustValue}% (₹${((100 * adjustValue) / 100).toFixed(2)})`
                     : `₹${adjustValue.toFixed(2)}`}
                 </span>
               </div>
