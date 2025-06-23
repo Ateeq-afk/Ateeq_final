@@ -51,6 +51,8 @@ function sanitizeVehicleData(data: Record<string, any>): VehicleInsert {
       } else if (value !== undefined) {
         sanitized[key] = value;
       }
+
+      sanitized[key] = data[key];
     }
   }
   return sanitized as VehicleInsert;
