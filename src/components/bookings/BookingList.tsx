@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import {
   Search,
   MoreVertical,
@@ -24,7 +23,7 @@ import {
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '../ui/select';
 import StatusBadge from '../ui/StatusBadge';
 
-import { fetchBookings } from '../../services/bookings';
+import { useBookings } from '@/hooks/useBookings';
 import { useBranches } from '../../hooks/useBranches';
 import { useFilteredSortedBookings } from '../../hooks/useFilteredSortedBookings';
 import { printBookings, downloadBookingLR } from '../../utils/printUtils';
@@ -51,12 +50,8 @@ export default function BookingList() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [showAll, setShowAll] = useState(false);
 
-  // Data Fetching via React Query
-  const { data: bookings = [], isLoading, isError, refetch } = useQuery({
-  queryKey: ['bookings'],
-  queryFn: fetchBookings,
-  staleTime: 300_000,
-});
+  // Data Fetching via custom hook
+  const { bookings, loading: isLoading, error, refresh } = useBookings();
 
   const { branches } = useBranches();
 
@@ -85,12 +80,12 @@ export default function BookingList() {
     }
   };
 
-  const handleRefresh = () => refetch();
+  const handleRefresh = () => refresh();
   const handlePrint = () => printBookings(selectedIds.length ? filtered.filter(b => selectedIds.includes(b.id)) : filtered);
   const handleDownload = (booking: Booking) => downloadBookingLR(booking);
 
   if (isLoading) return <div>Loading…</div>;
-  if (isError) return <div>Error loading bookings.</div>;
+  if (error) return <div>Error loading bookings.</div>;
 
   return (
     <div className="space-y-6">
@@ -227,9 +222,9 @@ export default function BookingList() {
       </div>
 
       {/* Modals */}
-      {showModifyId && <BookingModification bookingId={showModifyId} onClose={() => setShowModifyId(null)} onSubmit={() => refetch()} />}
-      {showCancelId && <BookingCancellation bookingId={showCancelId} onClose={() => setShowCancelId(null)} onSubmit={() => refetch()} />}
-      {showPODId && <ProofOfDelivery bookingId={showPODId} onClose={() => setShowPODId(null)} onSubmit={() => refetch()} />}
+      {showModifyId && <BookingModification bookingId={showModifyId} onClose={() => setShowModifyId(null)} onSubmit={() => refresh()} />}
+      {showCancelId && <BookingCancellation bookingId={showCancelId} onClose={() => setShowCancelId(null)} onSubmit={() => refresh()} />}
+      {showPODId && <ProofOfDelivery bookingId={showPODId} onClose={() => setShowPODId(null)} onSubmit={() => refresh()} />}
     </div>
   );
 }
