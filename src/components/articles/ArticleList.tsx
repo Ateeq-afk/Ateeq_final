@@ -75,9 +75,9 @@ export default function ArticleList() {
 
   useEffect(() => {
     if (selectedBranch) {
-      refresh()
+      refresh();
     }
-  }, [selectedBranch])
+  }, [selectedBranch]);
 
   // —— Data Hooks ——  
   const {
