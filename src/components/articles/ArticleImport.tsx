@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useArticles } from '@/hooks/useArticles';
 import { useBranches } from '@/hooks/useBranches';
+import { useNotificationSystem } from '@/hooks/useNotificationSystem';
 
 interface Props {
   onClose: () => void;
@@ -20,6 +21,7 @@ export default function ArticleImport({ onClose, onSuccess }: Props) {
   const [step, setStep] = useState<'upload' | 'preview' | 'importing' | 'complete'>('upload');
   const { createArticle } = useArticles();
   const { branches } = useBranches();
+  const { showError } = useNotificationSystem();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -80,8 +82,8 @@ export default function ArticleImport({ onClose, onSuccess }: Props) {
         setError(null);
         setStep('preview');
       } catch (err) {
-        console.error('Failed to parse CSV:', err);
         setError('Failed to parse CSV file. Please check the format.');
+        showError('CSV Parse Failed', 'Failed to parse CSV file. Please check the format.');
       }
     };
 
@@ -127,8 +129,8 @@ export default function ArticleImport({ onClose, onSuccess }: Props) {
         onSuccess();
       }, 2000);
     } catch (err) {
-      console.error('Failed to import articles:', err);
       setError(err instanceof Error ? err.message : 'Failed to import articles');
+      showError('Import Failed', 'There was a problem importing the articles');
       setStep('preview');
     } finally {
       setLoading(false);

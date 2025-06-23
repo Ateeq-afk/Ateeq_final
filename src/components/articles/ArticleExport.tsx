@@ -6,6 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { Article } from '@/types';
+import { useNotificationSystem } from '@/hooks/useNotificationSystem';
 
 interface Props {
   articles: Article[];
@@ -30,6 +31,7 @@ export default function ArticleExport({ articles, onClose, onSuccess }: Props) {
     requires_special_handling: true,
     notes: true
   });
+  const { showError } = useNotificationSystem();
 
   const toggleField = (field: string) => {
     setSelectedFields(prev => ({
@@ -93,7 +95,7 @@ export default function ArticleExport({ articles, onClose, onSuccess }: Props) {
         onSuccess();
       }, 1500);
     } catch (err) {
-      console.error('Failed to export articles:', err);
+      showError('Export Failed', 'There was a problem exporting the articles');
     } finally {
       setLoading(false);
     }
