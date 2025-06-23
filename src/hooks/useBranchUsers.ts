@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '@/lib/supabaseClient';
 import type { BranchUser } from '@/types';
 
@@ -93,7 +94,7 @@ export function useBranchUsers(branchId: string | null) {
       
       // For demo purposes, we'll create a mock user
       const mockUser: BranchUser = {
-        id: crypto.randomUUID(),
+        id: uuidv4(),
         ...userData,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
