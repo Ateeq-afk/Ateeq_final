@@ -252,14 +252,6 @@ export default function VehicleDetails({ vehicleId, onClose, onEdit, onScheduleM
                       <p className="font-medium text-gray-900">{vehicle.year}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-600">Capacity</p>
-                      <p className="font-medium text-gray-900">{vehicle.capacity || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Fuel Type</p>
-                      <p className="font-medium text-gray-900 capitalize">{vehicle.fuel_type || 'N/A'}</p>
-                    </div>
-                    <div>
                       <p className="text-sm text-gray-600">Type</p>
                       <p className="font-medium text-gray-900 capitalize">{vehicle.type}</p>
                     </div>
