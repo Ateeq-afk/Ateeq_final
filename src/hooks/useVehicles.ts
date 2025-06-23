@@ -24,6 +24,38 @@ export interface Vehicle {
   updated_at: string;
 }
 
+const VEHICLE_COLUMNS = [
+  'branch_id',
+  'vehicle_number',
+  'type',
+  'make',
+  'model',
+  'year',
+  'status',
+  'last_maintenance_date',
+  'next_maintenance_date',
+] as const;
+
+type VehicleInsert = Pick<
+  Vehicle,
+  (typeof VEHICLE_COLUMNS)[number]
+>;
+
+function sanitizeVehicleData(data: Record<string, any>): VehicleInsert {
+  const sanitized: Partial<VehicleInsert> = {};
+  for (const key of VEHICLE_COLUMNS) {
+    if (key in data) {
+      const value = data[key];
+      if (value === '') {
+        sanitized[key] = null as any;
+      } else if (value !== undefined) {
+        sanitized[key] = value;
+      }
+    }
+  }
+  return sanitized as VehicleInsert;
+}
+
 export function useVehicles(branchId: string | null = null) {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
@@ -77,11 +109,13 @@ export function useVehicles(branchId: string | null = null) {
         throw new Error('Invalid branch ID format');
       }
 
-      console.log('Creating vehicle:', vehicleData);
+      const sanitized = sanitizeVehicleData(vehicleData);
+
+      console.log('Creating vehicle:', sanitized);
 
       const { data, error: createError } = await supabase
         .from('vehicles')
-        .insert(vehicleData)
+        .insert(sanitized)
         .select()
         .single();
 
@@ -111,11 +145,13 @@ export function useVehicles(branchId: string | null = null) {
         throw new Error('Invalid branch ID format');
       }
 
-      console.log(`Updating vehicle ${id}:`, updates);
+      const sanitized = sanitizeVehicleData(updates);
+
+      console.log(`Updating vehicle ${id}:`, sanitized);
 
       const { data, error: updateError } = await supabase
         .from('vehicles')
-        .update(updates)
+        .update(sanitized)
         .eq('id', id)
         .select()
         .single();
