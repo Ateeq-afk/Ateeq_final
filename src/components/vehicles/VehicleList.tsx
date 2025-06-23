@@ -124,7 +124,10 @@ export default function VehicleList() {
       showSuccess('Vehicle Created', 'Vehicle has been successfully created');
     } catch (err) {
       console.error('Failed to create vehicle:', err);
-      showError('Creation Failed', 'Failed to create vehicle');
+      showError(
+        'Creation Failed',
+        err instanceof Error ? err.message : 'Failed to create vehicle'
+      );
     }
   };
 
@@ -138,7 +141,10 @@ export default function VehicleList() {
       showSuccess('Vehicle Updated', 'Vehicle has been successfully updated');
     } catch (err) {
       console.error('Failed to update vehicle:', err);
-      showError('Update Failed', 'Failed to update vehicle');
+      showError(
+        'Update Failed',
+        err instanceof Error ? err.message : 'Failed to update vehicle'
+      );
     }
   };
 
@@ -162,7 +168,10 @@ export default function VehicleList() {
       showSuccess('Status Updated', `Vehicle status has been updated to ${status}`);
     } catch (err) {
       console.error('Failed to update status:', err);
-      showError('Update Failed', 'Failed to update vehicle status');
+      showError(
+        'Update Failed',
+        err instanceof Error ? err.message : 'Failed to update vehicle status'
+      );
     }
   };
 
@@ -180,7 +189,10 @@ export default function VehicleList() {
       await refresh();
       showSuccess('Refreshed', 'Vehicle list has been refreshed');
     } catch (err) {
-      showError('Refresh Failed', 'Failed to refresh vehicle list');
+      showError(
+        'Refresh Failed',
+        err instanceof Error ? err.message : 'Failed to refresh vehicle list'
+      );
     }
   };
 
@@ -198,7 +210,10 @@ export default function VehicleList() {
       showSuccess('Maintenance Scheduled', 'Vehicle maintenance has been scheduled successfully');
     } catch (err) {
       console.error('Failed to schedule maintenance:', err);
-      showError('Scheduling Failed', 'Failed to schedule vehicle maintenance');
+      showError(
+        'Scheduling Failed',
+        err instanceof Error ? err.message : 'Failed to schedule vehicle maintenance'
+      );
     }
   };
 
@@ -242,7 +257,7 @@ export default function VehicleList() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-6 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Vehicles</h2>
@@ -349,7 +364,7 @@ export default function VehicleList() {
                     )}
                   </div>
                 </th>
-                <th 
+                <th
                   className="text-left text-sm font-medium text-gray-600 px-6 py-4 cursor-pointer"
                   onClick={() => handleSort('year')}
                 >
@@ -362,6 +377,7 @@ export default function VehicleList() {
                     )}
                   </div>
                 </th>
+                <th className="text-left text-sm font-medium text-gray-600 px-6 py-4">Capacity</th>
                 <th className="text-left text-sm font-medium text-gray-600 px-6 py-4">Type</th>
                 <th 
                   className="text-left text-sm font-medium text-gray-600 px-6 py-4 cursor-pointer"
@@ -403,6 +419,7 @@ export default function VehicleList() {
                     </div>
                   </td>
                   <td className="px-6 py-4">{vehicle.year}</td>
+                  <td className="px-6 py-4">{vehicle.capacity || '-'}</td>
                   <td className="px-6 py-4">
                     <Badge variant={
                       vehicle.type === 'own' ? 'default' : 
