@@ -73,13 +73,6 @@ export default function VehicleForm({ onSubmit, onCancel, initialData }: Props) 
       status: 'active',
       type: 'own',
       fuel_type: 'diesel',
-      color: '',
-      capacity: '',
-      registration_date: '',
-      insurance_expiry: '',
-      fitness_expiry: '',
-      permit_expiry: '',
-      notes: '',
       ...initialData,
     },
   });
