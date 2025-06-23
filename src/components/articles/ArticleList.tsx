@@ -1,4 +1,4 @@
-// src/components/articles/ArticleList.tsx
+
 import React, { useState, useEffect, useMemo } from 'react'
 import {
   Plus,
@@ -70,7 +70,6 @@ export default function ArticleList() {
       setSelectedBranch(userBranch.id)
     } else if (branches.length > 0 && !selectedBranch) {
       setSelectedBranch(branches[0].id)
-    }
   }, [userBranch, branches, selectedBranch])
 
   useEffect(() => {
@@ -125,7 +124,8 @@ export default function ArticleList() {
   // —— Handlers ——  
   const handleCreate = async (data: Omit<Article,'id'|'created_at'|'updated_at'>) => {
     try {
-      await createArticle(data)
+      if (!selectedBranch) throw new Error('No branch selected')
+      await createArticle({ ...data, branch_id: selectedBranch })
       showSuccess('Article Created', 'A new article was added')
       setShowForm(false)
     } catch {
@@ -223,7 +223,6 @@ export default function ArticleList() {
         placeholder="Search by name or description…"
         value={search}
         onChange={e => setSearch(e.target.value)}
-        prefix={<Search className="h-4 w-4 text-gray-400" />}
       />
 
       {/* Grid of Cards */}
@@ -303,11 +302,6 @@ export default function ArticleList() {
               <ArticleDetails
                 article={articles.find(a => a.id === detailsId)!}
                 onClose={() => setDetailsId(null)}
-                onEdit={a => {
-                  setEditArticle(a)
-                  setDetailsId(null)
-                  setShowForm(true)
-                }}
               />
             )}
           </div>
@@ -338,5 +332,5 @@ export default function ArticleList() {
         </DialogContent>
       </Dialog>
     </div>
-  )
+  ) 
 }
