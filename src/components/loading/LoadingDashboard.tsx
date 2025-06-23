@@ -26,6 +26,7 @@ import { useLoading } from '@/hooks/useLoading';
 import { useVehicles } from '@/hooks/useVehicles';
 import { useBranches } from '@/hooks/useBranches';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBranchSelection } from '@/contexts/BranchSelectionContext';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useNotificationSystem } from '@/hooks/useNotificationSystem';
@@ -44,22 +45,32 @@ export default function LoadingDashboard() {
   const { getCurrentUserBranch } = useAuth();
   const { showSuccess, showError } = useNotificationSystem();
   const navigate = useNavigate();
-  
+  const { selectedBranch, setSelectedBranch } = useBranchSelection();
+
   const userBranch = getCurrentUserBranch();
-  const { 
-    getPendingBookings, 
-    getActiveOGPLs, 
-    createLoadingSession, 
+  const effectiveBranchId = selectedBranch || userBranch?.id;
+  const {
+    getPendingBookings,
+    getActiveOGPLs,
+    createLoadingSession,
     getLoadingHistory,
-    loading: loadingData, 
-    error: loadingError 
-  } = useLoading(userBranch?.id);
-  const { vehicles } = useVehicles(userBranch?.id);
+    loading: loadingData,
+    error: loadingError
+  } = useLoading(effectiveBranchId);
+  const { vehicles } = useVehicles(effectiveBranchId);
   const { branches } = useBranches();
-  
+
   const [pendingBookings, setPendingBookings] = useState<any[]>([]);
   const [activeOGPLs, setActiveOGPLs] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (userBranch && !selectedBranch) {
+      setSelectedBranch(userBranch.id);
+    } else if (branches.length > 0 && !selectedBranch) {
+      setSelectedBranch(branches[0].id);
+    }
+  }, [userBranch, branches, selectedBranch]);
   
   // Load data
   useEffect(() => {
@@ -218,8 +229,20 @@ export default function LoadingDashboard() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Button 
-            variant="outline" 
+          <Select value={selectedBranch || ''} onValueChange={setSelectedBranch}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Select branch" />
+            </SelectTrigger>
+            <SelectContent>
+              {branches.map((branch) => (
+                <SelectItem key={branch.id} value={branch.id}>
+                  {branch.name} - {branch.city}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            variant="outline"
             onClick={handleRefresh}
             className="flex items-center gap-2"
           >
