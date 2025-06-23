@@ -27,23 +27,10 @@ export default function QuickActionCards() {
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-      <DashboardCard
-        variant="soft"
-        color="indigo"
+      <DashboardCard 
+        variant="soft" 
+        color="blue" 
         animationDelay={0.1}
-        onClick={() => handleNavigate('/dashboard/vehicles')}
-      >
-        <DashboardCardIcon color="indigo" size="lg">
-          <Truck className="h-8 w-8" />
-        </DashboardCardIcon>
-        <DashboardCardTitle>Vehicles</DashboardCardTitle>
-        <DashboardCardDescription>Manage fleet</DashboardCardDescription>
-      </DashboardCard>
-
-      <DashboardCard
-        variant="soft"
-        color="blue"
-        animationDelay={0.2}
         onClick={() => handleNavigate('/dashboard/new-booking')}
       >
         <DashboardCardIcon color="blue" size="lg">
@@ -53,10 +40,10 @@ export default function QuickActionCards() {
         <DashboardCardDescription>Create a new LR</DashboardCardDescription>
       </DashboardCard>
       
-      <DashboardCard
-        variant="soft"
-        color="green"
-        animationDelay={0.3}
+      <DashboardCard 
+        variant="soft" 
+        color="green" 
+        animationDelay={0.2}
         onClick={() => handleNavigate('/dashboard/loading')}
       >
         <DashboardCardIcon color="green" size="lg">
@@ -66,10 +53,10 @@ export default function QuickActionCards() {
         <DashboardCardDescription>Create loading sheet</DashboardCardDescription>
       </DashboardCard>
       
-      <DashboardCard
-        variant="soft"
-        color="amber"
-        animationDelay={0.4}
+      <DashboardCard 
+        variant="soft" 
+        color="amber" 
+        animationDelay={0.3}
         onClick={() => handleNavigate('/dashboard/unloading')}
       >
         <DashboardCardIcon color="amber" size="lg">
@@ -79,10 +66,10 @@ export default function QuickActionCards() {
         <DashboardCardDescription>Process unloading</DashboardCardDescription>
       </DashboardCard>
       
-      <DashboardCard
-        variant="soft"
-        color="purple"
-        animationDelay={0.5}
+      <DashboardCard 
+        variant="soft" 
+        color="purple" 
+        animationDelay={0.4}
         onClick={() => handleNavigate('/dashboard/bookings')}
       >
         <DashboardCardIcon color="purple" size="lg">
@@ -104,23 +91,10 @@ export function ExpandedQuickActionCards() {
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-      <DashboardCard
-        variant="soft"
-        color="indigo"
+      <DashboardCard 
+        variant="soft" 
+        color="blue" 
         animationDelay={0.1}
-        onClick={() => handleNavigate('/dashboard/vehicles')}
-      >
-        <DashboardCardIcon color="indigo" size="lg">
-          <Truck className="h-8 w-8" />
-        </DashboardCardIcon>
-        <DashboardCardTitle>Vehicles</DashboardCardTitle>
-        <DashboardCardDescription>Manage fleet</DashboardCardDescription>
-      </DashboardCard>
-
-      <DashboardCard
-        variant="soft"
-        color="blue"
-        animationDelay={0.2}
         onClick={() => handleNavigate('/dashboard/new-booking')}
       >
         <DashboardCardIcon color="blue" size="lg">
@@ -131,9 +105,9 @@ export function ExpandedQuickActionCards() {
       </DashboardCard>
       
       <DashboardCard 
-        variant="soft"
-        color="green"
-        animationDelay={0.3}
+        variant="soft" 
+        color="green" 
+        animationDelay={0.2}
         onClick={() => handleNavigate('/dashboard/loading')}
       >
         <DashboardCardIcon color="green" size="lg">
@@ -144,9 +118,9 @@ export function ExpandedQuickActionCards() {
       </DashboardCard>
       
       <DashboardCard 
-        variant="soft"
-        color="amber"
-        animationDelay={0.4}
+        variant="soft" 
+        color="amber" 
+        animationDelay={0.3}
         onClick={() => handleNavigate('/dashboard/unloading')}
       >
         <DashboardCardIcon color="amber" size="lg">
@@ -157,9 +131,9 @@ export function ExpandedQuickActionCards() {
       </DashboardCard>
       
       <DashboardCard 
-        variant="soft"
-        color="purple"
-        animationDelay={0.5}
+        variant="soft" 
+        color="purple" 
+        animationDelay={0.4}
         onClick={() => handleNavigate('/dashboard/bookings')}
       >
         <DashboardCardIcon color="purple" size="lg">
@@ -169,6 +143,18 @@ export function ExpandedQuickActionCards() {
         <DashboardCardDescription>Mark as delivered</DashboardCardDescription>
       </DashboardCard>
       
+      <DashboardCard 
+        variant="soft" 
+        color="indigo" 
+        animationDelay={0.5}
+        onClick={() => handleNavigate('/dashboard/vehicles')}
+      >
+        <DashboardCardIcon color="indigo" size="lg">
+          <Truck className="h-8 w-8" />
+        </DashboardCardIcon>
+        <DashboardCardTitle>Vehicles</DashboardCardTitle>
+        <DashboardCardDescription>Manage fleet</DashboardCardDescription>
+      </DashboardCard>
       
       <DashboardCard 
         variant="soft" 

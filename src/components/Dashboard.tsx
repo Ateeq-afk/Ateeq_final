@@ -17,10 +17,11 @@ import {
   Menu,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Routes, Route, useLocation, useNavigate, Navigate } from 'react-router-dom';
+import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import Sidebar from './Sidebar';
 import Header from './Header';
+import DashboardStats from './DashboardStats';
 import BookingList from './bookings/BookingList';
 import BookingDetails from './bookings/BookingDetails';
 import ArticleList from './articles/ArticleList';
@@ -113,7 +114,7 @@ export default function Dashboard() {
               transition={{ duration: 0.3 }}
             >
               <Routes>
-                <Route index element={<Navigate to="vehicles" replace />} />
+                <Route path="/" element={<DashboardStats />} />
                 <Route path="/customers" element={<CustomerList />} />
                 <Route path="/vehicles" element={<VehicleList />} />
                 <Route path="/articles" element={<ArticleList />} />
