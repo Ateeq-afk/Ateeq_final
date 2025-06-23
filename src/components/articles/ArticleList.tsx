@@ -28,13 +28,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+
 
 import { useBranches } from '@/hooks/useBranches';
 import { useAuth } from '@/contexts/AuthContext';
@@ -63,27 +57,13 @@ export default function ArticleList() {
   const [page, setPage] = useState(1);
   const perPage = 12;
 
-  const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
-
   const { branches } = useBranches();
   const { getCurrentUserBranch } = useAuth();
   const userBranch = getCurrentUserBranch();
 
-  // Initialize selectedBranch
   useEffect(() => {
-    if (userBranch && !selectedBranch) {
-      setSelectedBranch(userBranch.id);
-    } else if (branches.length > 0 && !selectedBranch) {
-      setSelectedBranch(branches[0].id);
-    }
-  }, [userBranch, branches, selectedBranch]);
-
-  // Refresh when branch changes
-  useEffect(() => {
-    if (selectedBranch) {
-      refresh();
-    }
-  }, [selectedBranch]);
+    refresh();
+  }, []);
 
   // —— Data Hooks ——
   const {
@@ -94,7 +74,7 @@ export default function ArticleList() {
     updateArticle,
     deleteArticle,
     refresh,
-  } = useArticles(selectedBranch);
+  } = useArticles();
   const { showSuccess, showError } = useNotificationSystem();
 
   // Reset page on filter/sort change
@@ -133,7 +113,10 @@ export default function ArticleList() {
   // —— Handlers ——
   const handleCreate = async (data: Omit<Article, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      await createArticle(data);
+      await createArticle({
+        ...data,
+        branch_id: userBranch?.id || branches[0]?.id || '',
+      });
       showSuccess('Article Created', 'A new article was added');
       setShowForm(false);
     } catch {
@@ -202,18 +185,6 @@ export default function ArticleList() {
       <div className="flex flex-wrap justify-between items-center">
         <h2 className="text-2xl font-bold">Articles ({filtered.length})</h2>
         <div className="flex items-center gap-3">
-          <Select value={selectedBranch || ''} onValueChange={setSelectedBranch}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Select branch" />
-            </SelectTrigger>
-            <SelectContent>
-              {branches.map(branch => (
-                <SelectItem key={branch.id} value={branch.id}>
-                  {branch.name} – {branch.city}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
           <div className="flex gap-2 flex-wrap">
             <Button
               variant="outline"
