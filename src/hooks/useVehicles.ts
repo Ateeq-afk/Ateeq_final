@@ -69,22 +69,29 @@ export function useVehicles(branchId: string | null = null) {
     loadVehicles();
   }, [loadVehicles]);
 
-  async function createVehicle(vehicleData: Omit<Vehicle, 'id' | 'created_at' | 'updated_at'>) {
+  async function createVehicle(
+    vehicleData: Omit<Vehicle, 'id' | 'created_at' | 'updated_at'>
+  ) {
     try {
       if (vehicleData.branch_id && !isValidUUID(vehicleData.branch_id)) {
         throw new Error('Invalid branch ID format');
       }
 
       console.log('Creating vehicle:', vehicleData);
-      
+
       const { data, error: createError } = await supabase
         .from('vehicles')
         .insert(vehicleData)
         .select()
         .single();
-      
-      if (createError) throw createError;
-      
+
+      if (createError) {
+        if (createError.code === '23505') {
+          throw new Error('Vehicle number already exists');
+        }
+        throw new Error(createError.message);
+      }
+
       setVehicles(prev => [data, ...prev]);
       console.log('Vehicle created successfully:', data);
       return data;
@@ -105,20 +112,25 @@ export function useVehicles(branchId: string | null = null) {
       }
 
       console.log(`Updating vehicle ${id}:`, updates);
-      
+
       const { data, error: updateError } = await supabase
         .from('vehicles')
         .update(updates)
         .eq('id', id)
         .select()
         .single();
-      
-      if (updateError) throw updateError;
-      
-      setVehicles(prev => prev.map(vehicle => 
-        vehicle.id === id ? data : vehicle
-      ));
-      
+
+      if (updateError) {
+        if (updateError.code === '23505') {
+          throw new Error('Vehicle number already exists');
+        }
+        throw new Error(updateError.message);
+      }
+
+      setVehicles(prev =>
+        prev.map(vehicle => (vehicle.id === id ? data : vehicle))
+      );
+
       console.log('Vehicle updated successfully:', data);
       return data;
     } catch (err) {
