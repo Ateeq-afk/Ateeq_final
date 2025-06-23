@@ -8,9 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Package, ArrowLeft, IndianRupee, FileText, Loader2 } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
-import { useBranches } from '@/hooks/useBranches';
-import type { Article } from '@/types';
 
+// Validation schema
 const formSchema = z.object({
   name: z.string().min(1, 'Article name is required'),
   description: z.string().optional(),
@@ -29,13 +28,12 @@ type FormValues = z.infer<typeof formSchema>;
 interface Props {
   onSubmit: (data: FormValues) => void;
   onCancel: () => void;
-  initialData?: Partial<Article>;
+  initialData?: Partial<FormValues>;
 }
 
 export default function ArticleForm({ onSubmit, onCancel, initialData }: Props) {
-  const { branches } = useBranches();
   const [submitting, setSubmitting] = useState(false);
-  
+
   const {
     register,
     handleSubmit,
@@ -46,31 +44,33 @@ export default function ArticleForm({ onSubmit, onCancel, initialData }: Props) 
     resolver: zodResolver(formSchema),
     defaultValues: {
       ...initialData,
-      base_rate: initialData?.base_rate || 0,
-      tax_rate: initialData?.tax_rate || 0,
-      min_quantity: initialData?.min_quantity || 1,
-      is_fragile: initialData?.is_fragile || false,
-      requires_special_handling: initialData?.requires_special_handling || false,
+      base_rate: initialData?.base_rate ?? 0,
+      tax_rate: initialData?.tax_rate ?? 0,
+      min_quantity: initialData?.min_quantity ?? 1,
+      is_fragile: initialData?.is_fragile ?? false,
+      requires_special_handling: initialData?.requires_special_handling ?? false,
+      notes: initialData?.notes ?? '',
+      unit_of_measure: initialData?.unit_of_measure ?? '',
     },
-    mode: 'onChange'
+    mode: 'onChange',
   });
 
-  const handleFormSubmit = async (data: FormValues) => {
+  const submitForm = async (data: FormValues) => {
+    setSubmitting(true);
     try {
-      setSubmitting(true);
       await onSubmit(data);
-    } catch (error) {
-      console.error('Form submission error:', error);
+    } catch (e) {
+      console.error('Form submission error:', e);
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit(handleFormSubmit)} className="bg-white rounded-xl shadow-lg p-8">
+    <form onSubmit={handleSubmit(submitForm)} className="bg-white rounded-xl shadow-lg p-8">
       <div className="mb-8">
-        <Button 
-          variant="ghost" 
+        <Button
+          variant="ghost"
           className="-ml-4 mb-4 flex items-center gap-2"
           onClick={onCancel}
           type="button"
@@ -87,165 +87,152 @@ export default function ArticleForm({ onSubmit, onCancel, initialData }: Props) 
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Name */}
         <div>
-          <Label>Article Name</Label>
+          <Label htmlFor="name">Article Name</Label>
           <div className="relative">
             <Package className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
             <Input
+              id="name"
               {...register('name')}
               placeholder="Enter article name"
               className="pl-10"
             />
           </div>
-          {errors.name && (
-            <p className="text-sm text-red-500 mt-1">{errors.name.message}</p>
-          )}
+          {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>}
         </div>
 
+        {/* Description */}
         <div className="md:col-span-2">
-          <Label>Description</Label>
+          <Label htmlFor="description">Description</Label>
           <Textarea
+            id="description"
             {...register('description')}
-            placeholder="Enter article description (optional)"
+            placeholder="Enter description (optional)"
             rows={3}
           />
-          {errors.description && (
-            <p className="text-sm text-red-500 mt-1">{errors.description.message}</p>
-          )}
         </div>
 
+        {/* Base Rate */}
         <div>
-          <Label>Base Rate (₹)</Label>
+          <Label htmlFor="base_rate">Base Rate (₹)</Label>
           <div className="relative">
             <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
             <Input
+              id="base_rate"
               type="number"
               step="0.01"
               min="0"
               {...register('base_rate', { valueAsNumber: true })}
-              placeholder="Enter base rate"
+              placeholder="0.00"
               className="pl-10"
             />
           </div>
-          {errors.base_rate && (
-            <p className="text-sm text-red-500 mt-1">{errors.base_rate.message}</p>
-          )}
+          {errors.base_rate && <p className="text-red-500 text-sm mt-1">{errors.base_rate.message}</p>}
         </div>
 
+        {/* HSN Code */}
         <div>
-          <Label>HSN Code (Optional)</Label>
+          <Label htmlFor="hsn_code">HSN Code</Label>
           <div className="relative">
             <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
             <Input
+              id="hsn_code"
               {...register('hsn_code')}
-              placeholder="Enter HSN code"
+              placeholder="Optional"
               className="pl-10"
             />
           </div>
-          {errors.hsn_code && (
-            <p className="text-sm text-red-500 mt-1">{errors.hsn_code.message}</p>
-          )}
         </div>
 
+        {/* Tax Rate */}
         <div>
-          <Label>Tax Rate % (Optional)</Label>
+          <Label htmlFor="tax_rate">Tax Rate %</Label>
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">%</span>
             <Input
+              id="tax_rate"
               type="number"
               step="0.01"
               min="0"
               {...register('tax_rate', { valueAsNumber: true })}
-              placeholder="Enter tax rate"
+              placeholder="Optional"
               className="pl-10"
             />
           </div>
-          {errors.tax_rate && (
-            <p className="text-sm text-red-500 mt-1">{errors.tax_rate.message}</p>
-          )}
         </div>
 
+        {/* Unit of Measure */}
         <div>
-          <Label>Unit of Measure (Optional)</Label>
+          <Label htmlFor="unit_of_measure">Unit of Measure</Label>
           <Select
+            id="unit_of_measure"
             defaultValue={initialData?.unit_of_measure || ''}
-            onValueChange={(value) => setValue('unit_of_measure', value)}
+            onValueChange={(v) => setValue('unit_of_measure', v)}
           >
             <SelectTrigger>
-              <SelectValue placeholder="Select unit of measure" />
+              <SelectValue placeholder="Select unit" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="kg">Kilogram (kg)</SelectItem>
-              <SelectItem value="pcs">Pieces (pcs)</SelectItem>
-              <SelectItem value="box">Box</SelectItem>
-              <SelectItem value="bundle">Bundle</SelectItem>
-              <SelectItem value="roll">Roll</SelectItem>
-              <SelectItem value="meter">Meter</SelectItem>
-              <SelectItem value="liter">Liter</SelectItem>
-              <SelectItem value="ton">Ton</SelectItem>
-              <SelectItem value="Fixed">Fixed</SelectItem>
+              {['kg','pcs','box','bundle','roll','meter','liter','ton'].map(u => (
+                <SelectItem key={u} value={u}>{u.toUpperCase()}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
 
+        {/* Min Quantity */}
         <div>
-          <Label>Minimum Quantity (Optional)</Label>
+          <Label htmlFor="min_quantity">Min Quantity</Label>
           <Input
+            id="min_quantity"
             type="number"
             min="1"
             step="1"
             {...register('min_quantity', { valueAsNumber: true })}
-            placeholder="Enter minimum quantity"
+            placeholder="1"
           />
-          {errors.min_quantity && (
-            <p className="text-sm text-red-500 mt-1">{errors.min_quantity.message}</p>
-          )}
+          {errors.min_quantity && <p className="text-red-500 text-sm mt-1">{errors.min_quantity.message}</p>}
         </div>
 
+        {/* Flags */}
         <div className="flex items-center space-x-2">
           <input
-            type="checkbox"
             id="is_fragile"
+            type="checkbox"
             {...register('is_fragile')}
             className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
           />
-          <Label htmlFor="is_fragile" className="font-normal">
-            Fragile Item
-          </Label>
+          <Label htmlFor="is_fragile" className="font-normal">Fragile</Label>
         </div>
 
         <div className="flex items-center space-x-2">
           <input
-            type="checkbox"
             id="requires_special_handling"
+            type="checkbox"
             {...register('requires_special_handling')}
             className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
           />
-          <Label htmlFor="requires_special_handling" className="font-normal">
-            Requires Special Handling
-          </Label>
+          <Label htmlFor="requires_special_handling" className="font-normal">Special Handling</Label>
         </div>
 
+        {/* Notes */}
         <div className="md:col-span-2">
-          <Label>Additional Notes (Optional)</Label>
+          <Label htmlFor="notes">Notes</Label>
           <Textarea
+            id="notes"
             {...register('notes')}
-            placeholder="Enter any additional notes about this article"
+            placeholder="Additional notes (optional)"
             rows={3}
           />
         </div>
       </div>
 
       <div className="flex justify-end gap-4 mt-8">
-        <Button type="button" variant="outline" onClick={onCancel}>
-          Cancel
-        </Button>
-        <Button type="submit" disabled={submitting || !isValid}>
+        <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
+        <Button type="submit" disabled={submitting}>
           {submitting ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              {initialData ? 'Updating...' : 'Creating...'}
-            </>
+            <><Loader2 className="h-4 w-4 animate-spin mr-2" />{initialData ? 'Updating...' : 'Creating...'}</>
           ) : (
             initialData ? 'Update Article' : 'Create Article'
           )}

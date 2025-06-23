@@ -8,6 +8,65 @@ export function useArticles(branchId?: string) {
   const [error, setError]         = useState<Error | null>(null);
 
   // 1) Fetch the list of articles (filtered by branchId if provided)
+  // 2) Fetch one article by ID
+const getArticle = useCallback(async (id: string): Promise<Article> => {
+  const { data, error } = await supabase
+    .from<Article>('articles')
+    .select(`
+      id,
+      branch_id,
+      name,
+      description,
+      base_rate,
+      created_at,
+      updated_at,
+      hsn_code,
+      tax_rate,
+      unit_of_measure,
+      min_quantity,
+      is_fragile,
+      requires_special_handling,
+      notes,
+      branch:branches(name)
+    `)
+    .eq('id', id)
+    .single();
+
+  if (error) throw error;
+  // pull out the branch name
+  return {
+    ...data,
+    branch_name: data.branch?.name ?? null,
+  };
+}, []);
+
+// 5) Fetch all customer‐specific rates for a given article
+const getCustomerRates = useCallback(
+  async (articleId: string): Promise<CustomerArticleRate[]> => {
+    const { data, error } = await supabase
+      .from('customer_article_rates')
+      .select(`
+        id,
+        customer_id,
+        rate,
+        customer:customers(id,name,type)       -- pull in customer metadata
+      `)
+      .eq('article_id', articleId);
+
+    if (error) throw error;
+
+    // reshape into the shape your components expect
+    return (data || []).map((r) => ({
+      id: r.id,
+      customer_id: r.customer_id,
+      customer_name: r.customer?.name ?? 'Unknown',
+      customer_type: (r.customer?.type as 'individual'|'corporate') || 'individual',
+      rate: r.rate,
+    }));
+  },
+  []
+);
+
   const loadArticles = useCallback(async () => {
     try {
       setLoading(true);
@@ -277,39 +336,6 @@ export function useArticles(branchId?: string) {
     }
   }
 
-  // 5) Fetch all customer-specific rates for a given article
-  async function getCustomerRates(articleId: string) {
-    try {
-      setLoading(true);
-      const { data, error: sbError } = await supabase
-        .from('customer_article_rates')
-        .select(`
-          *,
-          customer:customers(id, name, type)
-        `)
-        .eq('article_id', articleId);
-
-      if (sbError) throw sbError;
-      
-      // Transform the data to match our expected format
-      const transformedData = data?.map(rate => ({
-        id: rate.id,
-        article_id: rate.article_id,
-        customer_id: rate.customer_id,
-        customer_name: rate.customer?.name || 'Unknown',
-        customer_type: rate.customer?.type || 'individual',
-        rate: rate.rate
-      })) || [];
-      
-      return transformedData;
-    } catch (err) {
-      console.error('Failed to get customer rates:', err);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }
-
   // 6) Upsert (insert or update) a specific customer-article rate
   async function updateCustomerRate(
     customerId: string,
@@ -345,5 +371,6 @@ export function useArticles(branchId?: string) {
     deleteArticle,
     getCustomerRates,
     updateCustomerRate,
+    getArticle,
   };
 }
