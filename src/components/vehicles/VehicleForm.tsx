@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Truck, Calendar, MapPin, Tag, Loader2, ArrowLeft } from 'lucide-react';
+import { Calendar, Tag, Loader2, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -47,17 +47,17 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 interface Props {
+  onSubmit: (data: FormValues) => Promise<void>;
   onCancel: () => void;
-  onSuccess: () => void;
-  vehicleId?: string; // if editing
+  initialData?: Partial<FormValues> & { id?: string };
 }
 
-export default function VehicleForm({ onCancel, onSuccess, vehicleId }: Props) {
+export default function VehicleForm({ onSubmit, onCancel, initialData }: Props) {
   const { branches } = useBranches();
   const [submitting, setSubmitting] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
-  const [loadingVehicle, setLoadingVehicle] = useState(!!vehicleId);
   const totalSteps = 3;
+  const isEditing = Boolean(initialData?.id);
 
   const {
     register,
@@ -73,38 +73,21 @@ export default function VehicleForm({ onCancel, onSuccess, vehicleId }: Props) {
       status: 'active',
       type: 'own',
       fuel_type: 'diesel',
+      ...initialData,
     },
   });
+
   useEffect(() => {
-    if (vehicleId) {
-      fetch(`http://locahost:4000/vehicles/${vehicleId}`)
-        .then((res) => res.json())
-        .then((data) => {
-          reset(data);
-        })
-        .finally(() => setLoadingVehicle(false));
+    if (initialData) {
+      reset(initialData as FormValues);
     }
-  }, [vehicleId]);
+  }, [initialData, reset]);
   const onSubmitForm = async (data: FormValues) => {
     setSubmitting(true);
     try {
-      const response = await fetch(
-        vehicleId
-          ? `http://locahost:4000/vehicles/${vehicleId}`
-          : 'http://locahost:4000/vehicles/create',
-        {
-          method: vehicleId ? 'PUT' : 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data),
-        }
-      );
-      alert(' submitting form');
-      if (!response.ok) alert('error submitting form');
-
-      onSuccess();
+      await onSubmit(data);
     } catch (err) {
       console.error('Submit error', err);
-      alert('error submitting form');
     } finally {
       setSubmitting(false);
     }
@@ -123,7 +106,6 @@ export default function VehicleForm({ onCancel, onSuccess, vehicleId }: Props) {
   const prevStep = () => {
     setCurrentStep((prev) => Math.max(prev - 1, 1));
   };
-  if (loadingVehicle) return <p>Loading vehicle data...</p>;
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -141,10 +123,10 @@ export default function VehicleForm({ onCancel, onSuccess, vehicleId }: Props) {
           Back
         </Button>
         <h2 className="text-2xl font-bold mb-2">
-          {vehicleId ? 'Edit Vehicle' : 'Add Vehicle'}
+          {isEditing ? 'Edit Vehicle' : 'Add Vehicle'}
         </h2>
         <p className="text-gray-600 mt-1">
-          {vehicleId
+          {isEditing
             ? 'Update vehicle details'
             : 'Add a new vehicle to your fleet'}
         </p>
@@ -488,9 +470,9 @@ export default function VehicleForm({ onCancel, onSuccess, vehicleId }: Props) {
               {submitting ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  {vehicleId ? 'Updating...' : 'Adding...'}
+                  {isEditing ? 'Updating...' : 'Adding...'}
                 </>
-              ) : vehicleId ? (
+              ) : isEditing ? (
                 'Update Vehicle'
               ) : (
                 'Add Vehicle'
