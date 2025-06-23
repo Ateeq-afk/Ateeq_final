@@ -72,8 +72,6 @@ const getCustomerRates = useCallback(
       setLoading(true);
       setError(null);
 
-      console.log('Loading articles, branchId:', branchId);
-
       // First try a simple query to debug
       let simpleQuery = supabase
         .from('articles')
@@ -85,13 +83,11 @@ const getCustomerRates = useCallback(
       }
 
       const { data: simpleData, error: simpleError } = await simpleQuery;
-      
+
       if (simpleError) {
         console.error('Simple articles query error:', simpleError);
         throw simpleError;
       }
-      
-      console.log('Simple articles query successful, count:', simpleData?.length);
 
       // Now try the full query with all columns
       let query = supabase
@@ -146,7 +142,6 @@ const getCustomerRates = useCallback(
       })) || [];
 
       setArticles(transformedData);
-      console.log('Articles loaded successfully:', transformedData.length);
     } catch (err) {
       console.error('useArticles.loadArticles error:', err);
       setError(err instanceof Error ? err : new Error('Failed to load articles'));
@@ -165,9 +160,7 @@ const getCustomerRates = useCallback(
   async function createArticle(input: Omit<Article, 'id'|'created_at'|'updated_at'>) {
     try {
       setLoading(true);
-      
-      console.log('Creating article:', input);
-      
+
       // First try a simple insert with required fields only
       const { data: simpleData, error: simpleError } = await supabase
         .from('articles')
@@ -184,9 +177,7 @@ const getCustomerRates = useCallback(
         console.error('Simple article insert error:', simpleError);
         throw simpleError;
       }
-      
-      console.log('Simple article created with ID:', simpleData.id);
-      
+
       // Now try to update with all fields
       const { data, error: sbError } = await supabase
         .from('articles')
@@ -260,9 +251,7 @@ const getCustomerRates = useCallback(
   async function updateArticle(id: string, updates: Partial<Article>) {
     try {
       setLoading(true);
-      
-      console.log('Updating article:', id, updates);
-      
+
       const { data, error: sbError } = await supabase
         .from('articles')
         .update(updates)
