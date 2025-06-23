@@ -19,4 +19,4 @@ The data is stored in memory for now, so restarting the server will clear all us
 
 ## Front-end
 
-The React front-end (inside `src/`) was generated with Vite and uses Supabase for other features. The new Express server is separate and only demonstrates the username-based authentication flow.
+The React front-end (inside `src/`) was generated with Vite and uses Supabase for authentication. Run the front-end with `npm run dev` and use the `/signup` and `/signin` pages to create an account in Supabase and log in. The Express server remains as a small example of username based APIs but is not required for Supabase auth.
