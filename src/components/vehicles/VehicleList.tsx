@@ -124,7 +124,10 @@ export default function VehicleList() {
       showSuccess('Vehicle Created', 'Vehicle has been successfully created');
     } catch (err) {
       console.error('Failed to create vehicle:', err);
-      showError('Creation Failed', 'Failed to create vehicle');
+      showError(
+        'Creation Failed',
+        err instanceof Error ? err.message : 'Failed to create vehicle'
+      );
     }
   };
 
@@ -138,7 +141,10 @@ export default function VehicleList() {
       showSuccess('Vehicle Updated', 'Vehicle has been successfully updated');
     } catch (err) {
       console.error('Failed to update vehicle:', err);
-      showError('Update Failed', 'Failed to update vehicle');
+      showError(
+        'Update Failed',
+        err instanceof Error ? err.message : 'Failed to update vehicle'
+      );
     }
   };
 
@@ -162,7 +168,10 @@ export default function VehicleList() {
       showSuccess('Status Updated', `Vehicle status has been updated to ${status}`);
     } catch (err) {
       console.error('Failed to update status:', err);
-      showError('Update Failed', 'Failed to update vehicle status');
+      showError(
+        'Update Failed',
+        err instanceof Error ? err.message : 'Failed to update vehicle status'
+      );
     }
   };
 
@@ -180,7 +189,10 @@ export default function VehicleList() {
       await refresh();
       showSuccess('Refreshed', 'Vehicle list has been refreshed');
     } catch (err) {
-      showError('Refresh Failed', 'Failed to refresh vehicle list');
+      showError(
+        'Refresh Failed',
+        err instanceof Error ? err.message : 'Failed to refresh vehicle list'
+      );
     }
   };
 
@@ -198,7 +210,10 @@ export default function VehicleList() {
       showSuccess('Maintenance Scheduled', 'Vehicle maintenance has been scheduled successfully');
     } catch (err) {
       console.error('Failed to schedule maintenance:', err);
-      showError('Scheduling Failed', 'Failed to schedule vehicle maintenance');
+      showError(
+        'Scheduling Failed',
+        err instanceof Error ? err.message : 'Failed to schedule vehicle maintenance'
+      );
     }
   };
 
