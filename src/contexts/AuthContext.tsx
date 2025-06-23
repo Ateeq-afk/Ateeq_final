@@ -19,7 +19,7 @@ interface AuthContextType {
   role: UserRole | null
   loading: boolean
   error: Error | null
-  login: (email: string, password: string) => Promise<void>
+  login: (loginId: string, password: string) => Promise<void>
   logout: () => Promise<void>
   getCurrentUserBranch: () => { id: string } | null
 }
@@ -30,7 +30,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   error: null,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  login: async (_e: string, _p: string) => {},
+  login: async (_id: string, _p: string) => {},
   logout: async () => {},
   getCurrentUserBranch: () => null
 })
@@ -84,10 +84,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     loadUser()
   }, [session])
 
-  async function login(email: string, password: string) {
+  async function login(loginId: string, password: string) {
     try {
       setLoading(true)
-      await signIn(email, password)
+      await signIn(loginId, password)
     } catch (err) {
       setError(err as Error)
       throw err

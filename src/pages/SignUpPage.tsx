@@ -1,0 +1,68 @@
+import React, { useState } from 'react'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { useNavigate } from 'react-router-dom'
+import { signUp } from '@/services/auth'
+import { useBranches } from '@/hooks/useBranches'
+
+export default function SignUpPage() {
+  const [fullName, setFullName] = useState('')
+  const [username, setUsername] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [branch, setBranch] = useState('')
+  const navigate = useNavigate()
+  const { branches } = useBranches()
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    await signUp({
+      email,
+      username,
+      password,
+      name: fullName,
+      branchId: branch
+    })
+    navigate('/signin')
+  }
+
+  return (
+    <div className="flex h-screen items-center justify-center bg-gray-50">
+      <form onSubmit={handleSubmit} className="w-96 space-y-4 rounded bg-white p-8 shadow-md">
+        <h2 className="text-center text-xl font-bold">Sign Up</h2>
+        <div className="space-y-2">
+          <Label htmlFor="name">Full Name</Label>
+          <Input id="name" value={fullName} onChange={e => setFullName(e.target.value)} />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="username">Username</Label>
+          <Input id="username" value={username} onChange={e => setUsername(e.target.value)} />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="email">Email</Label>
+          <Input id="email" value={email} onChange={e => setEmail(e.target.value)} />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="password">Password</Label>
+          <Input id="password" type="password" value={password} onChange={e => setPassword(e.target.value)} />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="branch">Branch</Label>
+          <Select onValueChange={setBranch} value={branch}>
+            <SelectTrigger id="branch">
+              <SelectValue placeholder="Select branch" />
+            </SelectTrigger>
+            <SelectContent>
+              {branches.map(b => (
+                <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <Button type="submit" className="w-full">Create Account</Button>
+      </form>
+    </div>
+  )
+}
