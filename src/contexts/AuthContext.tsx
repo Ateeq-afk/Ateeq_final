@@ -1,9 +1,13 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabaseClient';
 
 interface AuthContextType {
   user: any | null;
+  clientName: string;
   loading: boolean;
   error: Error | null;
+  signIn: (client: string, email: string, password: string) => Promise<void>;
+  signOut: () => Promise<void>;
   getCurrentUserBranch: () => Branch | null;
 }
 
@@ -17,8 +21,11 @@ interface Branch {
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
+  clientName: '',
   loading: false,
   error: null,
+  signIn: async () => {},
+  signOut: async () => {},
   getCurrentUserBranch: () => null
 });
 
@@ -31,17 +38,64 @@ const mockUserBranch: Branch = {
   state: 'Maharashtra'
 };
 
-export function AuthProvider({ children }: { children: React.ReactNode }) { 
-  const [user] = useState(null);
-  const [loading] = useState(false);
-  const [error] = useState<Error | null>(null);
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<any | null>(null);
+  const [clientName, setClientName] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setUser(data.session?.user ?? null);
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => {
+      listener.subscription.unsubscribe();
+    };
+  }, []);
+
+  const signIn = async (client: string, email: string, password: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      setClientName(client);
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      setUser(data.user);
+    } catch (err) {
+      setError(err as Error);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signOut = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+    setClientName('');
+  };
 
   const getCurrentUserBranch = () => {
     return mockUserBranch;
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, error, getCurrentUserBranch }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        clientName,
+        loading,
+        error,
+        signIn,
+        signOut,
+        getCurrentUserBranch,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
