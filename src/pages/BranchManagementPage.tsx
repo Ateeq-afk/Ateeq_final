@@ -9,11 +9,12 @@ import BranchTransferForm from '@/components/branches/BranchTransferForm';
 import BranchStaffManagement from '@/components/branches/BranchStaffManagement';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBranches } from '@/hooks/useBranches';
+import { BranchSelectionProvider, useBranchSelection } from '@/contexts/BranchSelectionContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-export default function BranchManagementPage() {
+function BranchManagementContent() {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
+  const { selectedBranch, setSelectedBranch } = useBranchSelection();
   const navigate = useNavigate();
   const { getCurrentUserBranch } = useAuth();
   const { branches, loading: branchesLoading } = useBranches();
@@ -104,9 +105,17 @@ export default function BranchManagementPage() {
         </TabsContent>
         
         <TabsContent value="staff" className="mt-0">
-          <BranchStaffManagement branchId={selectedBranch} />
+          <BranchStaffManagement />
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+export default function BranchManagementPage() {
+  return (
+    <BranchSelectionProvider>
+      <BranchManagementContent />
+    </BranchSelectionProvider>
   );
 }

@@ -37,12 +37,10 @@ import { useBranches } from '@/hooks/useBranches';
 import { useBranchUsers } from '@/hooks/useBranchUsers';
 import { useNotificationSystem } from '@/hooks/useNotificationSystem';
 import { motion } from 'framer-motion';
+import { useBranchSelection } from '@/contexts/BranchSelectionContext';
 
-interface BranchStaffManagementProps {
-  branchId?: string;
-}
-
-export default function BranchStaffManagement({ branchId }: BranchStaffManagementProps) {
+export default function BranchStaffManagement() {
+  const { selectedBranch: branchId } = useBranchSelection();
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddStaff, setShowAddStaff] = useState(false);
   const [editingStaff, setEditingStaff] = useState<any | null>(null);

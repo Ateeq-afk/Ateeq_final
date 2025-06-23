@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -24,6 +24,7 @@ import { useArticles } from '@/hooks/useArticles';
 import { useBookings } from '@/hooks/useBookings';
 import { useNotificationSystem } from '@/hooks/useNotificationSystem';
 import { motion } from 'framer-motion';
+import { useBranchSelection } from '@/contexts/BranchSelectionContext';
 
 const transferSchema = z.object({
   fromBranchId: z.string().min(1, 'Source branch is required'),
@@ -51,12 +52,7 @@ export default function BranchTransferForm() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [articleSearch, setArticleSearch] = useState('');
-  const [selectedBranchId, setSelectedBranchId] = useState<string | null>(null);
-  
-  const { branches, loading: branchesLoading } = useBranches();
-  const { articles, loading: articlesLoading } = useArticles(selectedBranchId);
-  const { createBooking } = useBookings();
-  const { showSuccess, showError } = useNotificationSystem();
+  const { selectedBranch } = useBranchSelection();
   
   const {
     register,
@@ -74,24 +70,21 @@ export default function BranchTransferForm() {
       items: [{ articleId: '', quantity: 1, description: '' }]
     }
   });
-  
-  // Set the first branch as the default when branches are loaded
-  useEffect(() => {
-    if (branches.length > 0 && !watch('fromBranchId')) {
-      setValue('fromBranchId', branches[0].id);
-      setSelectedBranchId(branches[0].id);
-    }
-  }, [branches, setValue, watch]);
-  
+
   const watchFromBranch = watch('fromBranchId');
   const watchItems = watch('items');
-  
-  // Update selectedBranchId when fromBranchId changes
+
+  const { branches, loading: branchesLoading } = useBranches();
+  const { articles, loading: articlesLoading } = useArticles(watchFromBranch);
+  const { createBooking } = useBookings();
+  const { showSuccess, showError } = useNotificationSystem();
+
+  // Set the selected branch or first branch as the default when branches are loaded
   useEffect(() => {
-    if (watchFromBranch) {
-      setSelectedBranchId(watchFromBranch);
+    if (branches.length > 0 && !watch('fromBranchId')) {
+      setValue('fromBranchId', selectedBranch || branches[0].id);
     }
-  }, [watchFromBranch]);
+  }, [branches, selectedBranch, setValue, watch]);
   
   // Filter branches for destination (exclude source branch)
   const destinationBranches = branches.filter(branch => branch.id !== watchFromBranch);
