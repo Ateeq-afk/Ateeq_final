@@ -65,6 +65,7 @@ export default function VehicleForm({ onSubmit, onCancel, initialData }: Props) 
     setValue,
     watch,
     reset,
+    trigger,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -99,7 +100,21 @@ export default function VehicleForm({ onSubmit, onCancel, initialData }: Props) 
     alert(message);
   };
 
-  const nextStep = () => {
+  const nextStep = async () => {
+    if (currentStep === 1) {
+      const valid = await trigger([
+        'branch_id',
+        'vehicle_number',
+        'type',
+        'make',
+        'model',
+        'year',
+        'status',
+      ]);
+      if (!valid) {
+        return;
+      }
+    }
     setCurrentStep((prev) => Math.min(prev + 1, totalSteps));
   };
 
