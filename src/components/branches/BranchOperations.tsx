@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   Building2, 
   Package, 
@@ -30,12 +30,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useBookings } from '@/hooks/useBookings';
 import { useBranches } from '@/hooks/useBranches';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBranchSelection } from '@/contexts/BranchSelectionContext';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { PrintButton } from '@/components/ui/print-button';
 
 export default function BranchOperations() {
-  const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
+  const { selectedBranch, setSelectedBranch } = useBranchSelection();
   const [activeTab, setActiveTab] = useState<'inbound' | 'outbound'>('inbound');
   const [dateFilter, setDateFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
