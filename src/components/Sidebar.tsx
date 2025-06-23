@@ -23,6 +23,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useBookings } from '@/hooks/useBookings';
+import { useAuth } from '@/contexts/AuthContext';
 import { useState as useHookState } from 'react';
 
 interface NavItemProps {
@@ -56,6 +57,7 @@ function Sidebar({ onNavigate, currentPage }: SidebarProps) {
   });
   const [showRecentBookings, setShowRecentBookings] = useState(false);
   const { bookings } = useBookings();
+  const { user, clientName, signOut } = useAuth();
 
   // Get the 5 most recent bookings
   const recentBookings = bookings.slice(0, 5);
@@ -504,11 +506,15 @@ function Sidebar({ onNavigate, currentPage }: SidebarProps) {
             <Users className="h-4 w-4 text-brand-700" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900 truncate">Admin User</p>
-            <p className="text-xs text-gray-500 truncate">Mumbai Branch</p>
+            <p className="text-sm font-medium text-gray-900 truncate">{user?.email ?? 'Guest'}</p>
+            <p className="text-xs text-gray-500 truncate">{clientName || 'No Client'}</p>
           </div>
         </div>
-        <Button variant="ghost" className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50 mt-2">
+        <Button
+          variant="ghost"
+          className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50 mt-2"
+          onClick={signOut}
+        >
           <LogOut className="h-4 w-4 mr-2" />
           Sign Out
         </Button>
