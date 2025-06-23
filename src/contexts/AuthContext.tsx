@@ -1,9 +1,16 @@
 import React, { createContext, useContext, useState } from 'react';
 
+interface User {
+  clientName: string;
+  id: string;
+}
+
 interface AuthContextType {
-  user: any | null;
+  user: User | null;
   loading: boolean;
   error: Error | null;
+  login: (clientName: string, id: string, password: string) => void;
+  logout: () => void;
   getCurrentUserBranch: () => Branch | null;
 }
 
@@ -19,6 +26,8 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: false,
   error: null,
+  login: () => {},
+  logout: () => {},
   getCurrentUserBranch: () => null
 });
 
@@ -31,17 +40,27 @@ const mockUserBranch: Branch = {
   state: 'Maharashtra'
 };
 
-export function AuthProvider({ children }: { children: React.ReactNode }) { 
-  const [user] = useState(null);
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
   const [loading] = useState(false);
   const [error] = useState<Error | null>(null);
+
+  const login = (clientName: string, id: string, _password: string) => {
+    setUser({ clientName, id });
+  };
+
+  const logout = () => {
+    setUser(null);
+  };
 
   const getCurrentUserBranch = () => {
     return mockUserBranch;
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, error, getCurrentUserBranch }}>
+    <AuthContext.Provider
+      value={{ user, loading, error, login, logout, getCurrentUserBranch }}
+    >
       {children}
     </AuthContext.Provider>
   );
