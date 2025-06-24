@@ -156,7 +156,7 @@ export interface OGPL {
   hub_load_stations?: string[];
   local_transit_station?: string;
   remarks?: string;
-  status: 'created' | 'in_transit' | 'completed' | 'cancelled';
+  status: 'created' | 'in_transit' | 'unloaded' | 'completed' | 'cancelled';
   created_at: string;
   updated_at: string;
   vehicle?: any;
