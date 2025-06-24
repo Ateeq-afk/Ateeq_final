@@ -29,13 +29,31 @@ function createOGPL({ lrIds = [], ...data }) {
 function completeUnloading(ogplId) {
   const ogpl = ogpls.find(o => o.id === ogplId);
   if (!ogpl) throw new Error(`OGPL ${ogplId} not found`);
-  for (const id of ogpl.lrIds) {
-    const booking = bookings.find(b => b.id === id);
-    if (!booking) throw new Error(`Booking ${id} not found`);
-    booking.status = STATUS_WAREHOUSE;
+function completeUnloading(ogplId) {
+  const ogpl = ogpls.find(o => o.id === ogplId);
+  if (!ogpl) throw new Error(`OGPL ${ogplId} not found`);
+
+  const previous = new Map();
+  try {
+    for (const id of ogpl.lrIds) {
+      const booking = bookings.find(b => b.id === id);
+      if (!booking) throw new Error(`Booking ${id} not found`);
+      previous.set(id, booking.status);
+      booking.status = STATUS_WAREHOUSE;
+    }
+
+    ogpl.status = 'completed';
+    return ogpl;
+  } catch (err) {
+    // rollback on error
+    for (const [id, status] of previous) {
+      const booking = bookings.find(b => b.id === id);
+      if (booking) booking.status = status;
+    }
+    throw err;
   }
-  ogpl.status = 'completed';
-  return ogpl;
+}
+
 }
 
 function reset() {
