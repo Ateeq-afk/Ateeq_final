@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Wallet, Search, Filter, Download, Eye, Plus, Calendar, CheckCircle2, AlertCircle, Loader2, ArrowUpDown, CreditCard, FileText, Send, Clock } from 'lucide-react';
+import { Wallet, Search, Filter, Download, Eye, Plus, Calendar, CheckCircle2, AlertCircle, Loader2, ArrowUpDown, CreditCard, FileText, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -39,7 +39,6 @@ export default function AccountsReceivable({ bookings }: Props) {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedReceivable, setSelectedReceivable] = useState<string | null>(null);
   const [showPaymentForm, setShowPaymentForm] = useState<string | null>(null);
-  const [showReminderDialog, setShowReminderDialog] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   
   const { showSuccess, showError } = useNotificationSystem();
@@ -185,12 +184,11 @@ export default function AccountsReceivable({ bookings }: Props) {
   const handleSendReminder = (id: string) => {
     setLoading(true);
     
-    // Simulate API call
+    // Simulate reminder notification without SMS
     setTimeout(() => {
       setLoading(false);
-      setShowReminderDialog(null);
-      showSuccess('Reminder Sent', 'Payment reminder has been sent to the customer');
-    }, 1500);
+      showSuccess('Reminder Noted', 'Payment reminder has been logged in the system');
+    }, 1000);
   };
 
   const getStatusBadge = (status: Receivable['status'], daysOverdue: number) => {
@@ -420,11 +418,11 @@ export default function AccountsReceivable({ bookings }: Props) {
                         <Button 
                           variant="ghost" 
                           size="sm" 
-                          onClick={() => setShowReminderDialog(receivable.id)}
+                          onClick={() => handleSendReminder(receivable.id)}
                           className="flex items-center gap-1 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
                         >
-                          <Send className="h-4 w-4" />
-                          <span className="hidden sm:inline">Send Reminder</span>
+                          <Clock className="h-4 w-4" />
+                          <span className="hidden sm:inline">Log Reminder</span>
                         </Button>
                       )}
                     </div>
@@ -521,66 +519,6 @@ export default function AccountsReceivable({ bookings }: Props) {
               onCancel={() => setShowPaymentForm(null)}
               loading={loading}
             />
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Send Reminder Dialog */}
-      <Dialog 
-        open={!!showReminderDialog} 
-        onOpenChange={(open) => {
-          if (!open) setShowReminderDialog(null);
-        }}
-      >
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Send Payment Reminder</DialogTitle>
-          </DialogHeader>
-          {showReminderDialog && (
-            <div className="py-4">
-              <div className="flex items-center justify-center mb-4">
-                <div className="h-16 w-16 bg-amber-100 rounded-full flex items-center justify-center">
-                  <Send className="h-8 w-8 text-amber-600" />
-                </div>
-              </div>
-              <p className="text-center text-gray-700 mb-4">
-                Send a payment reminder to {receivables.find(r => r.id === showReminderDialog)?.customer.name}?
-              </p>
-              <div className="bg-amber-50 p-4 rounded-lg mb-4">
-                <div className="flex items-start gap-2">
-                  <Clock className="h-5 w-5 text-amber-600 mt-0.5" />
-                  <div>
-                    <p className="font-medium text-amber-800">Payment is overdue</p>
-                    <p className="text-amber-700 text-sm">
-                      Invoice {receivables.find(r => r.id === showReminderDialog)?.invoiceNumber} is overdue by {receivables.find(r => r.id === showReminderDialog)?.daysOverdue} days.
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <div className="flex justify-end gap-3">
-                <Button 
-                  variant="outline" 
-                  onClick={() => setShowReminderDialog(null)}
-                  disabled={loading}
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  className="bg-amber-600 hover:bg-amber-700"
-                  onClick={() => showReminderDialog && handleSendReminder(showReminderDialog)}
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      Sending...
-                    </>
-                  ) : (
-                    'Send Reminder'
-                  )}
-                </Button>
-              </div>
-            </div>
           )}
         </DialogContent>
       </Dialog>

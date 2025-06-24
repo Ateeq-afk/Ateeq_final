@@ -16,7 +16,6 @@ import {
   CheckCircle2, 
   QrCode,
   Copy,
-  MessageSquare,
   Edit,
   MoreVertical,
   Receipt
@@ -24,7 +23,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { useBookings } from '@/hooks/useBookings';
 import { useNotificationSystem } from '@/hooks/useNotificationSystem';
-import { sendStatusUpdateSMS } from '@/lib/sms';
 import { generateLRHtml } from '@/utils/printUtils';
 import { QRCodeSVG } from 'qrcode.react';
 import { 
@@ -361,32 +359,12 @@ export default function BookingDetails() {
       // Update local state
       setBooking(prev => prev ? { ...prev, status: newStatus } : null);
       
-      // Send SMS notification
-      if (booking.sender?.mobile && booking.receiver?.mobile) {
-        await sendStatusUpdateSMS({
-          ...booking,
-          status: newStatus
-        });
-      }
-      
       showSuccess('Status Updated', `Booking status updated to ${newStatus}`);
     } catch (err) {
       console.error('Failed to update status:', err);
       showError('Update Failed', err instanceof Error ? err.message : 'Failed to update status');
     } finally {
       setStatusUpdating(false);
-    }
-  };
-
-  const handleSendSMS = async () => {
-    if (!booking) return;
-    
-    try {
-      await sendStatusUpdateSMS(booking);
-      showSuccess('SMS Sent', 'Status update SMS sent successfully');
-    } catch (err) {
-      console.error('Failed to send SMS:', err);
-      showError('SMS Failed', err instanceof Error ? err.message : 'Failed to send SMS');
     }
   };
 
@@ -490,10 +468,6 @@ export default function BookingDetails() {
                 <DropdownMenuItem onClick={() => navigate(`/dashboard/bookings/edit/${booking.id}`)}>
                   <Edit className="h-4 w-4 mr-2" />
                   Edit Booking
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleSendSMS}>
-                  <MessageSquare className="h-4 w-4 mr-2" />
-                  Send SMS Update
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleCopyLRNumber}>
                   <Copy className="h-4 w-4 mr-2" />
