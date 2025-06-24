@@ -27,6 +27,7 @@ function createOGPL({ lrIds = [], ...data }) {
 }
 
 function completeUnloading(ogplId) {
+
   const ogpl = ogpls.find(o => o.id == ogplId);
   if (!ogpl) throw new Error(`OGPL ${ogplId} not found`);
 
@@ -52,6 +53,7 @@ function completeUnloading(ogplId) {
 }
 
 function initiateDelivery(lrId) {
+
   const booking = bookings.find(b => b.id == lrId);
   if (!booking) throw new Error(`Booking ${lrId} not found`);
   booking.status = 'delivered';
