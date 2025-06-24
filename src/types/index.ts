@@ -82,7 +82,7 @@ export interface Booking {
   private_mark_number?: string;
   remarks?: string;
   payment_type: 'Quotation' | 'To Pay' | 'Paid';
-  status: 'booked' | 'in_transit' | 'delivered' | 'cancelled';
+  status: 'booked' | 'in_transit' | 'warehouse' | 'delivered' | 'cancelled';
   created_at: string;
   updated_at: string;
   sender?: Customer;
@@ -193,3 +193,5 @@ export interface AuditLog {
     email: string;
   };
 }
+
+export const STATUS_WAREHOUSE = 'warehouse';
