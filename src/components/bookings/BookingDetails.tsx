@@ -25,6 +25,7 @@ import { Button } from '@/components/ui/button';
 import { useBookings } from '@/hooks/useBookings';
 import { useNotificationSystem } from '@/hooks/useNotificationSystem';
 import { sendStatusUpdateSMS } from '@/lib/sms';
+import { generateLRHtml } from '@/utils/printUtils';
 import { QRCodeSVG } from 'qrcode.react';
 import { 
   DropdownMenu,
@@ -228,107 +229,6 @@ export default function BookingDetails() {
     showSuccess('Download Started', 'Your LR is being downloaded');
   };
 
-  const generateLRHtml = (booking: Booking) => {
-    return `
-      <div style="padding: 20px; font-family: 'Lato', Arial, sans-serif;">
-        <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
-          <div>
-            <h2 style="font-size: 24px; margin: 0; font-weight: bold;">Lorry Receipt</h2>
-            <p style="margin: 0;">LR #${booking.lr_number}</p>
-          </div>
-          <div style="text-align: right;">
-            <h3 style="margin: 0; font-weight: bold;">DesiCargo Logistics</h3>
-            <p style="margin: 0;">Date: ${new Date(booking.created_at).toLocaleDateString()}</p>
-          </div>
-        </div>
-        
-        <div style="display: flex; margin-bottom: 20px;">
-          <div style="flex: 1; padding: 10px; border: 1px solid #ddd; margin-right: 10px;">
-            <h4 style="margin-top: 0; font-weight: bold;">From</h4>
-            <p style="margin: 0;">${booking.from_branch_details?.name || 'N/A'}</p>
-            <p style="margin: 0;">${booking.from_branch_details?.city || ''}, ${booking.from_branch_details?.state || ''}</p>
-          </div>
-          <div style="flex: 1; padding: 10px; border: 1px solid #ddd;">
-            <h4 style="margin-top: 0; font-weight: bold;">To</h4>
-            <p style="margin: 0;">${booking.to_branch_details?.name || 'N/A'}</p>
-            <p style="margin: 0;">${booking.to_branch_details?.city || ''}, ${booking.to_branch_details?.state || ''}</p>
-          </div>
-        </div>
-        
-        <div style="display: flex; margin-bottom: 20px;">
-          <div style="flex: 1; padding: 10px; border: 1px solid #ddd; margin-right: 10px;">
-            <h4 style="margin-top: 0; font-weight: bold;">Sender</h4>
-            <p style="margin: 0;">${booking.sender?.name || 'N/A'}</p>
-            <p style="margin: 0;">${booking.sender?.mobile || 'N/A'}</p>
-          </div>
-          <div style="flex: 1; padding: 10px; border: 1px solid #ddd;">
-            <h4 style="margin-top: 0; font-weight: bold;">Receiver</h4>
-            <p style="margin: 0;">${booking.receiver?.name || 'N/A'}</p>
-            <p style="margin: 0;">${booking.receiver?.mobile || 'N/A'}</p>
-          </div>
-        </div>
-        
-        <div style="padding: 10px; border: 1px solid #ddd; margin-bottom: 20px;">
-          <h4 style="margin-top: 0; font-weight: bold;">Article Details</h4>
-          <table style="width: 100%; border-collapse: collapse;">
-            <tr style="border-bottom: 1px solid #ddd; background-color: #f3f4f6;">
-              <th style="text-align: left; padding: 8px; border: 1px solid #ddd;">Article</th>
-              <th style="text-align: left; padding: 8px; border: 1px solid #ddd;">Description</th>
-              <th style="text-align: right; padding: 8px; border: 1px solid #ddd;">Quantity</th>
-              <th style="text-align: right; padding: 8px; border: 1px solid #ddd;">Rate</th>
-              <th style="text-align: right; padding: 8px; border: 1px solid #ddd;">Amount</th>
-            </tr>
-            <tr>
-              <td style="padding: 8px; border: 1px solid #ddd;">${booking.article?.name || 'N/A'}</td>
-              <td style="padding: 8px; border: 1px solid #ddd;">${booking.description || '-'}</td>
-              <td style="text-align: right; padding: 8px; border: 1px solid #ddd;">${booking.quantity} ${booking.uom}</td>
-              <td style="text-align: right; padding: 8px; border: 1px solid #ddd;">₹${booking.freight_per_qty}</td>
-              <td style="text-align: right; padding: 8px; border: 1px solid #ddd;">₹${(booking.quantity * booking.freight_per_qty).toFixed(2)}</td>
-            </tr>
-            ${booking.loading_charges ? `
-            <tr>
-              <td colspan="4" style="text-align: right; padding: 8px; border: 1px solid #ddd;">Loading Charges:</td>
-              <td style="text-align: right; padding: 8px; border: 1px solid #ddd;">₹${booking.loading_charges.toFixed(2)}</td>
-            </tr>` : ''}
-            ${booking.unloading_charges ? `
-            <tr>
-              <td colspan="4" style="text-align: right; padding: 8px; border: 1px solid #ddd;">Unloading Charges:</td>
-              <td style="text-align: right; padding: 8px; border: 1px solid #ddd;">₹${booking.unloading_charges.toFixed(2)}</td>
-            </tr>` : ''}
-            <tr style="border-top: 1px solid #ddd; font-weight: bold; background-color: #f3f4f6;">
-              <td colspan="4" style="text-align: right; padding: 8px; border: 1px solid #ddd;">Total:</td>
-              <td style="text-align: right; padding: 8px; border: 1px solid #ddd;">₹${booking.total_amount.toFixed(2)}</td>
-            </tr>
-          </table>
-        </div>
-        
-        <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
-          <div style="flex: 1; padding: 10px; border: 1px solid #ddd; margin-right: 10px;">
-            <h4 style="margin-top: 0; font-weight: bold;">Payment Details</h4>
-            <p style="margin: 0;">Payment Type: ${booking.payment_type}</p>
-            <p style="margin: 0;">Status: ${booking.status.replace('_', ' ')}</p>
-          </div>
-          <div style="flex: 1; padding: 10px; border: 1px solid #ddd;">
-            <h4 style="margin-top: 0; font-weight: bold;">Additional Information</h4>
-            <p style="margin: 0;">Booking Date: ${new Date(booking.created_at).toLocaleDateString()}</p>
-            <p style="margin: 0;">Expected Delivery: ${booking.expected_delivery_date ? new Date(booking.expected_delivery_date).toLocaleDateString() : 'Not specified'}</p>
-          </div>
-        </div>
-        
-        <div style="margin-top: 40px; display: flex; justify-content: space-between;">
-          <div style="text-align: center;">
-            <p style="border-top: 1px solid #000; padding-top: 5px; margin-top: 20px;">Sender's Signature</p>
-          </div>
-          <div style="text-align: center;">
-            <p style="border-top: 1px solid #000; padding-top: 5px; margin-top: 20px;">Receiver's Signature</p>
-          </div>
-          <div style="text-align: center;">
-            <p style="border-top: 1px solid #000; padding-top: 5px; margin-top: 20px;">For DesiCargo Logistics</p>
-          </div>
-        </div>
-      </div>
-    `;
-  };
 
   const handleShare = () => {
     if (navigator.share && booking) {
