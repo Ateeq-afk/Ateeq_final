@@ -354,9 +354,10 @@ function Sidebar({ onNavigate, currentPage }: SidebarProps) {
                         >
                           <div className="flex items-center gap-1.5 overflow-hidden">
                             <div className={`h-2 w-2 rounded-full flex-shrink-0 ${
-                              booking.status === 'delivered' ? 'bg-green-500' : 
-                              booking.status === 'in_transit' ? 'bg-blue-500' : 
-                              booking.status === 'cancelled' ? 'bg-red-500' : 
+                              booking.status === 'delivered' ? 'bg-green-500' :
+                              booking.status === 'in_transit' ? 'bg-blue-500' :
+                              booking.status === 'warehouse' ? 'bg-purple-500' :
+                              booking.status === 'cancelled' ? 'bg-red-500' :
                               'bg-yellow-500'
                             }`}></div>
                             <div className="truncate">
