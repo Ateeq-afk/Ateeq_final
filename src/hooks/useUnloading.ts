@@ -173,7 +173,7 @@ export function useUnloading(organizationId: string | null = null) {
       const { error: ogplError } = await supabase
         .from('ogpl')
         .update({
-          status: 'completed',
+          status: 'unloaded',
           updated_at: new Date().toISOString()
         })
         .eq('id', ogplId);
@@ -187,12 +187,12 @@ export function useUnloading(organizationId: string | null = null) {
       for (const bookingId of bookingIds) {
         const condition = conditions[bookingId];
         
-        // Only mark as delivered if not missing
+        // Move to warehouse if item was received
         if (condition && condition.status !== 'missing') {
           await updateBookingStatus(
-            bookingId, 
-            'delivered', 
-            { 
+            bookingId,
+            'warehouse',
+            {
               unloading_status: 'unloaded',
               unloading_session_id: sessionData.id,
               pod_status: 'pending',

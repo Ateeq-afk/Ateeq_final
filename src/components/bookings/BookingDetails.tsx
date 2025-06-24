@@ -478,9 +478,9 @@ export default function BookingDetails() {
                       </Button>
                     )}
                     
-                    {booking.status === 'in_transit' && (
-                      <Button 
-                        size="sm" 
+                    {(booking.status === 'in_transit' || booking.status === 'warehouse') && (
+                      <Button
+                        size="sm"
                         onClick={() => handleStatusUpdate('delivered')}
                         disabled={statusUpdating}
                         className="bg-green-600 hover:bg-green-700"

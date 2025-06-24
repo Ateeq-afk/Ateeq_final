@@ -26,7 +26,7 @@ export function usePOD() {
       
       console.log('Getting bookings pending POD, branchId:', effectiveBranchId);
       
-      // Get bookings that are in 'in_transit' status and have pod_status 'pending'
+      // Get bookings that are in 'warehouse' status and have pod_status 'pending'
       const { data, error: fetchError } = await supabase
         .from('bookings')
         .select(`
@@ -38,7 +38,7 @@ export function usePOD() {
           to_branch_details:branches!to_branch(id, name, city, state)
         `)
         .eq('to_branch', effectiveBranchId)
-        .eq('status', 'in_transit')
+        .eq('status', 'warehouse')
         .eq('pod_status', 'pending')
         .order('created_at', { ascending: false });
       
@@ -210,7 +210,7 @@ export function usePOD() {
         .from('bookings')
         .select('*', { count: 'exact', head: true })
         .eq('to_branch', effectiveBranchId)
-        .eq('status', 'in_transit')
+        .eq('status', 'warehouse')
         .eq('pod_status', 'pending');
       
       if (pendingError) {
