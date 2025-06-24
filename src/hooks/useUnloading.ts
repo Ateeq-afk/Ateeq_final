@@ -36,7 +36,8 @@ export function useUnloading(organizationId: string | null = null) {
         
       if (simpleError) {
         console.error('Simple OGPL query failed:', simpleError);
-        throw simpleError;
+        const errorMessage = `Failed to fetch OGPLs: ${simpleError.message} (Code: ${simpleError.code})`;
+        throw new Error(errorMessage);
       }
       
       console.log('Simple OGPL query successful, sample:', simpleData);
@@ -80,7 +81,8 @@ export function useUnloading(organizationId: string | null = null) {
           
         if (fallbackError) {
           console.error('Fallback OGPL query failed:', fallbackError);
-          throw fallbackError;
+          const errorMessage = `Failed to fetch OGPLs: ${fallbackError.message} (Code: ${fallbackError.code})`;
+          throw new Error(errorMessage);
         }
         
         console.log('Fallback OGPL query successful, count:', fallbackData?.length);
@@ -91,7 +93,8 @@ export function useUnloading(organizationId: string | null = null) {
       return data || [];
     } catch (err) {
       console.error('Failed to get incoming OGPLs:', err);
-      setError(err instanceof Error ? err : new Error('Failed to get incoming OGPLs'));
+      const errorMessage = err instanceof Error ? err.message : 'Failed to get incoming OGPLs';
+      setError(new Error(errorMessage));
       return [];
     } finally {
       setLoading(false);
@@ -147,26 +150,34 @@ export function useUnloading(organizationId: string | null = null) {
       
       if (sessionError) {
         console.error('Error creating unloading session:', sessionError);
-        throw sessionError;
+        const errorMessage = `Failed to create unloading session: ${sessionError.message} (Code: ${sessionError.code})`;
+        throw new Error(errorMessage);
       }
       
       console.log('Unloading session created:', sessionData);
 
-      // 2. Create unloading record in the legacy format for backward compatibility
-      const { data: unloadingRecord, error: unloadingError } = await supabase
-        .from('unloading_records')
-        .insert({
-          ogpl_id: ogplId,
-          unloaded_at: new Date().toISOString(),
-          unloaded_by: 'Admin User', // This would be the current user's ID
-          conditions
-        })
-        .select()
-        .single();
+      // 2. Create unloading record in the legacy format for backward compatibility (optional)
+      try {
+        const { data: unloadingRecord, error: unloadingError } = await supabase
+          .from('unloading_records')
+          .insert({
+            ogpl_id: ogplId,
+            unloaded_at: new Date().toISOString(),
+            unloaded_by: 'Admin User', // This would be the current user's ID
+            conditions
+          })
+          .select()
+          .single();
 
-      if (unloadingError) {
-        console.error('Error creating legacy unloading record:', unloadingError);
-        // Continue anyway since we have the new session record
+        if (unloadingError) {
+          console.warn('Legacy unloading record creation failed (non-critical):', unloadingError);
+          // Continue anyway since we have the new session record
+        } else {
+          console.log('Legacy unloading record created:', unloadingRecord);
+        }
+      } catch (legacyError) {
+        console.warn('Legacy unloading record creation failed (non-critical):', legacyError);
+        // Continue anyway
       }
 
       // 3. Update OGPL status to 'unloaded' instead of 'completed'
@@ -180,45 +191,52 @@ export function useUnloading(organizationId: string | null = null) {
 
       if (ogplError) {
         console.error('Error updating OGPL status:', ogplError);
-        throw ogplError;
+        const errorMessage = `Failed to update OGPL status: ${ogplError.message} (Code: ${ogplError.code})`;
+        throw new Error(errorMessage);
       }
 
       // 4. Update booking statuses
       for (const bookingId of bookingIds) {
         const condition = conditions[bookingId];
         
-        // Move to warehouse if item was received
-        if (condition && condition.status !== 'missing') {
-          await updateBookingStatus(
-            bookingId,
-            'warehouse',
-            {
-              unloading_status: 'unloaded',
-              unloading_session_id: sessionData.id,
-              pod_status: 'pending',
-              pod_data: {
-                condition: condition.status,
-                remarks: condition.remarks,
-                photo: condition.photo,
-                unloaded_at: new Date().toISOString()
+        try {
+          // Move to warehouse if item was received
+          if (condition && condition.status !== 'missing') {
+            await updateBookingStatus(
+              bookingId,
+              'warehouse',
+              {
+                unloading_status: 'unloaded',
+                unloading_session_id: sessionData.id,
+                pod_status: 'pending',
+                pod_data: {
+                  condition: condition.status,
+                  remarks: condition.remarks,
+                  photo: condition.photo,
+                  unloaded_at: new Date().toISOString()
+                }
               }
-            }
-          );
-        } else {
-          // For missing items, update status but don't mark as delivered
-          await updateBookingStatus(
-            bookingId, 
-            'in_transit', 
-            { 
-              unloading_status: 'missing',
-              unloading_session_id: sessionData.id,
-              pod_data: {
-                condition: 'missing',
-                remarks: condition?.remarks,
-                unloaded_at: new Date().toISOString()
+            );
+          } else {
+            // For missing items, update status but don't mark as delivered
+            await updateBookingStatus(
+              bookingId, 
+              'in_transit', 
+              { 
+                unloading_status: 'missing',
+                unloading_session_id: sessionData.id,
+                pod_data: {
+                  condition: 'missing',
+                  remarks: condition?.remarks,
+                  unloaded_at: new Date().toISOString()
+                }
               }
-            }
-          );
+            );
+          }
+        } catch (bookingError) {
+          console.error(`Failed to update booking ${bookingId}:`, bookingError);
+          const errorMessage = bookingError instanceof Error ? bookingError.message : 'Unknown error';
+          throw new Error(`Failed to update booking ${bookingId}: ${errorMessage}`);
         }
       }
       
@@ -226,8 +244,9 @@ export function useUnloading(organizationId: string | null = null) {
       return sessionData;
     } catch (err) {
       console.error('Failed to unload OGPL:', err);
-      setError(err instanceof Error ? err : new Error('Failed to unload OGPL'));
-      showError('Unloading Failed', err instanceof Error ? err.message : 'Failed to unload OGPL');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to unload OGPL';
+      setError(new Error(errorMessage));
+      showError('Unloading Failed', errorMessage);
       throw err;
     } finally {
       setLoading(false);
@@ -244,7 +263,7 @@ export function useUnloading(organizationId: string | null = null) {
       
       console.log('Getting completed unloadings, branchId:', effectiveBranchId);
       
-      // First try the new unloading_sessions table
+      // Use the new unloading_sessions table
       let query = supabase
         .from('unloading_sessions')
         .select(`
@@ -275,44 +294,16 @@ export function useUnloading(organizationId: string | null = null) {
       
       if (sessionError) {
         console.error('Error fetching unloading sessions:', sessionError);
-        
-        // Fall back to legacy unloading_records
-        const { data: legacyData, error: legacyError } = await supabase
-          .from('unloading_records')
-          .select(`
-            *,
-            ogpl(
-              *,
-              vehicle:vehicles(*),
-              from_station:branches!from_station(*),
-              to_station:branches!to_station(*),
-              loading_records(
-                *,
-                booking:bookings(
-                  *,
-                  sender:customers!sender_id(*),
-                  receiver:customers!receiver_id(*),
-                  article:articles(*)
-                )
-              )
-            )
-          `)
-          .order('unloaded_at', { ascending: false });
-        
-        if (legacyError) {
-          console.error('Error fetching legacy unloading records:', legacyError);
-          throw legacyError;
-        }
-        
-        console.log('Legacy unloading records fetched:', legacyData?.length);
-        return legacyData || [];
+        const errorMessage = `Failed to fetch unloading sessions: ${sessionError.message} (Code: ${sessionError.code})`;
+        throw new Error(errorMessage);
       }
       
       console.log('Unloading sessions fetched:', sessionData?.length);
       return sessionData || [];
     } catch (err) {
       console.error('Failed to get completed unloadings:', err);
-      setError(err instanceof Error ? err : new Error('Failed to get completed unloadings'));
+      const errorMessage = err instanceof Error ? err.message : 'Failed to get completed unloadings';
+      setError(new Error(errorMessage));
       return [];
     } finally {
       setLoading(false);
@@ -328,7 +319,13 @@ export function useUnloading(organizationId: string | null = null) {
       const effectiveBranchId = userBranch?.id;
       
       if (!effectiveBranchId) {
-        throw new Error('No branch ID available');
+        console.warn('No branch ID available for unloading stats');
+        return {
+          totalSessions: 0,
+          totalDamaged: 0,
+          totalMissing: 0,
+          goodCondition: 0
+        };
       }
       
       console.log('Getting unloading stats, branchId:', effectiveBranchId);
@@ -341,7 +338,8 @@ export function useUnloading(organizationId: string | null = null) {
       
       if (totalError) {
         console.error('Error fetching total unloading count:', totalError);
-        throw totalError;
+        const errorMessage = `Failed to fetch unloading stats: ${totalError.message} (Code: ${totalError.code})`;
+        throw new Error(errorMessage);
       }
       
       // Get damaged items count
@@ -352,7 +350,8 @@ export function useUnloading(organizationId: string | null = null) {
       
       if (damagedError) {
         console.error('Error fetching damaged items count:', damagedError);
-        throw damagedError;
+        const errorMessage = `Failed to fetch damaged items: ${damagedError.message} (Code: ${damagedError.code})`;
+        throw new Error(errorMessage);
       }
       
       const totalDamaged = damagedData?.reduce((sum, session) => sum + (session.items_damaged || 0), 0) || 0;
@@ -365,7 +364,8 @@ export function useUnloading(organizationId: string | null = null) {
       
       if (missingError) {
         console.error('Error fetching missing items count:', missingError);
-        throw missingError;
+        const errorMessage = `Failed to fetch missing items: ${missingError.message} (Code: ${missingError.code})`;
+        throw new Error(errorMessage);
       }
       
       const totalMissing = missingData?.reduce((sum, session) => sum + (session.items_missing || 0), 0) || 0;
@@ -378,7 +378,8 @@ export function useUnloading(organizationId: string | null = null) {
       };
     } catch (err) {
       console.error('Failed to get unloading stats:', err);
-      setError(err instanceof Error ? err : new Error('Failed to get unloading stats'));
+      const errorMessage = err instanceof Error ? err.message : 'Failed to get unloading stats';
+      setError(new Error(errorMessage));
       return {
         totalSessions: 0,
         totalDamaged: 0,

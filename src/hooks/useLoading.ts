@@ -21,7 +21,8 @@ export function useLoading(branchId?: string) {
       const effectiveBranchId = branchId || userBranch?.id;
       
       if (!effectiveBranchId) {
-        throw new Error('No branch ID available');
+        console.warn('No branch ID available for loading pending bookings');
+        return [];
       }
       
       console.log('Getting pending bookings for loading, branchId:', effectiveBranchId);
@@ -44,14 +45,16 @@ export function useLoading(branchId?: string) {
       
       if (fetchError) {
         console.error('Error fetching pending bookings:', fetchError);
-        throw fetchError;
+        const errorMessage = `Failed to fetch pending bookings: ${fetchError.message} (Code: ${fetchError.code})`;
+        throw new Error(errorMessage);
       }
       
       console.log('Pending bookings for loading:', data?.length);
       return data || [];
     } catch (err) {
       console.error('Failed to get pending bookings for loading:', err);
-      setError(err instanceof Error ? err : new Error('Failed to get pending bookings'));
+      const errorMessage = err instanceof Error ? err.message : 'Failed to get pending bookings';
+      setError(new Error(errorMessage));
       return [];
     } finally {
       setLoading(false);
@@ -67,7 +70,8 @@ export function useLoading(branchId?: string) {
       const effectiveBranchId = branchId || userBranch?.id;
       
       if (!effectiveBranchId) {
-        throw new Error('No branch ID available');
+        console.warn('No branch ID available for loading active OGPLs');
+        return [];
       }
       
       console.log('Getting active OGPLs, branchId:', effectiveBranchId);
@@ -92,14 +96,16 @@ export function useLoading(branchId?: string) {
       
       if (fetchError) {
         console.error('Error fetching active OGPLs:', fetchError);
-        throw fetchError;
+        const errorMessage = `Failed to fetch active OGPLs: ${fetchError.message} (Code: ${fetchError.code})`;
+        throw new Error(errorMessage);
       }
       
       console.log('Active OGPLs:', data?.length);
       return data || [];
     } catch (err) {
       console.error('Failed to get active OGPLs:', err);
-      setError(err instanceof Error ? err : new Error('Failed to get active OGPLs'));
+      const errorMessage = err instanceof Error ? err.message : 'Failed to get active OGPLs';
+      setError(new Error(errorMessage));
       return [];
     } finally {
       setLoading(false);
@@ -144,15 +150,17 @@ export function useLoading(branchId?: string) {
       
       if (ogplError) {
         console.error('Error creating OGPL:', ogplError);
-        throw ogplError;
+        const errorMessage = `Failed to create OGPL: ${ogplError.message} (Code: ${ogplError.code})`;
+        throw new Error(errorMessage);
       }
       
       console.log('OGPL created:', ogplData);
       return ogplData;
     } catch (err) {
       console.error('Failed to create OGPL:', err);
-      setError(err instanceof Error ? err : new Error('Failed to create OGPL'));
-      showError('OGPL Creation Failed', err instanceof Error ? err.message : 'Failed to create OGPL');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to create OGPL';
+      setError(new Error(errorMessage));
+      showError('OGPL Creation Failed', errorMessage);
       throw err;
     } finally {
       setLoading(false);
@@ -191,7 +199,8 @@ export function useLoading(branchId?: string) {
       
       if (sessionError) {
         console.error('Error creating loading session:', sessionError);
-        throw sessionError;
+        const errorMessage = `Failed to create loading session: ${sessionError.message} (Code: ${sessionError.code})`;
+        throw new Error(errorMessage);
       }
       
       console.log('Loading session created:', sessionData);
@@ -210,21 +219,28 @@ export function useLoading(branchId?: string) {
       
       if (recordsError) {
         console.error('Error creating loading records:', recordsError);
-        throw recordsError;
+        const errorMessage = `Failed to create loading records: ${recordsError.message} (Code: ${recordsError.code})`;
+        throw new Error(errorMessage);
       }
       
       console.log('Loading records created:', recordsData?.length);
       
       // 3. Update the status of each booking
       for (const bookingId of data.bookingIds) {
-        await updateBookingStatus(
-          bookingId, 
-          'in_transit', 
-          { 
-            loading_status: 'loaded',
-            loading_session_id: sessionData.id
-          }
-        );
+        try {
+          await updateBookingStatus(
+            bookingId, 
+            'in_transit', 
+            { 
+              loading_status: 'loaded',
+              loading_session_id: sessionData.id
+            }
+          );
+        } catch (bookingError) {
+          console.error(`Failed to update booking ${bookingId}:`, bookingError);
+          const errorMessage = bookingError instanceof Error ? bookingError.message : 'Unknown error';
+          throw new Error(`Failed to update booking ${bookingId}: ${errorMessage}`);
+        }
       }
       
       // 4. Update the OGPL status to in_transit
@@ -235,15 +251,17 @@ export function useLoading(branchId?: string) {
       
       if (ogplError) {
         console.error('Error updating OGPL status:', ogplError);
-        throw ogplError;
+        const errorMessage = `Failed to update OGPL status: ${ogplError.message} (Code: ${ogplError.code})`;
+        throw new Error(errorMessage);
       }
       
       showSuccess('Loading Complete', `${data.bookingIds.length} bookings have been loaded successfully`);
       return sessionData;
     } catch (err) {
       console.error('Failed to create loading session:', err);
-      setError(err instanceof Error ? err : new Error('Failed to create loading session'));
-      showError('Loading Failed', err instanceof Error ? err.message : 'Failed to create loading session');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to create loading session';
+      setError(new Error(errorMessage));
+      showError('Loading Failed', errorMessage);
       throw err;
     } finally {
       setLoading(false);
@@ -259,7 +277,8 @@ export function useLoading(branchId?: string) {
       const effectiveBranchId = branchId || userBranch?.id;
       
       if (!effectiveBranchId) {
-        throw new Error('No branch ID available');
+        console.warn('No branch ID available for loading history');
+        return [];
       }
       
       console.log('Getting loading history, branchId:', effectiveBranchId);
@@ -278,14 +297,16 @@ export function useLoading(branchId?: string) {
       
       if (fetchError) {
         console.error('Error fetching loading history:', fetchError);
-        throw fetchError;
+        const errorMessage = `Failed to fetch loading history: ${fetchError.message} (Code: ${fetchError.code})`;
+        throw new Error(errorMessage);
       }
       
       console.log('Loading history:', data?.length);
       return data || [];
     } catch (err) {
       console.error('Failed to get loading history:', err);
-      setError(err instanceof Error ? err : new Error('Failed to get loading history'));
+      const errorMessage = err instanceof Error ? err.message : 'Failed to get loading history';
+      setError(new Error(errorMessage));
       return [];
     } finally {
       setLoading(false);

@@ -110,6 +110,16 @@ export interface Booking {
   reference_number?: string;
   sender_id?: string;
   receiver_id?: string;
+  // Logistics tracking fields
+  loading_status?: 'pending' | 'loaded';
+  unloading_status?: 'pending' | 'unloaded' | 'missing';
+  pod_status?: 'pending' | 'completed';
+  loading_session_id?: string;
+  unloading_session_id?: string;
+  pod_record_id?: string;
+  delivery_date?: string;
+  pod_data?: any;
+  cancellation_reason?: string;
 }
 
 // Organization types

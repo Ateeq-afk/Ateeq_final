@@ -10,7 +10,7 @@ export default function StatusBadge({ status }: { status: Booking['status'] }) {
     cancelled: 'bg-red-100 text-red-800',
   }
 
-  // Capitalize each word (e.g. “in_transit” → “In Transit”)
+  // Capitalize each word (e.g. "in_transit" → "In Transit")
   const label = status
     .replace(/_/g, ' ')
     .replace(/\b\w/g, char => char.toUpperCase())

@@ -49,6 +49,7 @@ export default function LoadingDashboard() {
 
   const userBranch = getCurrentUserBranch();
   const effectiveBranchId = selectedBranch || userBranch?.id;
+  
   const {
     getPendingBookings,
     getActiveOGPLs,
@@ -57,6 +58,7 @@ export default function LoadingDashboard() {
     loading: loadingData,
     error: loadingError
   } = useLoading(effectiveBranchId);
+  
   const { vehicles } = useVehicles(effectiveBranchId);
   const { branches } = useBranches();
 
@@ -75,20 +77,30 @@ export default function LoadingDashboard() {
   // Load data
   useEffect(() => {
     const loadData = async () => {
-      if (activeTab === 'pending') {
-        const bookings = await getPendingBookings();
-        setPendingBookings(bookings);
-        
-        const ogpls = await getActiveOGPLs();
-        setActiveOGPLs(ogpls);
-      } else {
-        const history = await getLoadingHistory();
-        setLoadingHistory(history);
+      if (!effectiveBranchId) {
+        console.warn('No effective branch ID available for loading data');
+        return;
+      }
+      
+      try {
+        if (activeTab === 'pending') {
+          const bookings = await getPendingBookings();
+          setPendingBookings(bookings);
+          
+          const ogpls = await getActiveOGPLs();
+          setActiveOGPLs(ogpls);
+        } else {
+          const history = await getLoadingHistory();
+          setLoadingHistory(history);
+        }
+      } catch (err) {
+        console.error('Error loading data:', err);
+        showError('Loading Error', err instanceof Error ? err.message : 'Failed to load data');
       }
     };
     
     loadData();
-  }, [activeTab, getPendingBookings, getActiveOGPLs, getLoadingHistory, refreshTrigger]);
+  }, [activeTab, getPendingBookings, getActiveOGPLs, getLoadingHistory, refreshTrigger, effectiveBranchId]);
   
   // Filter loading history based on search and filters
   const filteredHistory = React.useMemo(() => {
@@ -154,6 +166,7 @@ export default function LoadingDashboard() {
     }
   };
   
+  // Show error state if there's a loading error
   if (loadingError) {
     return (
       <div className="p-6 bg-red-50 border border-red-200 rounded-xl">
@@ -170,6 +183,35 @@ export default function LoadingDashboard() {
               <RefreshCw className="h-4 w-4 mr-2" />
               Retry
             </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  // Show branch selection if no effective branch
+  if (!effectiveBranchId) {
+    return (
+      <div className="p-6 bg-yellow-50 border border-yellow-200 rounded-xl">
+        <div className="flex items-start gap-3">
+          <AlertCircle className="h-6 w-6 text-yellow-600 mt-0.5" />
+          <div>
+            <h3 className="font-medium text-yellow-800">No Branch Selected</h3>
+            <p className="text-yellow-700 mt-1">Please select a branch to view loading operations.</p>
+            <div className="mt-4">
+              <Select value={selectedBranch || ''} onValueChange={setSelectedBranch}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="Select branch" />
+                </SelectTrigger>
+                <SelectContent>
+                  {branches.map((branch) => (
+                    <SelectItem key={branch.id} value={branch.id}>
+                      {branch.name} - {branch.city}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
       </div>

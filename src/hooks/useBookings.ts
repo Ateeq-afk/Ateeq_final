@@ -43,7 +43,8 @@ export function useBookings<T = Booking>(branchId: string | null = null) {
         
       if (basicError) {
         console.error('Basic bookings query failed:', basicError);
-        throw basicError;
+        const errorMessage = `Failed to fetch bookings: ${basicError.message} (Code: ${basicError.code})`;
+        throw new Error(errorMessage);
       }
       
       console.log('Basic bookings query successful, sample:', basicData);
@@ -62,7 +63,8 @@ export function useBookings<T = Booking>(branchId: string | null = null) {
       
       if (simpleError) {
         console.error('Simple bookings query failed:', simpleError);
-        throw simpleError;
+        const errorMessage = `Failed to fetch bookings: ${simpleError.message} (Code: ${simpleError.code})`;
+        throw new Error(errorMessage);
       }
       
       console.log('Simple bookings query successful, count:', simpleData?.length);
@@ -102,7 +104,8 @@ export function useBookings<T = Booking>(branchId: string | null = null) {
       }
     } catch (err) {
       console.error('Failed to load bookings:', err);
-      setError(err instanceof Error ? err : new Error('Failed to load bookings'));
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load bookings';
+      setError(new Error(errorMessage));
       setBookings([] as unknown as T[]);
     } finally {
       setLoading(false);
@@ -140,7 +143,7 @@ export function useBookings<T = Booking>(branchId: string | null = null) {
         ...data,
         branch_id: data.branch_id || userBranch?.id,
         total_amount: totalAmount,
-        status: 'booked',
+        status: 'booked' as const,
         loading_status: 'pending',
         unloading_status: 'pending',
         pod_status: 'pending',
@@ -189,7 +192,8 @@ export function useBookings<T = Booking>(branchId: string | null = null) {
         
       if (basicError) {
         console.error('Basic booking insert error:', basicError);
-        throw basicError;
+        const errorMessage = `Failed to create booking: ${basicError.message} (Code: ${basicError.code})`;
+        throw new Error(errorMessage);
       }
       
       console.log('Basic booking created with ID:', basicBooking.id);
@@ -236,7 +240,8 @@ export function useBookings<T = Booking>(branchId: string | null = null) {
       return completeBooking as unknown as T;
     } catch (err) {
       console.error('Failed to create booking:', err);
-      throw err instanceof Error ? err : new Error('Failed to create booking');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to create booking';
+      throw new Error(errorMessage);
     }
   };
 
@@ -247,6 +252,12 @@ export function useBookings<T = Booking>(branchId: string | null = null) {
       }
 
       console.log(`Updating booking ${id} status to ${status}`);
+      
+      // Validate status value
+      const validStatuses: Booking['status'][] = ['booked', 'in_transit', 'warehouse', 'delivered', 'cancelled'];
+      if (!validStatuses.includes(status)) {
+        throw new Error(`Invalid status: ${status}. Valid statuses are: ${validStatuses.join(', ')}`);
+      }
       
       // Update booking in Supabase
       const { data: updatedBooking, error: updateError } = await supabase
@@ -262,7 +273,8 @@ export function useBookings<T = Booking>(branchId: string | null = null) {
       
       if (updateError) {
         console.error('Error updating booking status:', updateError);
-        throw updateError;
+        const errorMessage = `Failed to update booking status: ${updateError.message} (Code: ${updateError.code})`;
+        throw new Error(errorMessage);
       }
       
       console.log('Basic booking update successful');
@@ -303,7 +315,8 @@ export function useBookings<T = Booking>(branchId: string | null = null) {
       return completeBooking;
     } catch (err) {
       console.error('Failed to update booking status:', err);
-      throw err instanceof Error ? err : new Error('Failed to update booking status');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update booking status';
+      throw new Error(errorMessage);
     }
   };
 
@@ -321,7 +334,10 @@ export function useBookings<T = Booking>(branchId: string | null = null) {
         .delete()
         .eq('id', id);
       
-      if (deleteError) throw deleteError;
+      if (deleteError) {
+        const errorMessage = `Failed to delete booking: ${deleteError.message} (Code: ${deleteError.code})`;
+        throw new Error(errorMessage);
+      }
       
       // Update the local state
       setBookings(prev => prev.filter(booking => (booking as any).id !== id) as T[]);
@@ -329,7 +345,8 @@ export function useBookings<T = Booking>(branchId: string | null = null) {
       console.log('Booking deleted successfully');
     } catch (err) {
       console.error('Failed to delete booking:', err);
-      throw err instanceof Error ? err : new Error('Failed to delete booking');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete booking';
+      throw new Error(errorMessage);
     }
   };
 
