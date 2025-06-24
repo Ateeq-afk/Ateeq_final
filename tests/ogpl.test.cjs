@@ -24,4 +24,6 @@ completeUnloading(ogpl.id);
 assert.strictEqual(bookings[0].status, STATUS_WAREHOUSE);
 assert.strictEqual(bookings[1].status, STATUS_WAREHOUSE);
 assert.strictEqual(ogpl.status, 'completed');
+
 console.log('OGPL unloading updated LR statuses to warehouse successfully');
+
