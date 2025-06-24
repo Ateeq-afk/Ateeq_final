@@ -1,6 +1,8 @@
 const bookings = [];
 const ogpls = [];
 
+const STATUS_WAREHOUSE = 'warehouse';
+
 function createOGPL({ lrIds = [], ...data }) {
   const ogpl = { id: ogpls.length + 1, lrIds, ...data };
   const previous = new Map();
@@ -24,9 +26,28 @@ function createOGPL({ lrIds = [], ...data }) {
   }
 }
 
+function completeUnloading(ogplId) {
+  const ogpl = ogpls.find(o => o.id === ogplId);
+  if (!ogpl) throw new Error(`OGPL ${ogplId} not found`);
+  for (const id of ogpl.lrIds) {
+    const booking = bookings.find(b => b.id === id);
+    if (!booking) throw new Error(`Booking ${id} not found`);
+    booking.status = STATUS_WAREHOUSE;
+  }
+  ogpl.status = 'completed';
+  return ogpl;
+}
+
 function reset() {
   bookings.length = 0;
   ogpls.length = 0;
 }
 
-module.exports = { createOGPL, bookings, ogpls, reset };
+module.exports = {
+  createOGPL,
+  completeUnloading,
+  bookings,
+  ogpls,
+  reset,
+  STATUS_WAREHOUSE,
+};
