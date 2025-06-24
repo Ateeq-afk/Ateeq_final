@@ -21,7 +21,8 @@ export function usePOD() {
       const effectiveBranchId = userBranch?.id;
       
       if (!effectiveBranchId) {
-        throw new Error('No branch ID available');
+        console.warn('No branch ID available for pending POD bookings');
+        return [];
       }
       
       console.log('Getting bookings pending POD, branchId:', effectiveBranchId);
@@ -44,14 +45,16 @@ export function usePOD() {
       
       if (fetchError) {
         console.error('Error fetching bookings pending POD:', fetchError);
-        throw fetchError;
+        const errorMessage = `Failed to fetch pending POD bookings: ${fetchError.message} (Code: ${fetchError.code})`;
+        throw new Error(errorMessage);
       }
       
       console.log('Bookings pending POD:', data?.length);
       return data || [];
     } catch (err) {
       console.error('Failed to get bookings pending POD:', err);
-      setError(err instanceof Error ? err : new Error('Failed to get bookings pending POD'));
+      const errorMessage = err instanceof Error ? err.message : 'Failed to get bookings pending POD';
+      setError(new Error(errorMessage));
       return [];
     } finally {
       setLoading(false);
@@ -92,7 +95,8 @@ export function usePOD() {
       
       if (podError) {
         console.error('Error creating POD record:', podError);
-        throw podError;
+        const errorMessage = `Failed to create POD record: ${podError.message} (Code: ${podError.code})`;
+        throw new Error(errorMessage);
       }
       
       console.log('POD record created:', podRecord);
@@ -121,8 +125,9 @@ export function usePOD() {
       return podRecord;
     } catch (err) {
       console.error('Failed to submit POD:', err);
-      setError(err instanceof Error ? err : new Error('Failed to submit POD'));
-      showError('POD Submission Failed', err instanceof Error ? err.message : 'Failed to submit POD');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to submit POD';
+      setError(new Error(errorMessage));
+      showError('POD Submission Failed', errorMessage);
       throw err;
     } finally {
       setLoading(false);
@@ -138,7 +143,8 @@ export function usePOD() {
       const effectiveBranchId = userBranch?.id;
       
       if (!effectiveBranchId) {
-        throw new Error('No branch ID available');
+        console.warn('No branch ID available for POD history');
+        return [];
       }
       
       console.log('Getting POD history, branchId:', effectiveBranchId);
@@ -160,7 +166,8 @@ export function usePOD() {
       
       if (fetchError) {
         console.error('Error fetching POD history:', fetchError);
-        throw fetchError;
+        const errorMessage = `Failed to fetch POD history: ${fetchError.message} (Code: ${fetchError.code})`;
+        throw new Error(errorMessage);
       }
       
       // Filter to only include PODs for bookings delivered to this branch
@@ -172,7 +179,8 @@ export function usePOD() {
       return filteredData;
     } catch (err) {
       console.error('Failed to get POD history:', err);
-      setError(err instanceof Error ? err : new Error('Failed to get POD history'));
+      const errorMessage = err instanceof Error ? err.message : 'Failed to get POD history';
+      setError(new Error(errorMessage));
       return [];
     } finally {
       setLoading(false);
@@ -188,7 +196,14 @@ export function usePOD() {
       const effectiveBranchId = userBranch?.id;
       
       if (!effectiveBranchId) {
-        throw new Error('No branch ID available');
+        console.warn('No branch ID available for POD stats');
+        return {
+          totalDelivered: 0,
+          totalPending: 0,
+          withSignature: 0,
+          withPhoto: 0,
+          completionRate: 0
+        };
       }
       
       console.log('Getting POD stats, branchId:', effectiveBranchId);
@@ -202,7 +217,8 @@ export function usePOD() {
       
       if (deliveredError) {
         console.error('Error fetching total delivered count:', deliveredError);
-        throw deliveredError;
+        const errorMessage = `Failed to fetch delivered count: ${deliveredError.message} (Code: ${deliveredError.code})`;
+        throw new Error(errorMessage);
       }
       
       // Get total pending PODs
@@ -215,7 +231,8 @@ export function usePOD() {
       
       if (pendingError) {
         console.error('Error fetching pending POD count:', pendingError);
-        throw pendingError;
+        const errorMessage = `Failed to fetch pending POD count: ${pendingError.message} (Code: ${pendingError.code})`;
+        throw new Error(errorMessage);
       }
       
       // Get total PODs with signature
@@ -226,7 +243,8 @@ export function usePOD() {
       
       if (podError) {
         console.error('Error fetching POD signature count:', podError);
-        throw podError;
+        const errorMessage = `Failed to fetch POD signature count: ${podError.message} (Code: ${podError.code})`;
+        throw new Error(errorMessage);
       }
       
       const withSignature = podData?.length || 0;
@@ -241,7 +259,8 @@ export function usePOD() {
       };
     } catch (err) {
       console.error('Failed to get POD stats:', err);
-      setError(err instanceof Error ? err : new Error('Failed to get POD stats'));
+      const errorMessage = err instanceof Error ? err.message : 'Failed to get POD stats';
+      setError(new Error(errorMessage));
       return {
         totalDelivered: 0,
         totalPending: 0,

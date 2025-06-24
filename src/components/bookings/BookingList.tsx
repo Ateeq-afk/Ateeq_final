@@ -27,6 +27,8 @@ import { useBookings } from '@/hooks/useBookings';
 import { useBranches } from '../../hooks/useBranches';
 import { useFilteredSortedBookings } from '../../hooks/useFilteredSortedBookings';
 import { printBookings, downloadBookingLR } from '../../utils/printUtils';
+import { usePOD } from '@/hooks/usePOD';
+import { useNotificationSystem } from '@/hooks/useNotificationSystem';
 import type { Booking, Filters, SortField, SortDirection } from '../../types';
 
 // If these modals live elsewhere, adjust paths accordingly:
@@ -56,8 +58,10 @@ export default function BookingList() {
   const [showAll, setShowAll] = useState(false);
 
   // Data Fetching
-  const { bookings, loading: isLoading, error, refresh } = useBookings();
+  const { bookings, loading: isLoading, error, refresh, updateBookingStatus } = useBookings();
   const { branches } = useBranches();
+  const { submitPOD } = usePOD();
+  const { showSuccess, showError } = useNotificationSystem();
 
   // Filter & Sort
   const filtered = useFilteredSortedBookings(
@@ -98,6 +102,30 @@ export default function BookingList() {
         : filtered
     );
   const handleDownload = (booking: Booking) => downloadBookingLR(booking);
+
+  // POD submission handler
+  const handlePODSubmit = async (data: any) => {
+    try {
+      await submitPOD(data);
+      setShowPODId(null);
+      showSuccess('POD Submitted', 'Proof of delivery has been recorded successfully');
+      refresh(); // Refresh the booking list to update statuses
+    } catch (err) {
+      console.error('Failed to submit POD:', err);
+      showError('POD Submission Failed', err instanceof Error ? err.message : 'Failed to submit proof of delivery');
+    }
+  };
+
+  // Booking click handler
+  const handleBookingClick = (booking: Booking) => {
+    // If booking is in warehouse status, show POD form
+    if (booking.status === 'warehouse') {
+      setShowPODId(booking.id);
+    } else {
+      // Otherwise navigate to booking details
+      navigate(`/dashboard/bookings/${booking.id}`);
+    }
+  };
 
   if (isLoading) return <div>Loading…</div>;
   if (error) return <div>Error loading bookings.</div>;
@@ -180,6 +208,7 @@ export default function BookingList() {
             <SelectItem value="all">All</SelectItem>
             <SelectItem value="booked">Booked</SelectItem>
             <SelectItem value="in_transit">In Transit</SelectItem>
+            <SelectItem value="warehouse">In Warehouse</SelectItem>
             <SelectItem value="delivered">Delivered</SelectItem>
             <SelectItem value="cancelled">Cancelled</SelectItem>
           </SelectContent>
@@ -254,7 +283,7 @@ export default function BookingList() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {(showAll ? filtered : filtered.slice(0, 100)).map(booking => (
+            {(showAll ? filtered : filtered.slice(0, 100)).map((booking) => (
               <tr key={booking.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3">
                   <input
@@ -265,7 +294,7 @@ export default function BookingList() {
                 </td>
                 <td
                   className="px-4 py-3 text-blue-600 font-medium cursor-pointer"
-                  onClick={() => navigate(`/dashboard/bookings/${booking.id}`)}
+                  onClick={() => handleBookingClick(booking)}
                 >
                   {booking.lr_number}
                 </td>
@@ -288,7 +317,7 @@ export default function BookingList() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => navigate(`/dashboard/bookings/${booking.id}`)}
+                      onClick={() => handleBookingClick(booking)}
                     >
                       <Eye className="h-4 w-4" />
                     </Button>
@@ -305,6 +334,14 @@ export default function BookingList() {
                           <Download className="mr-2 h-4 w-4" />
                           Download LR
                         </DropdownMenuItem>
+                        {booking.status === 'warehouse' && (
+                          <DropdownMenuItem
+                            onClick={() => setShowPODId(booking.id)}
+                          >
+                            <Eye className="mr-2 h-4 w-4" />
+                            Enter POD
+                          </DropdownMenuItem>
+                        )}
                         {(['booked', 'in_transit'] as Booking['status'][]).includes(
                           booking.status
                         ) && (
@@ -356,7 +393,7 @@ export default function BookingList() {
         <ProofOfDelivery
           bookingId={showPODId}
           onClose={() => setShowPODId(null)}
-          onSubmit={() => refresh()}
+          onSubmit={handlePODSubmit}
         />
       )}
     </div>

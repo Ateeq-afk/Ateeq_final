@@ -47,15 +47,20 @@ export default function PODDashboard() {
   // Load data
   useEffect(() => {
     const loadData = async () => {
-      if (activeTab === 'pending') {
-        const bookings = await getPendingPODBookings();
-        setPendingBookings(bookings);
-      } else {
-        const history = await getPODHistory();
-        setPodHistory(history);
-        
-        const stats = await getPODStats();
-        setPodStats(stats);
+      try {
+        if (activeTab === 'pending') {
+          const bookings = await getPendingPODBookings();
+          setPendingBookings(bookings);
+        } else {
+          const history = await getPODHistory();
+          setPodHistory(history);
+          
+          const stats = await getPODStats();
+          setPodStats(stats);
+        }
+      } catch (err) {
+        console.error('Error loading POD data:', err);
+        showError('Loading Error', err instanceof Error ? err.message : 'Failed to load data');
       }
     };
     
@@ -118,9 +123,10 @@ export default function PODDashboard() {
       await submitPOD(data);
       setSelectedBooking(null);
       handleRefresh();
+      showSuccess('POD Submitted', 'Proof of delivery has been recorded successfully');
     } catch (err) {
       console.error('Failed to submit POD:', err);
-      showError('POD Submission Failed', 'Failed to submit proof of delivery');
+      showError('POD Submission Failed', err instanceof Error ? err.message : 'Failed to submit proof of delivery');
     }
   };
   

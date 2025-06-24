@@ -1,5 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Package, User, Calendar, MapPin, Camera, FileSignature as Signature, Loader2, CheckCircle2, ArrowLeft, ArrowRight, X } from 'lucide-react';
+import { 
+  Package, 
+  User, 
+  Calendar, 
+  MapPin, 
+  Camera, 
+  FileSignature as Signature, 
+  Loader2, 
+  CheckCircle2, 
+  ArrowLeft, 
+  ArrowRight, 
+  X 
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -217,7 +229,7 @@ export default function PODForm({ booking, onSubmit, onCancel }: PODFormProps) {
       setStep('complete');
     } catch (err) {
       console.error('Failed to submit POD:', err);
-      showError('Submission Failed', 'Failed to submit proof of delivery');
+      showError('Submission Failed', err instanceof Error ? err.message : 'Failed to submit proof of delivery');
     } finally {
       setSubmitting(false);
     }

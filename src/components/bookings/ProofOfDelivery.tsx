@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   CheckCircle2, 
   Camera, 
@@ -156,7 +156,7 @@ export default function ProofOfDelivery({
   };
   
   // Set up signature canvas
-  React.useEffect(() => {
+  useEffect(() => {
     if (step === 'signature' && signatureCanvasRef.current) {
       const canvas = signatureCanvasRef.current;
       const ctx = canvas.getContext('2d');
