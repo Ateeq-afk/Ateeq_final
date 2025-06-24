@@ -16,7 +16,8 @@ import {
   Settings,
   Menu,
   ChevronDown,
-  Clock
+  Clock,
+  CheckCircle2
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from 'framer-motion';
@@ -55,7 +56,7 @@ function Sidebar({ onNavigate, currentPage }: SidebarProps) {
     settings: false
   });
   const [showRecentBookings, setShowRecentBookings] = useState(false);
-  const { bookings } = useBookings();
+  const { bookings, updateBookingStatus } = useBookings();
 
   // Get the 5 most recent bookings
   const recentBookings = bookings.slice(0, 5);
@@ -366,9 +367,22 @@ function Sidebar({ onNavigate, currentPage }: SidebarProps) {
                             </div>
                           </div>
                           <div className="flex items-center">
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
+                            {booking.status === 'warehouse' && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-gray-400 hover:text-green-600"
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  await updateBookingStatus(booking.id, 'delivered');
+                                }}
+                              >
+                                <CheckCircle2 className="h-3 w-3" />
+                              </Button>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               className="h-6 w-6 text-gray-400 hover:text-brand-600"
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -377,9 +391,9 @@ function Sidebar({ onNavigate, currentPage }: SidebarProps) {
                             >
                               <Printer className="h-3 w-3" />
                             </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               className="h-6 w-6 text-gray-400 hover:text-brand-600"
                               onClick={(e) => {
                                 e.stopPropagation();
