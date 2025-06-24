@@ -82,66 +82,94 @@ export default function BookingDetails() {
               margin: 0;
               padding: 20px;
             }
-            table {
-              border-collapse: collapse;
-              width: 100%;
-              margin-bottom: 20px;
-            }
-            th, td {
-              border: 1px solid #ddd;
-              padding: 8px;
-              text-align: left;
-            }
-            th {
-              background-color: #f3f4f6;
-              font-weight: bold;
-            }
-            h2, h3, h4 {
-              margin-top: 0;
-              font-weight: bold;
-            }
-            .container {
-              max-width: 800px;
-              margin: 0 auto;
-            }
-            .header {
-              display: flex;
-              justify-content: space-between;
-              margin-bottom: 20px;
-            }
-            .section {
-              margin-bottom: 20px;
-            }
-            .flex-row {
-              display: flex;
-              gap: 10px;
-            }
-            .flex-col {
-              flex: 1;
-            }
-            .border-box {
-              border: 1px solid #ddd;
-              padding: 10px;
-            }
-            .signature-row {
-              display: flex;
-              justify-content: space-between;
-              margin-top: 40px;
-            }
-            .signature-box {
-              text-align: center;
-              width: 30%;
-            }
-            .signature-line {
-              border-top: 1px solid #000;
-              padding-top: 5px;
-              margin-top: 20px;
-            }
             @media print {
-              body {
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-              }
+              @page { size: A5 landscape; margin: 5mm; }
+              body { font-family: 'Lato', Arial, sans-serif; }
+            }
+            .lr-pair { 
+              display: flex; 
+              gap: 4mm; 
+              page-break-inside: avoid; 
+              margin-bottom: 10mm;
+            }
+            .lr-copy { 
+              width: 50%; 
+              border: 1px solid #000; 
+              padding: 4mm; 
+              box-sizing: border-box; 
+              font-family: 'Lato', Arial, sans-serif; 
+            }
+            .lr-header { 
+              border-bottom: 1px solid #ddd; 
+              padding-bottom: 3mm; 
+              margin-bottom: 3mm; 
+            }
+            .lr-header h3 { 
+              margin: 0 0 2mm 0; 
+              font-size: 14pt; 
+            }
+            .lr-header p { 
+              margin: 0; 
+              font-size: 10pt; 
+            }
+            .lr-content { 
+              font-size: 10pt; 
+            }
+            .lr-section { 
+              margin-bottom: 4mm; 
+              border-bottom: 1px solid #eee; 
+              padding-bottom: 3mm; 
+            }
+            .lr-section:last-child { 
+              border-bottom: none; 
+            }
+            .lr-section h4 { 
+              margin: 0 0 2mm 0; 
+              font-size: 11pt; 
+            }
+            .lr-section p { 
+              margin: 0 0 1mm 0; 
+            }
+            .lr-section table { 
+              width: 100%; 
+              border-collapse: collapse; 
+              margin-top: 2mm; 
+            }
+            .lr-section th, .lr-section td { 
+              border: 1px solid #ddd; 
+              padding: 2mm; 
+              font-size: 9pt; 
+            }
+            .lr-section th { 
+              background-color: #f5f5f5; 
+              font-weight: bold; 
+            }
+            .lr-col { 
+              display: inline-block; 
+              width: 48%; 
+              vertical-align: top; 
+            }
+            .lr-signatures { 
+              display: flex; 
+              justify-content: space-between; 
+              margin-top: 5mm; 
+            }
+            .signature-box { 
+              width: 30%; 
+              text-align: center; 
+            }
+            .signature-line { 
+              border-top: 1px solid #000; 
+              padding-top: 2mm; 
+              margin-top: 10mm; 
+              font-size: 9pt;
+            }
+            .lr-footer {
+              text-align: center;
+              margin-top: 5mm;
+              font-size: 9pt;
+              color: #666;
+              page-break-before: avoid;
             }
           </style>
         </head>
@@ -188,27 +216,93 @@ export default function BookingDetails() {
           display: none !important;
         }
         @page {
-          size: A4;
+          size: A5 landscape;
           margin: 10mm;
         }
-        table {
-          border-collapse: collapse;
-          width: 100%;
+        .lr-pair { 
+          display: flex; 
+          gap: 4mm; 
+          page-break-inside: avoid; 
+          margin-bottom: 10mm;
         }
-        th, td {
-          border: 1px solid #ddd;
-          padding: 8px;
+        .lr-copy { 
+          width: 50%; 
+          border: 1px solid #000; 
+          padding: 4mm; 
+          box-sizing: border-box; 
+          font-family: 'Lato', Arial, sans-serif; 
         }
-        th {
-          background-color: #f3f4f6;
-          font-weight: bold;
+        .lr-header { 
+          border-bottom: 1px solid #ddd; 
+          padding-bottom: 3mm; 
+          margin-bottom: 3mm; 
         }
-        h2, h3 {
-          margin-top: 0;
-          font-weight: bold;
+        .lr-header h3 { 
+          margin: 0 0 2mm 0; 
+          font-size: 14pt; 
         }
-        body {
-          font-family: 'Lato', Arial, sans-serif;
+        .lr-header p { 
+          margin: 0; 
+          font-size: 10pt; 
+        }
+        .lr-content { 
+          font-size: 10pt; 
+        }
+        .lr-section { 
+          margin-bottom: 4mm; 
+          border-bottom: 1px solid #eee; 
+          padding-bottom: 3mm; 
+        }
+        .lr-section:last-child { 
+          border-bottom: none; 
+        }
+        .lr-section h4 { 
+          margin: 0 0 2mm 0; 
+          font-size: 11pt; 
+        }
+        .lr-section p { 
+          margin: 0 0 1mm 0; 
+        }
+        .lr-section table { 
+          width: 100%; 
+          border-collapse: collapse; 
+          margin-top: 2mm; 
+        }
+        .lr-section th, .lr-section td { 
+          border: 1px solid #ddd; 
+          padding: 2mm; 
+          font-size: 9pt; 
+        }
+        .lr-section th { 
+          background-color: #f5f5f5; 
+          font-weight: bold; 
+        }
+        .lr-col { 
+          display: inline-block; 
+          width: 48%; 
+          vertical-align: top; 
+        }
+        .lr-signatures { 
+          display: flex; 
+          justify-content: space-between; 
+          margin-top: 5mm; 
+        }
+        .signature-box { 
+          width: 30%; 
+          text-align: center; 
+        }
+        .signature-line { 
+          border-top: 1px solid #000; 
+          padding-top: 2mm; 
+          margin-top: 10mm; 
+          font-size: 9pt;
+        }
+        .lr-footer {
+          text-align: center;
+          margin-top: 5mm;
+          font-size: 9pt;
+          color: #666;
+          page-break-before: avoid;
         }
       }
     `;
@@ -478,7 +572,19 @@ export default function BookingDetails() {
                       </Button>
                     )}
                     
-                    {(booking.status === 'in_transit' || booking.status === 'warehouse') && (
+                    {booking.status === 'in_transit' && (
+                      <Button 
+                        size="sm" 
+                        onClick={() => handleStatusUpdate('warehouse')}
+                        disabled={statusUpdating}
+                        className="bg-purple-600 hover:bg-purple-700"
+                      >
+                        <Package className="h-4 w-4 mr-2" />
+                        Mark In Warehouse
+                      </Button>
+                    )}
+                    
+                    {booking.status === 'warehouse' && (
                       <Button
                         size="sm"
                         onClick={() => handleStatusUpdate('delivered')}
@@ -720,13 +826,13 @@ export default function BookingDetails() {
                     {/* In Transit Status */}
                     <div className="relative flex items-start gap-4 mb-8">
                       <div className={`h-8 w-8 rounded-full ${
-                        booking.status === 'in_transit' || booking.status === 'delivered'
+                        booking.status === 'in_transit' || booking.status === 'warehouse' || booking.status === 'delivered'
                           ? 'bg-green-100'
                           : booking.status === 'cancelled'
                           ? 'bg-red-100'
                           : 'bg-gray-100'
                       } flex items-center justify-center z-10`}>
-                        {booking.status === 'in_transit' || booking.status === 'delivered' ? (
+                        {booking.status === 'in_transit' || booking.status === 'warehouse' || booking.status === 'delivered' ? (
                           <CheckCircle2 className="h-4 w-4 text-green-600" />
                         ) : booking.status === 'cancelled' ? (
                           <AlertTriangle className="h-4 w-4 text-red-600" />
@@ -736,13 +842,49 @@ export default function BookingDetails() {
                       </div>
                       <div className="flex-1 pt-1">
                         <h4 className="font-medium text-gray-900">In Transit</h4>
-                        {booking.status === 'in_transit' || booking.status === 'delivered' ? (
+                        {booking.status === 'in_transit' || booking.status === 'warehouse' || booking.status === 'delivered' ? (
                           <>
                             <p className="text-sm text-gray-500">
                               {new Date(booking.updated_at).toLocaleString()}
                             </p>
                             <p className="text-sm text-gray-600 mt-1">
                               Shipment in transit from {booking.from_branch_details?.name} to {booking.to_branch_details?.name}
+                            </p>
+                          </>
+                        ) : booking.status === 'cancelled' ? (
+                          <p className="text-sm text-red-500">Booking was cancelled</p>
+                        ) : (
+                          <p className="text-sm text-gray-500">Pending</p>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* Warehouse Status */}
+                    <div className="relative flex items-start gap-4 mb-8">
+                      <div className={`h-8 w-8 rounded-full ${
+                        booking.status === 'warehouse' || booking.status === 'delivered'
+                          ? 'bg-green-100'
+                          : booking.status === 'cancelled'
+                          ? 'bg-red-100'
+                          : 'bg-gray-100'
+                      } flex items-center justify-center z-10`}>
+                        {booking.status === 'warehouse' || booking.status === 'delivered' ? (
+                          <CheckCircle2 className="h-4 w-4 text-green-600" />
+                        ) : booking.status === 'cancelled' ? (
+                          <AlertTriangle className="h-4 w-4 text-red-600" />
+                        ) : (
+                          <Clock className="h-4 w-4 text-gray-400" />
+                        )}
+                      </div>
+                      <div className="flex-1 pt-1">
+                        <h4 className="font-medium text-gray-900">In Warehouse</h4>
+                        {booking.status === 'warehouse' || booking.status === 'delivered' ? (
+                          <>
+                            <p className="text-sm text-gray-500">
+                              {new Date(booking.updated_at).toLocaleString()}
+                            </p>
+                            <p className="text-sm text-gray-600 mt-1">
+                              Shipment arrived at {booking.to_branch_details?.name}
                             </p>
                           </>
                         ) : booking.status === 'cancelled' ? (

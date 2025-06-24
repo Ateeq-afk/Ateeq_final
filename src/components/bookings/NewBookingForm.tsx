@@ -511,6 +511,7 @@ export default function NewBookingForm({ onSubmit, onClose }: NewBookingFormProp
                         <Select
                           value={watch('to_branch')}
                           onValueChange={(value) => setValue('to_branch', value)}
+                          disabled={!watchFromBranch}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Select to branch" />

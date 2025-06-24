@@ -169,7 +169,7 @@ export function useUnloading(organizationId: string | null = null) {
         // Continue anyway since we have the new session record
       }
 
-      // 3. Update OGPL status
+      // 3. Update OGPL status to 'unloaded' instead of 'completed'
       const { error: ogplError } = await supabase
         .from('ogpl')
         .update({
