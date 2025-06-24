@@ -43,7 +43,6 @@ interface PreviewItem {
 }
 
 export default function ArticleBulkRates({ onClose }: Props) {
-  // ---- State ----
   const [searchQuery, setSearchQuery] = useState('');
   const [step, setStep] = useState<Step>('select');
   const [adjustType, setAdjustType] = useState<AdjustType>('percentage');
@@ -57,7 +56,6 @@ export default function ArticleBulkRates({ onClose }: Props) {
   const { articles, updateArticle } = useArticles();
   const { showSuccess, showError } = useNotificationSystem();
 
-  // ---- Filter & Sort ----
   const filtered = useMemo(
     () =>
       articles.filter((a) =>
@@ -164,7 +162,7 @@ export default function ArticleBulkRates({ onClose }: Props) {
     }
   };
 
-  // ---- Render ----
+
   return (
     <div className="space-y-6">
       {/* Header */}
