@@ -95,7 +95,14 @@ export interface Booking {
   private_mark_number?: string;
   remarks?: string;
   payment_type: 'Quotation' | 'To Pay' | 'Paid';
-  status: 'booked' | 'in_transit' | 'warehouse' | 'delivered' | 'cancelled';
+  status:
+    | 'booked'
+    | 'in_transit'
+    | 'unloaded'
+    | 'out_for_delivery'
+    | 'delivered'
+    | 'cancelled'
+    | 'pod_received';
   created_at: string;
   updated_at: string;
   sender?: Customer;
@@ -217,4 +224,4 @@ export interface AuditLog {
   };
 }
 
-export const STATUS_WAREHOUSE = 'warehouse';
+export const STATUS_UNLOADED = 'unloaded';

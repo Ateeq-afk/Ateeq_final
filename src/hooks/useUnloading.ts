@@ -200,11 +200,11 @@ export function useUnloading(organizationId: string | null = null) {
         const condition = conditions[bookingId];
         
         try {
-          // Move to warehouse if item was received
+          // Mark as unloaded if item was received
           if (condition && condition.status !== 'missing') {
             await updateBookingStatus(
               bookingId,
-              'warehouse',
+              'unloaded',
               {
                 unloading_status: 'unloaded',
                 unloading_session_id: sessionData.id,

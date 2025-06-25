@@ -1,7 +1,8 @@
 const bookings = [];
 const ogpls = [];
 
-const STATUS_WAREHOUSE = 'warehouse';
+const STATUS_UNLOADED = 'unloaded';
+const STATUS_OUT_FOR_DELIVERY = 'out_for_delivery';
 
 function createOGPL({ lrIds = [], ...data }) {
   const ogpl = { id: ogpls.length + 1, lrIds, status: 'created', ...data };
@@ -37,7 +38,7 @@ function completeUnloading(ogplId) {
       const booking = bookings.find(b => b.id === id);
       if (!booking) throw new Error(`Booking ${id} not found`);
       previous.set(id, booking.status);
-      booking.status = STATUS_WAREHOUSE;
+      booking.status = STATUS_UNLOADED;
     }
 
     ogpl.status = 'unloaded';
@@ -52,8 +53,14 @@ function completeUnloading(ogplId) {
   }
 }
 
-function initiateDelivery(lrId) {
+function startDelivery(lrId) {
+  const booking = bookings.find(b => b.id == lrId);
+  if (!booking) throw new Error(`Booking ${lrId} not found`);
+  booking.status = STATUS_OUT_FOR_DELIVERY;
+  return booking;
+}
 
+function markDelivered(lrId) {
   const booking = bookings.find(b => b.id == lrId);
   if (!booking) throw new Error(`Booking ${lrId} not found`);
   booking.status = 'delivered';
@@ -68,9 +75,11 @@ function reset() {
 module.exports = {
   createOGPL,
   completeUnloading,
-  initiateDelivery,
+  startDelivery,
+  markDelivered,
   bookings,
   ogpls,
   reset,
-  STATUS_WAREHOUSE,
+  STATUS_UNLOADED,
+  STATUS_OUT_FOR_DELIVERY,
 };
