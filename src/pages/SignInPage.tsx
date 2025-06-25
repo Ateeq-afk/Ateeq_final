@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { Card } from '@/components/ui/card'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 
@@ -18,29 +19,28 @@ export default function SignInPage() {
   }
 
   return (
-    <div className="flex h-screen items-center justify-center bg-gray-50">
-      <form
-        onSubmit={handleSubmit}
-        className="w-80 space-y-4 rounded bg-white p-8 shadow-md"
-      >
-        <h2 className="text-center text-xl font-bold">Sign In</h2>
-        <div className="space-y-2">
-          <Label htmlFor="login">Username or Email</Label>
-          <Input id="login" value={loginId} onChange={e => setLoginId(e.target.value)} />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
-          <Input
-            id="password"
-            type="password"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-          />
-        </div>
-        <Button type="submit" className="w-full">Sign In</Button>
-        <p className="text-center text-sm">
-          Don't have an account? <Link className="text-blue-600" to="/signup">Sign Up</Link>
-        </p>
+    <div className="flex h-screen items-center justify-center bg-background">
+      <form onSubmit={handleSubmit}>
+        <Card className="w-80 space-y-4 p-8">
+          <h2 className="text-center text-xl font-bold">Sign In</h2>
+          <div className="space-y-2">
+            <Label htmlFor="login">Username or Email</Label>
+            <Input id="login" value={loginId} onChange={e => setLoginId(e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="password">Password</Label>
+            <Input
+              id="password"
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+            />
+          </div>
+          <Button type="submit" className="w-full">Sign In</Button>
+          <p className="text-center text-sm">
+            Don't have an account? <Link className="text-blue-600" to="/signup">Sign Up</Link>
+          </p>
+        </Card>
       </form>
     </div>
   )
