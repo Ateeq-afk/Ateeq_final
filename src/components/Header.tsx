@@ -15,6 +15,7 @@ import {
   DropdownMenuItem
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import ThemeToggle from './ThemeToggle';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCurrentBranch } from '@/hooks/useCurrentBranch';
 import { useNavigate } from 'react-router-dom';
@@ -84,6 +85,8 @@ export default function Header() {
               <HelpCircle className="h-5 w-5 text-gray-700" />
             </Button>
           </motion.div>
+
+          <ThemeToggle />
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

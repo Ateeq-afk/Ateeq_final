@@ -327,15 +327,17 @@ function Sidebar({ onNavigate, currentPage }: SidebarProps) {
             
             {/* Recent Bookings Dropdown */}
             <div className="ml-12 mt-1">
-              <button 
-                className="flex items-center text-xs text-gray-500 hover:text-brand-600 transition-colors"
+              <Button
+                variant="ghost"
+                size="sm"
+                className="flex items-center text-xs"
                 onClick={() => setShowRecentBookings(!showRecentBookings)}
               >
-                <ChevronDown 
-                  className={`h-3 w-3 mr-1 transition-transform ${showRecentBookings ? 'rotate-180' : ''}`} 
+                <ChevronDown
+                  className={`h-3 w-3 mr-1 transition-transform ${showRecentBookings ? 'rotate-180' : ''}`}
                 />
                 Recent Bookings
-              </button>
+              </Button>
               
               <AnimatePresence>
                 {showRecentBookings && (
