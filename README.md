@@ -17,6 +17,9 @@ The server listens on `http://localhost:3000` and exposes the following endpoint
 
 The data is stored in memory for now, so restarting the server will clear all users and bookings.
 
+**Note**: SMS notification support has been removed. The application no longer sends
+text messages when actions occur.
+
 ## Front-end
 
 The React front-end (inside `src/`) was generated with Vite and uses Supabase for authentication. Run the front-end with `npm run dev` and use the `/signup` and `/signin` pages to create an account in Supabase and log in. The Express server remains as a small example of username based APIs but is not required for Supabase auth.
