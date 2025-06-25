@@ -8,23 +8,7 @@ import { useBookings } from '@/hooks/useBookings';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useNotificationSystem } from '@/hooks/useNotificationSystem';
 import { useCurrentBranch } from '@/hooks/useCurrentBranch';
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  Legend, 
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  LineChart,
-  Line,
-  AreaChart,
-  Area
-} from 'recharts';
+import ReactECharts from 'echarts-for-react';
 import { useNavigate } from 'react-router-dom';
 import { IndianRupee } from '@/components/ui/icons';
 import { motion } from 'framer-motion';
@@ -195,6 +179,54 @@ function DashboardStats() {
       value
     }));
   }, [filteredBookings]);
+
+  const dailyOptions = React.useMemo(() => ({
+    tooltip: { trigger: 'axis' },
+    legend: { data: ['Bookings', 'Delivered', 'Revenue'] },
+    xAxis: {
+      type: 'category',
+      data: bookingTrends.map((item) => item.date)
+    },
+    yAxis: { type: 'value' },
+    series: [
+      {
+        name: 'Bookings',
+        type: 'bar',
+        stack: 'activity',
+        data: bookingTrends.map((item) => item.bookings),
+        itemStyle: { color: '#22c55e' }
+      },
+      {
+        name: 'Delivered',
+        type: 'bar',
+        stack: 'activity',
+        data: bookingTrends.map((item) => item.delivered),
+        itemStyle: { color: '#3b82f6' }
+      },
+      {
+        name: 'Revenue',
+        type: 'line',
+        data: bookingTrends.map((item) => item.revenue),
+        itemStyle: { color: '#a855f7' }
+      }
+    ]
+  }), [bookingTrends]);
+
+  const statusOptions = React.useMemo(() => ({
+    tooltip: { trigger: 'item' },
+    legend: { orient: 'horizontal', bottom: 0 },
+    series: [
+      {
+        name: 'Booking Status',
+        type: 'pie',
+        radius: ['50%', '70%'],
+        avoidLabelOverlap: false,
+        label: { show: true, formatter: '{b}: {d}%'},
+        labelLine: { show: true },
+        data: statusDistribution.map((item) => ({ value: item.value, name: item.name }))
+      }
+    ]
+  }), [statusDistribution]);
 
   // Generate payment type distribution data
   const paymentTypeData = React.useMemo(() => {
@@ -548,72 +580,7 @@ function DashboardStats() {
                 </div>
                 <div className="h-[300px]">
                   {bookingTrends.length > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={bookingTrends}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                        <XAxis 
-                          dataKey="date" 
-                          tick={{ fontSize: 12 }}
-                          tickFormatter={(value) => {
-                            const date = new Date(value);
-                            return date.toLocaleDateString('en-US', { 
-                              month: 'short', 
-                              day: 'numeric' 
-                            });
-                          }}
-                        />
-                        <YAxis 
-                          yAxisId="left"
-                          tick={{ fontSize: 12 }}
-                        />
-                        <YAxis 
-                          yAxisId="right"
-                          orientation="right"
-                          tick={{ fontSize: 12 }}
-                          tickFormatter={(value) => `₹${value/1000}K`}
-                        />
-                        <Tooltip 
-                          formatter={(value, name) => {
-                            if (name === 'revenue') return [`₹${value}`, 'Revenue'];
-                            return [value, name.charAt(0).toUpperCase() + name.slice(1)];
-                          }}
-                          labelFormatter={(label) => {
-                            const date = new Date(label);
-                            return date.toLocaleDateString('en-US', { 
-                              weekday: 'long',
-                              year: 'numeric', 
-                              month: 'long', 
-                              day: 'numeric' 
-                            });
-                          }}
-                        />
-                        <Bar 
-                          yAxisId="left"
-                          name="bookings" 
-                          dataKey="bookings" 
-                          fill="#3b82f6" 
-                          radius={[4, 4, 0, 0]} 
-                          barSize={8}
-                        />
-                        <Bar 
-                          yAxisId="left"
-                          name="delivered" 
-                          dataKey="delivered" 
-                          fill="#22c55e" 
-                          radius={[4, 4, 0, 0]} 
-                          barSize={8}
-                        />
-                        <Line
-                          yAxisId="right"
-                          name="revenue"
-                          type="monotone"
-                          dataKey="revenue"
-                          stroke="#8b5cf6"
-                          strokeWidth={2}
-                          dot={{ r: 4 }}
-                        />
-                      </BarChart>
-                    </ResponsiveContainer>
+                    <ReactECharts option={dailyOptions} style={{ height: 300 }} />
                   ) : (
                     <div className="h-full flex items-center justify-center">
                       <p className="text-gray-500">No booking data available for the selected period</p>
@@ -638,27 +605,7 @@ function DashboardStats() {
                 </div>
                 <div className="h-[300px]">
                   {statusDistribution.some(item => item.value > 0) ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={statusDistribution}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={60}
-                          outerRadius={90}
-                          paddingAngle={5}
-                          dataKey="value"
-                          label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                        >
-                          <Cell fill="#22c55e" /> {/* Delivered - Green */}
-                          <Cell fill="#3b82f6" /> {/* In Transit - Blue */}
-                          <Cell fill="#f59e0b" /> {/* Booked - Yellow */}
-                          <Cell fill="#ef4444" /> {/* Cancelled - Red */}
-                        </Pie>
-                        <Tooltip formatter={(value) => [`${value} bookings`, 'Count']} />
-                        <Legend />
-                      </PieChart>
-                    </ResponsiveContainer>
+                    <ReactECharts option={statusOptions} style={{ height: 250 }} />
                   ) : (
                     <div className="h-full flex items-center justify-center">
                       <p className="text-gray-500">No status data available for the selected period</p>
