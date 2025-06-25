@@ -29,12 +29,16 @@ import { useNavigate } from 'react-router-dom';
 import { IndianRupee } from '@/components/ui/icons';
 import { motion } from 'framer-motion';
 import QuickActionCards from './dashboard/QuickActionCards';
+import { useVehicles } from '@/hooks/useVehicles';
+import { useCustomers } from '@/hooks/useCustomers';
 
 function DashboardStats() {
-  const { bookings, loading: bookingsLoading } = useBookings();
+  const { bookings, loading: bookingsLoading, refresh: refreshBookings } = useBookings();
   const { currentBranch } = useCurrentBranch();
   const { showSuccess } = useNotificationSystem();
   const navigate = useNavigate();
+  const { vehicles, loading: vehiclesLoading, refresh: refreshVehicles } = useVehicles();
+  const { customers, loading: customersLoading, refresh: refreshCustomers } = useCustomers();
 
   // Date filter state
   const [dateRange, setDateRange] = useState('last_month');
@@ -95,20 +99,6 @@ function DashboardStats() {
 
   // Calculate statistics
   const stats = React.useMemo(() => {
-    if (!filteredBookings.length) return {
-      totalDeliveries: 0,
-      revenue: 0,
-      deliveredCount: 0,
-      inTransitCount: 0,
-      bookedCount: 0,
-      cancelledCount: 0,
-      avgDeliveryTime: 0,
-      activeVehicles: 0,
-      totalVehicles: 0,
-      totalCustomers: 0,
-      newCustomers: 0
-    };
-
     const deliveredCount = filteredBookings.filter(b => b.status === 'delivered').length;
     const inTransitCount = filteredBookings.filter(b => b.status === 'in_transit').length;
     const bookedCount = filteredBookings.filter(b => b.status === 'booked').length;
@@ -129,6 +119,22 @@ function DashboardStats() {
       avgDeliveryTime = totalDeliveryTime / deliveredBookings.length;
     }
 
+    const totalVehicles = vehicles.length;
+    const activeVehicles = vehicles.filter(v => v.status === 'active').length;
+    const maintenanceVehicles = vehicles.filter(v => v.status === 'maintenance').length;
+    const inactiveVehicles = vehicles.filter(v => v.status === 'inactive').length;
+    const utilization = totalVehicles ? Math.round((activeVehicles / totalVehicles) * 100) : 0;
+
+    const totalCustomers = customers.length;
+    const activeCustomers = customers.filter(c => c.status === 'active').length;
+    const individuals = customers.filter(c => c.type === 'individual').length;
+    const companies = customers.filter(c => c.type === 'company').length;
+    const newCustomers = customers.filter(c => {
+      const created = new Date(c.created_at);
+      const diff = (Date.now() - created.getTime()) / (1000 * 60 * 60 * 24);
+      return diff <= 30;
+    }).length;
+
     return {
       totalDeliveries,
       revenue,
@@ -137,12 +143,18 @@ function DashboardStats() {
       bookedCount,
       cancelledCount,
       avgDeliveryTime,
-      activeVehicles: 0, // Will be populated from vehicles data
-      totalVehicles: 0,  // Will be populated from vehicles data
-      totalCustomers: 0, // Will be populated from customers data
-      newCustomers: 0    // Will be populated from customers data
+      activeVehicles,
+      maintenanceVehicles,
+      inactiveVehicles,
+      utilization,
+      totalVehicles,
+      totalCustomers,
+      activeCustomers,
+      individuals,
+      companies,
+      newCustomers
     };
-  }, [filteredBookings]);
+  }, [filteredBookings, vehicles, customers]);
 
   // Generate booking trend data
   const bookingTrends = React.useMemo(() => {
@@ -323,16 +335,22 @@ function DashboardStats() {
     showSuccess('Export Complete', 'Dashboard data exported successfully');
   };
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setRefreshing(true);
-    // Simulate refresh delay
-    setTimeout(() => {
-      setRefreshing(false);
+    try {
+      await Promise.all([
+        refreshBookings(),
+        refreshVehicles(),
+        refreshCustomers()
+      ]);
       showSuccess('Dashboard Refreshed', 'Dashboard data has been updated');
-    }, 1000);
+    } finally {
+      setRefreshing(false);
+    }
   };
 
-  const isLoading = bookingsLoading || refreshing;
+  const isLoading =
+    bookingsLoading || vehiclesLoading || customersLoading || refreshing;
 
   return (
     <div className="space-y-6">
@@ -486,13 +504,13 @@ function DashboardStats() {
                 <StatCard
                   icon={Truck}
                   title="Fleet Status"
-                  value={`${stats.activeVehicles}/${stats.totalVehicles}`}
+                  value={stats.totalVehicles.toString()}
                   color="green"
                   details={[
                     { label: 'Active', value: stats.activeVehicles },
-                    { label: 'Maintenance', value: 0 },
-                    { label: 'Inactive', value: 0 },
-                    { label: 'Utilization', value: stats.totalVehicles ? Math.round((stats.activeVehicles / stats.totalVehicles) * 100) : 0, suffix: '%' }
+                    { label: 'Maintenance', value: stats.maintenanceVehicles },
+                    { label: 'Inactive', value: stats.inactiveVehicles },
+                    { label: 'Utilization', value: stats.utilization, suffix: '%' }
                   ]}
                 />
               </motion.div>
@@ -509,9 +527,9 @@ function DashboardStats() {
                   color="amber"
                   details={[
                     { label: 'New', value: stats.newCustomers },
-                    { label: 'Companies', value: 0 },
-                    { label: 'Individuals', value: 0 },
-                    { label: 'Active', value: 0 }
+                    { label: 'Companies', value: stats.companies },
+                    { label: 'Individuals', value: stats.individuals },
+                    { label: 'Active', value: stats.activeCustomers }
                   ]}
                 />
               </motion.div>
