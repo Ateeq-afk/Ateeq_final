@@ -355,8 +355,9 @@ function Sidebar({ onNavigate, currentPage }: SidebarProps) {
                           <div className="flex items-center gap-1.5 overflow-hidden">
                             <div className={`h-2 w-2 rounded-full flex-shrink-0 ${
                               booking.status === 'delivered' ? 'bg-green-500' :
+                              booking.status === 'out_for_delivery' ? 'bg-orange-500' :
                               booking.status === 'in_transit' ? 'bg-blue-500' :
-                              booking.status === 'warehouse' ? 'bg-purple-500' :
+                              booking.status === 'unloaded' ? 'bg-purple-500' :
                               booking.status === 'cancelled' ? 'bg-red-500' :
                               'bg-yellow-500'
                             }`}></div>
@@ -366,7 +367,20 @@ function Sidebar({ onNavigate, currentPage }: SidebarProps) {
                             </div>
                           </div>
                           <div className="flex items-center">
-                            {booking.status === 'warehouse' && (
+                            {booking.status === 'unloaded' && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-gray-400 hover:text-orange-600"
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  await updateBookingStatus(booking.id, 'out_for_delivery');
+                                }}
+                              >
+                                <Truck className="h-3 w-3" />
+                              </Button>
+                            )}
+                            {booking.status === 'out_for_delivery' && (
                               <Button
                                 variant="ghost"
                                 size="icon"

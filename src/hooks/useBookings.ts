@@ -254,7 +254,15 @@ export function useBookings<T = Booking>(branchId: string | null = null) {
       console.log(`Updating booking ${id} status to ${status}`);
       
       // Validate status value
-      const validStatuses: Booking['status'][] = ['booked', 'in_transit', 'warehouse', 'delivered', 'cancelled'];
+      const validStatuses: Booking['status'][] = [
+        'booked',
+        'in_transit',
+        'unloaded',
+        'out_for_delivery',
+        'delivered',
+        'cancelled',
+        'pod_received',
+      ];
       if (!validStatuses.includes(status)) {
         throw new Error(`Invalid status: ${status}. Valid statuses are: ${validStatuses.join(', ')}`);
       }

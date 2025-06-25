@@ -118,8 +118,8 @@ export default function BookingList() {
 
   // Booking click handler
   const handleBookingClick = (booking: Booking) => {
-    // If booking is in warehouse status, show POD form
-    if (booking.status === 'warehouse') {
+    // If booking is delivered, show POD form
+    if (booking.status === 'delivered') {
       setShowPODId(booking.id);
     } else {
       // Otherwise navigate to booking details
@@ -208,8 +208,10 @@ export default function BookingList() {
             <SelectItem value="all">All</SelectItem>
             <SelectItem value="booked">Booked</SelectItem>
             <SelectItem value="in_transit">In Transit</SelectItem>
-            <SelectItem value="warehouse">In Warehouse</SelectItem>
+            <SelectItem value="unloaded">Unloaded</SelectItem>
+            <SelectItem value="out_for_delivery">Out for Delivery</SelectItem>
             <SelectItem value="delivered">Delivered</SelectItem>
+            <SelectItem value="pod_received">POD Received</SelectItem>
             <SelectItem value="cancelled">Cancelled</SelectItem>
           </SelectContent>
         </Select>
@@ -334,7 +336,7 @@ export default function BookingList() {
                           <Download className="mr-2 h-4 w-4" />
                           Download LR
                         </DropdownMenuItem>
-                        {booking.status === 'warehouse' && (
+                        {booking.status === 'delivered' && (
                           <DropdownMenuItem
                             onClick={() => setShowPODId(booking.id)}
                           >

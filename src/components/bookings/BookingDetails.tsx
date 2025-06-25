@@ -411,8 +411,10 @@ export default function BookingDetails() {
         return 'bg-green-100 text-green-800';
       case 'in_transit':
         return 'bg-blue-100 text-blue-800';
-      case 'warehouse':
+      case 'unloaded':
         return 'bg-purple-100 text-purple-800';
+      case 'out_for_delivery':
+        return 'bg-orange-100 text-orange-800';
       case 'cancelled':
         return 'bg-red-100 text-red-800';
       default:
@@ -425,6 +427,10 @@ export default function BookingDetails() {
       case 'delivered':
         return <CheckCircle2 className="h-4 w-4" />;
       case 'in_transit':
+        return <Truck className="h-4 w-4" />;
+      case 'unloaded':
+        return <Package className="h-4 w-4" />;
+      case 'out_for_delivery':
         return <Truck className="h-4 w-4" />;
       case 'cancelled':
         return <AlertTriangle className="h-4 w-4" />;
@@ -547,18 +553,30 @@ export default function BookingDetails() {
                     )}
                     
                     {booking.status === 'in_transit' && (
-                      <Button 
-                        size="sm" 
-                        onClick={() => handleStatusUpdate('warehouse')}
+                      <Button
+                        size="sm"
+                        onClick={() => handleStatusUpdate('unloaded')}
                         disabled={statusUpdating}
                         className="bg-purple-600 hover:bg-purple-700"
                       >
                         <Package className="h-4 w-4 mr-2" />
-                        Mark In Warehouse
+                        Mark Unloaded
                       </Button>
                     )}
-                    
-                    {booking.status === 'warehouse' && (
+
+                    {booking.status === 'unloaded' && (
+                      <Button
+                        size="sm"
+                        onClick={() => handleStatusUpdate('out_for_delivery')}
+                        disabled={statusUpdating}
+                        className="bg-orange-600 hover:bg-orange-700"
+                      >
+                        <Truck className="h-4 w-4 mr-2" />
+                        Start Delivery
+                      </Button>
+                    )}
+
+                    {booking.status === 'out_for_delivery' && (
                       <Button
                         size="sm"
                         onClick={() => handleStatusUpdate('delivered')}
@@ -800,13 +818,13 @@ export default function BookingDetails() {
                     {/* In Transit Status */}
                     <div className="relative flex items-start gap-4 mb-8">
                       <div className={`h-8 w-8 rounded-full ${
-                        booking.status === 'in_transit' || booking.status === 'warehouse' || booking.status === 'delivered'
+                        booking.status === 'in_transit' || booking.status === 'unloaded' || booking.status === 'out_for_delivery' || booking.status === 'delivered'
                           ? 'bg-green-100'
                           : booking.status === 'cancelled'
                           ? 'bg-red-100'
                           : 'bg-gray-100'
                       } flex items-center justify-center z-10`}>
-                        {booking.status === 'in_transit' || booking.status === 'warehouse' || booking.status === 'delivered' ? (
+                        {booking.status === 'in_transit' || booking.status === 'unloaded' || booking.status === 'out_for_delivery' || booking.status === 'delivered' ? (
                           <CheckCircle2 className="h-4 w-4 text-green-600" />
                         ) : booking.status === 'cancelled' ? (
                           <AlertTriangle className="h-4 w-4 text-red-600" />
@@ -816,7 +834,7 @@ export default function BookingDetails() {
                       </div>
                       <div className="flex-1 pt-1">
                         <h4 className="font-medium text-gray-900">In Transit</h4>
-                        {booking.status === 'in_transit' || booking.status === 'warehouse' || booking.status === 'delivered' ? (
+                        {booking.status === 'in_transit' || booking.status === 'unloaded' || booking.status === 'out_for_delivery' || booking.status === 'delivered' ? (
                           <>
                             <p className="text-sm text-gray-500">
                               {new Date(booking.updated_at).toLocaleString()}
@@ -833,16 +851,16 @@ export default function BookingDetails() {
                       </div>
                     </div>
                     
-                    {/* Warehouse Status */}
+                    {/* Unloaded Status */}
                     <div className="relative flex items-start gap-4 mb-8">
                       <div className={`h-8 w-8 rounded-full ${
-                        booking.status === 'warehouse' || booking.status === 'delivered'
+                        booking.status === 'unloaded' || booking.status === 'out_for_delivery' || booking.status === 'delivered'
                           ? 'bg-green-100'
                           : booking.status === 'cancelled'
                           ? 'bg-red-100'
                           : 'bg-gray-100'
                       } flex items-center justify-center z-10`}>
-                        {booking.status === 'warehouse' || booking.status === 'delivered' ? (
+                        {booking.status === 'unloaded' || booking.status === 'out_for_delivery' || booking.status === 'delivered' ? (
                           <CheckCircle2 className="h-4 w-4 text-green-600" />
                         ) : booking.status === 'cancelled' ? (
                           <AlertTriangle className="h-4 w-4 text-red-600" />
@@ -851,8 +869,8 @@ export default function BookingDetails() {
                         )}
                       </div>
                       <div className="flex-1 pt-1">
-                        <h4 className="font-medium text-gray-900">In Warehouse</h4>
-                        {booking.status === 'warehouse' || booking.status === 'delivered' ? (
+                        <h4 className="font-medium text-gray-900">Unloaded</h4>
+                        {booking.status === 'unloaded' || booking.status === 'out_for_delivery' || booking.status === 'delivered' ? (
                           <>
                             <p className="text-sm text-gray-500">
                               {new Date(booking.updated_at).toLocaleString()}

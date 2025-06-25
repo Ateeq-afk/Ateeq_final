@@ -2,11 +2,13 @@ const assert = require('assert');
 const {
   createOGPL,
   completeUnloading,
-  initiateDelivery,
+  startDelivery,
+  markDelivered,
   bookings,
   ogpls,
   reset,
-  STATUS_WAREHOUSE,
+  STATUS_UNLOADED,
+  STATUS_OUT_FOR_DELIVERY,
 } = require('../server/ogplService.cjs');
 
 reset();
@@ -22,15 +24,21 @@ assert.strictEqual(ogpls.length, 1);
 
 completeUnloading(ogpl.id);
 
-assert.strictEqual(bookings[0].status, STATUS_WAREHOUSE);
-assert.strictEqual(bookings[1].status, STATUS_WAREHOUSE);
+assert.strictEqual(bookings[0].status, STATUS_UNLOADED);
+assert.strictEqual(bookings[1].status, STATUS_UNLOADED);
 assert.strictEqual(ogpl.status, 'unloaded');
 
-initiateDelivery(1);
-initiateDelivery(2);
+startDelivery(1);
+startDelivery(2);
+
+assert.strictEqual(bookings[0].status, STATUS_OUT_FOR_DELIVERY);
+assert.strictEqual(bookings[1].status, STATUS_OUT_FOR_DELIVERY);
+
+markDelivered(1);
+markDelivered(2);
 
 assert.strictEqual(bookings[0].status, 'delivered');
 assert.strictEqual(bookings[1].status, 'delivered');
 
-console.log('OGPL unloading updated LR statuses to warehouse successfully');
+console.log('OGPL unloading updated LR statuses to unloaded, delivery initiated and completed successfully');
 
