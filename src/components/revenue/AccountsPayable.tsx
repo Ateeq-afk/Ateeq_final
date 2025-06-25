@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Wallet, Search, Filter, Download, Eye, Plus, Calendar, CheckCircle2, AlertCircle, Loader2, ArrowUpDown, CreditCard, FileText, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,8 @@ import { motion } from 'framer-motion';
 import { useNotificationSystem } from '@/hooks/useNotificationSystem';
 import type { Booking } from '@/types';
 import PaymentForm from './PaymentForm';
+import { supabase } from '@/lib/supabaseClient';
+import { differenceInDays } from 'date-fns';
 
 interface Props {
   bookings: Booking[];
@@ -46,58 +48,42 @@ export default function AccountsPayable({ bookings }: Props) {
   const { showSuccess, showError } = useNotificationSystem();
   const itemsPerPage = 10;
 
-  // Generate payables (mock data since we don't have real expense data)
-  const payables: Payable[] = React.useMemo(() => {
-    const categories: Payable['category'][] = ['Vehicle Maintenance', 'Fuel', 'Office Supplies', 'Rent', 'Salaries', 'Other'];
-    const vendors = [
-      { id: 'vendor-1', name: 'Fuel Suppliers Ltd.', email: 'accounts@fuelsuppliers.com' },
-      { id: 'vendor-2', name: 'Vehicle Parts Co.', email: 'billing@vehicleparts.com' },
-      { id: 'vendor-3', name: 'Office Depot', email: 'invoices@officedepot.com' },
-      { id: 'vendor-4', name: 'City Properties', email: 'rent@cityproperties.com' },
-      { id: 'vendor-5', name: 'HR Services Inc.', email: 'payroll@hrservices.com' },
-    ];
-    
-    return Array.from({ length: 20 }, (_, i) => {
-      const date = new Date();
-      date.setDate(date.getDate() - Math.floor(Math.random() * 60)); // Random date in the last 60 days
-      
-      const dueDate = new Date(date);
-      dueDate.setDate(dueDate.getDate() + 30); // 30 days payment terms
-      
-      const now = new Date();
-      const daysOverdue = dueDate < now ? Math.floor((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)) : 0;
-      
-      const amount = Math.floor(Math.random() * 50000) + 1000;
-      const amountPaid = Math.random() > 0.7 ? amount * (Math.random() * 0.7) : 0;
-      const amountDue = amount - amountPaid;
-      
-      // Determine status
-      let status: Payable['status'];
-      if (amountPaid > 0 && amountDue > 0) {
-        status = 'partially_paid';
-      } else if (daysOverdue > 0) {
-        status = 'overdue';
+  const [payables, setPayables] = useState<Payable[]>([]);
+  const [loadingBills, setLoadingBills] = useState(true);
+
+  useEffect(() => {
+    async function loadBills() {
+      setLoadingBills(true);
+      const { data, error } = await supabase.from('bills').select('*');
+      if (error) {
+        console.error('Failed to fetch bills', error);
+        setPayables([]);
       } else {
-        status = 'current';
+        const mapped = (data || []).map((bill: any) => {
+          const dueDate = bill.due_date as string;
+          return {
+            id: bill.id ?? bill.bill_number,
+            invoiceNumber: bill.bill_number ?? String(bill.id),
+            date: bill.created_at,
+            dueDate,
+            vendor: {
+              id: bill.vendor_name,
+              name: bill.vendor_name,
+              email: bill.vendor_email ?? undefined,
+            },
+            amount: bill.amount_due,
+            amountPaid: bill.amount_paid ?? 0,
+            amountDue: bill.amount_due - (bill.amount_paid ?? 0),
+            status: bill.status,
+            daysOverdue: differenceInDays(new Date(), new Date(dueDate)),
+            category: bill.category,
+          } as Payable;
+        });
+        setPayables(mapped);
       }
-      
-      const vendor = vendors[Math.floor(Math.random() * vendors.length)];
-      const category = categories[Math.floor(Math.random() * categories.length)];
-      
-      return {
-        id: `payable-${i}`,
-        invoiceNumber: `BILL-${date.getFullYear()}${(date.getMonth() + 1).toString().padStart(2, '0')}${i.toString().padStart(3, '0')}`,
-        date: date.toISOString(),
-        dueDate: dueDate.toISOString(),
-        vendor,
-        amount,
-        amountPaid,
-        amountDue,
-        status,
-        daysOverdue,
-        category
-      };
-    });
+      setLoadingBills(false);
+    }
+    loadBills();
   }, []);
 
   // Filter and sort payables
