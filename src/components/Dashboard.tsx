@@ -33,6 +33,7 @@ import LoadingManagementPage from '@/pages/LoadingManagementPage';
 import UnloadingPage from '@/components/UnloadingPage';
 import PODDashboard from '@/components/pod/PODDashboard';
 import LazyBook from './bookings/LazyBook';
+import PreferencesPage from "@/pages/PreferencesPage";
 
 export default function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -126,6 +127,7 @@ export default function Dashboard() {
                 <Route path="/loading" element={<LoadingManagementPage />} />
                 <Route path="/unloading" element={<UnloadingPage />} />
                 <Route path="/pod" element={<PODDashboard />} />
+                <Route path="/settings" element={<PreferencesPage />} />
               </Routes>
             </motion.div>
           </AnimatePresence>
