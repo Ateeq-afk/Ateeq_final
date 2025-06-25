@@ -33,6 +33,19 @@ export interface Customer {
   organization_id?: string;
 }
 
+export interface Vendor {
+  id: string;
+  branch_id: string;
+  name: string;
+  type: 'Driver' | 'Labour' | 'Fuel' | 'Rent' | 'Maintenance' | 'Others';
+  contact?: string;
+  email?: string;
+  gst_number?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface CustomerArticleRate {
   id: string;
   customer_id: string;
