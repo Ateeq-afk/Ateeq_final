@@ -41,13 +41,14 @@ const getArticle = useCallback(async (id: string): Promise<Article> => {
 }, []);
 
 // 5) Fetch all customer‐specific rates for a given article
-const getCustomerRates = useCallback(
+const getArticleRates = useCallback(
   async (articleId: string): Promise<CustomerArticleRate[]> => {
     const { data, error } = await supabase
       .from('customer_article_rates')
       .select(`
         id,
         customer_id,
+        article_id,
         rate,
         customer:customers(id,name,type)       -- pull in customer metadata
       `)
@@ -63,6 +64,39 @@ const getCustomerRates = useCallback(
       customer_type: (r.customer?.type as 'individual'|'corporate') || 'individual',
       rate: r.rate,
     }));
+  },
+  []
+);
+
+// 6) Fetch all article rates for a given customer
+const getCustomerRates = useCallback(
+  async (customerId: string): Promise<CustomerArticleRate[]> => {
+    const { data, error } = await supabase
+      .from('customer_article_rates')
+      .select('*')
+      .eq('customer_id', customerId);
+
+    if (error) throw error;
+    return data || [];
+  },
+  []
+);
+
+// 7) Fetch a single custom rate for customer & article
+const getCustomRateForCustomer = useCallback(
+  async (
+    customerId: string,
+    articleId: string
+  ): Promise<number | null> => {
+    const { data, error } = await supabase
+      .from('customer_article_rates')
+      .select('rate')
+      .eq('customer_id', customerId)
+      .eq('article_id', articleId)
+      .maybeSingle();
+
+    if (error) throw error;
+    return data ? data.rate : null;
   },
   []
 );
@@ -358,7 +392,9 @@ const getCustomerRates = useCallback(
     createArticle,
     updateArticle,
     deleteArticle,
+    getArticleRates,
     getCustomerRates,
+    getCustomRateForCustomer,
     updateCustomerRate,
     getArticle,
   };
