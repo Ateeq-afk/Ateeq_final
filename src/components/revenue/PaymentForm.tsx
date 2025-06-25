@@ -9,10 +9,11 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useCustomers } from '@/hooks/useCustomers';
+import { useVendors } from '@/hooks/useVendors';
 import { Combobox } from '@/components/ui/combobox';
 import type { ComboboxOption } from '@/components/ui/combobox';
 
-const paymentSchema = z.object({
+const customerSchema = z.object({
   amount: z.number().min(1, 'Amount must be at least 1'),
   date: z.string().min(1, 'Payment date is required'),
   method: z.enum(['Cash', 'Bank Transfer', 'UPI', 'Cheque']),
@@ -22,17 +23,27 @@ const paymentSchema = z.object({
   notes: z.string().optional(),
 });
 
-type FormValues = z.infer<typeof paymentSchema>;
+const vendorSchema = customerSchema.extend({
+  customerId: z.undefined(),
+  vendorId: z.string().min(1, 'Vendor is required'),
+});
+
+type CustomerFormValues = z.infer<typeof customerSchema>;
+type VendorFormValues = z.infer<typeof vendorSchema>;
+type FormValues = CustomerFormValues | VendorFormValues;
 
 interface Props {
   onSubmit: (data: FormValues) => void;
   onCancel: () => void;
   loading?: boolean;
+  mode?: 'customer' | 'vendor';
 }
 
-export default function PaymentForm({ onSubmit, onCancel, loading = false }: Props) {
+export default function PaymentForm({ onSubmit, onCancel, loading = false, mode = 'customer' }: Props) {
   const { customers } = useCustomers();
+  const { vendors } = useVendors();
   const [customerSearch, setCustomerSearch] = useState('');
+  const [vendorSearch, setVendorSearch] = useState('');
   
   const {
     register,
@@ -41,13 +52,13 @@ export default function PaymentForm({ onSubmit, onCancel, loading = false }: Pro
     watch,
     formState: { errors },
   } = useForm<FormValues>({
-    resolver: zodResolver(paymentSchema),
+    resolver: zodResolver(mode === 'vendor' ? vendorSchema : customerSchema),
     defaultValues: {
       amount: 0,
       date: new Date().toISOString().split('T')[0],
       method: 'Cash',
       reference: '',
-      customerId: '',
+      ...(mode === 'vendor' ? { vendorId: '' } : { customerId: '' }),
       invoiceNumber: '',
       notes: '',
     },
@@ -62,6 +73,17 @@ export default function PaymentForm({ onSubmit, onCancel, loading = false }: Pro
       mobile: customer.mobile,
       gst: customer.gst,
       email: customer.email
+    }
+  }));
+
+  const vendorOptions: ComboboxOption[] = vendors.map(vendor => ({
+    value: vendor.id,
+    label: `${vendor.name} (${vendor.type})`,
+    icon: User,
+    details: {
+      mobile: vendor.contact,
+      gst: vendor.gst_number,
+      email: vendor.email
     }
   }));
   
@@ -135,16 +157,24 @@ export default function PaymentForm({ onSubmit, onCancel, loading = false }: Pro
         </div>
         
         <div>
-          <Label>Customer <span className="text-red-500">*</span></Label>
+          <Label>
+            {mode === 'vendor' ? 'Vendor' : 'Customer'}{' '}
+            <span className="text-red-500">*</span>
+          </Label>
           <Combobox
-            options={customerOptions}
-            value={watch('customerId')}
-            onValueChange={(value) => setValue('customerId', value)}
-            placeholder="Select customer"
-            searchPlaceholder="Search customers..."
-            onSearchChange={setCustomerSearch}
+            options={mode === 'vendor' ? vendorOptions : customerOptions}
+            value={watch(mode === 'vendor' ? 'vendorId' : 'customerId')}
+            onValueChange={(value) =>
+              setValue(mode === 'vendor' ? 'vendorId' : 'customerId', value)
+            }
+            placeholder={`Select ${mode === 'vendor' ? 'vendor' : 'customer'}`}
+            searchPlaceholder={`Search ${mode === 'vendor' ? 'vendors' : 'customers'}...`}
+            onSearchChange={mode === 'vendor' ? setVendorSearch : setCustomerSearch}
           />
-          {errors.customerId && (
+          {mode === 'vendor' && errors.vendorId && (
+            <p className="text-sm text-red-500 mt-1">{errors.vendorId.message}</p>
+          )}
+          {mode === 'customer' && errors.customerId && (
             <p className="text-sm text-red-500 mt-1">{errors.customerId.message}</p>
           )}
         </div>

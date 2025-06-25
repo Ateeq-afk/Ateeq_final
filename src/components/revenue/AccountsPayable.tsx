@@ -563,7 +563,8 @@ export default function AccountsPayable({ bookings }: Props) {
               {showPaymentForm === 'new' ? 'Record Expense' : 'Make Payment'}
             </DialogTitle>
           </DialogHeader>
-          <PaymentForm 
+          <PaymentForm
+            mode="vendor"
             onSubmit={handleRecordPayment}
             onCancel={() => setShowPaymentForm(null)}
             loading={loading}
