@@ -2,16 +2,41 @@ import React, { useState } from 'react';
 import { 
   Search, 
   HelpCircle, 
-  Bell 
+  Bell
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { motion } from 'framer-motion';
 import { useNotifications } from '@/lib/notifications';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem
+} from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { useAuth } from '@/contexts/AuthContext';
+import { useCurrentBranch } from '@/hooks/useCurrentBranch';
+import { useNavigate } from 'react-router-dom';
 
 export default function Header() {
   const [searchQuery, setSearchQuery] = useState('');
   const { unreadCount } = useNotifications();
+  const { user, logout } = useAuth();
+  const { branch } = useCurrentBranch();
+  const navigate = useNavigate();
+
+  const userInitials = user?.name
+    ? user.name
+        .split(' ')
+        .map(n => n[0])
+        .join('')
+    : '';
+
+  const signOut = async () => {
+    await logout();
+    navigate('/signin');
+  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,9 +65,9 @@ export default function Header() {
         </form>
         <div className="flex items-center gap-3">
           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-            <Button 
-              variant="outline" 
-              size="icon" 
+            <Button
+              variant="outline"
+              size="icon"
               className="rounded-xl h-10 w-10 border-gray-200 bg-white shadow-soft relative"
             >
               <Bell className="h-5 w-5 text-gray-700" />
@@ -59,6 +84,24 @@ export default function Header() {
               <HelpCircle className="h-5 w-5 text-gray-700" />
             </Button>
           </motion.div>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="flex items-center gap-2">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src="/user-icon.png" alt="User" />
+                  <AvatarFallback>{userInitials}</AvatarFallback>
+                </Avatar>
+                <div className="text-sm text-left hidden md:block">
+                  <div className="font-medium">{user?.name}</div>
+                  <div className="text-xs text-muted-foreground">{branch?.name}</div>
+                </div>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={signOut}>Sign Out</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </header>
