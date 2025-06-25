@@ -1,7 +1,17 @@
 import React, { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
+import { BarChart2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useBranches } from '@/hooks/useBranches';
 import { BranchSelectionProvider, useBranchSelection } from '@/contexts/BranchSelectionContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -11,6 +21,24 @@ import ReactECharts from 'echarts-for-react';
 
 interface ReportRow {
   [key: string]: any;
+}
+
+function EmptyState({
+  icon,
+  title,
+  subtitle,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  subtitle?: string;
+}) {
+  return (
+    <div className="py-12 text-center text-gray-500">
+      <div className="flex justify-center mb-4">{icon}</div>
+      <h3 className="text-lg font-medium text-gray-900">{title}</h3>
+      {subtitle && <p className="text-gray-500 mt-1">{subtitle}</p>}
+    </div>
+  );
 }
 
 function ReportsContent() {
@@ -90,6 +118,14 @@ function ReportsContent() {
     return Object.values(row).some(v => String(v).toLowerCase().includes(search.toLowerCase()));
   });
 
+  const badgeVariantForStatus = (value: string) => {
+    const val = value.toLowerCase();
+    if (val.includes('paid') || val.includes('delivered')) return 'success';
+    if (val.includes('cancel')) return 'destructive';
+    if (val.includes('pending') || val.includes('booked')) return 'warning';
+    return 'secondary';
+  };
+
   const exportCSV = () => {
     const csv = Papa.unparse(filteredData);
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -131,8 +167,8 @@ function ReportsContent() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-end gap-4">
-        <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4">
+      <Card className="mb-4 p-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <div>
             <label className="block text-sm font-medium mb-1">Report Type</label>
             <Select value={reportType} onValueChange={setReportType}>
@@ -155,57 +191,103 @@ function ReportsContent() {
                 <SelectValue placeholder="Select branch" />
               </SelectTrigger>
               <SelectContent>
-                {branches.map(b => (
-                  <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                {branches.map((b) => (
+                  <SelectItem key={b.id} value={b.id}>
+                    {b.name}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Start Date</label>
-            <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+            <Input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">End Date</label>
-            <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
+            <Input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+            />
           </div>
-        </div>
-        <Button onClick={generateReport} disabled={loading} className="w-full md:w-auto">Generate Report</Button>
-      </div>
-
-      <div className="flex items-center justify-between">
-        <Input
-          placeholder="Search..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="max-w-sm"
-        />
-        <Button variant="outline" onClick={exportCSV}>Export CSV</Button>
-      </div>
-
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="bg-gray-50">
-              {filteredData[0] && Object.keys(filteredData[0]).map(key => (
-                <th key={key} className="px-4 py-2 text-left capitalize">{key.replace('_', ' ')}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {filteredData.map((row, idx) => (
-              <tr key={idx} className="hover:bg-gray-50">
-                {Object.values(row).map((val, i) => (
-                  <td key={i} className="px-4 py-2">{String(val)}</td>
-                ))}
-              </tr>
-            ))}
-            {filteredData.length === 0 && (
-              <tr><td className="px-4 py-8 text-center" colSpan={5}>No data</td></tr>
+          <Button
+            onClick={generateReport}
+            disabled={loading}
+            className="self-end w-full"
+          >
+            {loading && (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
             )}
-          </tbody>
-        </table>
+            Generate Report
+          </Button>
+        </div>
+      </Card>
+
+      <div className="flex items-center justify-between mb-2">
+        <Input
+          placeholder="Search reports…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full max-w-sm"
+        />
+        <Button variant="outline" onClick={exportCSV}>
+          Export CSV
+        </Button>
       </div>
+
+      {loading ? (
+        <div className="py-12 flex justify-center">
+          <Loader2 className="h-6 w-6 animate-spin" />
+        </div>
+      ) : filteredData.length === 0 ? (
+        <EmptyState
+          icon={<BarChart2 size={40} className="text-muted-foreground" />}
+          title="No report data"
+          subtitle="Try changing the filters or date range."
+        />
+      ) : (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm border rounded-md overflow-hidden">
+              <thead className="bg-muted/40 sticky top-0 z-10">
+                <tr>
+                  {filteredData[0] &&
+                    Object.keys(filteredData[0]).map((key) => (
+                      <th
+                        key={key}
+                        className="p-2 text-left font-medium capitalize"
+                      >
+                        {key.replace('_', ' ')}
+                      </th>
+                    ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filteredData.map((row, idx) => (
+                  <tr key={idx} className="hover:bg-muted/10 border-b">
+                    {Object.entries(row).map(([key, val], i) => (
+                      <td key={i} className="p-2">
+                        {String(key).toLowerCase().includes('status') ? (
+                          <Badge variant={badgeVariantForStatus(String(val))}>
+                            {String(val).replace('_', ' ')}
+                          </Badge>
+                        ) : (
+                          String(val)
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </motion.div>
+      )}
 
       {chartOptions() && (
         <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">

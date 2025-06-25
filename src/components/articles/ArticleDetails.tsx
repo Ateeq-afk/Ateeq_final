@@ -43,7 +43,7 @@ const formatDate = (iso: string) =>
   });
 
 export default function ArticleDetails({ article, onClose }: Props) {
-  const { getArticle, updateArticle, getCustomerRates } = useArticles();
+  const { getArticle, updateArticle, getArticleRates } = useArticles();
 
   // local copy of article so we can re-fetch after editing
   const [current, setCurrent] = useState(article);
@@ -74,7 +74,7 @@ export default function ArticleDetails({ article, onClose }: Props) {
     let mounted = true;
     if (activeTab === 'rates') {
       setRatesLoading(true);
-      getCustomerRates(current.id)
+      getArticleRates(current.id)
         .then((r) => mounted && setCustomerRates(r))
         .catch(() => mounted && setCustomerRates([]))
         .finally(() => mounted && setRatesLoading(false));
@@ -82,7 +82,7 @@ export default function ArticleDetails({ article, onClose }: Props) {
     return () => {
       mounted = false;
     };
-  }, [activeTab, current.id, getCustomerRates]);
+  }, [activeTab, current.id, getArticleRates]);
 
   // compute quick‐stats
   const stats = useMemo(() => {

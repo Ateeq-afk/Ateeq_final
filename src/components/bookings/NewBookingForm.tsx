@@ -132,7 +132,7 @@ export default function NewBookingForm({ onSubmit, onClose }: NewBookingFormProp
   const [lrNumber, setLrNumber] = useState('');
   
   const { branches, loading: branchesLoading } = useBranches();
-  const { articles, loading: articlesLoading } = useArticles();
+  const { articles, loading: articlesLoading, getCustomRateForCustomer } = useArticles();
   const { customers, loading: customersLoading } = useCustomers();
   const { generateLRNumber } = useLR();
   const { getCurrentUserBranch } = useAuth();
@@ -255,18 +255,27 @@ export default function NewBookingForm({ onSubmit, onClose }: NewBookingFormProp
   }));
   
   // Handle article selection to set default freight rate
-  const handleArticleChange = (articleId: string) => {
+  const handleArticleChange = async (articleId: string) => {
     setValue('article_id', articleId);
-    
-    // Find the selected article
+
     const selectedArticle = articles.find(a => a.id === articleId);
-    if (selectedArticle) {
-      setValue('freight_per_qty', selectedArticle.base_rate);
-      
-      // If article has a unit of measure, set it
-      if (selectedArticle.unit_of_measure) {
-        setValue('uom', selectedArticle.unit_of_measure);
+    if (!selectedArticle) return;
+
+    let rate = selectedArticle.base_rate;
+    const payerId =
+      watchPaymentType === 'To Pay' ? watch('receiver_id') : watch('sender_id');
+    if (payerId) {
+      try {
+        const custom = await getCustomRateForCustomer(payerId, articleId);
+        if (custom !== null) rate = custom;
+      } catch (err) {
+        console.error('Failed to fetch custom rate:', err);
       }
+    }
+
+    setValue('freight_per_qty', rate);
+    if (selectedArticle.unit_of_measure) {
+      setValue('uom', selectedArticle.unit_of_measure);
     }
   };
   
