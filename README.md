@@ -2,6 +2,8 @@
 
 This project contains a React front-end and a small Express backend used for demonstration purposes. The backend supports username based login with hierarchical organization, branch, and user IDs.
 
+For a review of logistics-related tables and how the new columns are used, see [docs/table_audit.md](docs/table_audit.md).
+
 ## Running the API server
 
 ```bash
@@ -37,6 +39,7 @@ text messages when actions occur.
 
 The React front-end (inside `src/`) was generated with Vite and now uses the Express API for authentication. Run the front-end with `npm run dev` and use the `/signup` and `/signin` pages to create accounts and log in. You can also create new organizations via `/new-organization`.
 
+
 ## Seeding Supabase Data
 
 For development you can populate Supabase with some sample data using:
@@ -46,3 +49,15 @@ npm run seed:supabase
 ```
 
 The script expects `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` environment variables (you can place them in a `.env` file). It will create an organization, a couple of branches, example users, customers, articles and vehicles.
+=======
+## Backend
+
+A new Express backend is located in `backend/`. It uses Supabase as the database and verifies Supabase issued JWTs. To run it:
+
+```bash
+cd backend && npm install
+npm run dev
+```
+
+Environment variables are defined in `backend/.env.example`.
+
