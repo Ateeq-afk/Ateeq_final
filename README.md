@@ -36,3 +36,14 @@ text messages when actions occur.
 ## Front-end
 
 The React front-end (inside `src/`) was generated with Vite and now uses the Express API for authentication. Run the front-end with `npm run dev` and use the `/signup` and `/signin` pages to create accounts and log in. You can also create new organizations via `/new-organization`.
+
+## Backend
+
+A new Express backend is located in `backend/`. It uses Supabase as the database and verifies Supabase issued JWTs. To run it:
+
+```bash
+cd backend && npm install
+npm run dev
+```
+
+Environment variables are defined in `backend/.env.example`.
