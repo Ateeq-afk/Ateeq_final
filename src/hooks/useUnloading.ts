@@ -15,10 +15,10 @@ export function useUnloading(organizationId: string | null = null) {
   const { showSuccess, showError } = useNotificationSystem();
   const { getCurrentUserBranch } = useAuth();
   const { updateBookingStatus } = useBookings();
-  const userBranch = getCurrentUserBranch();
 
   // Get incoming OGPLs that need to be unloaded
   const getIncomingOGPLs = useCallback(async () => {
+    const userBranch = getCurrentUserBranch();
     try {
       setLoading(true);
       setError(null);
@@ -103,7 +103,7 @@ export function useUnloading(organizationId: string | null = null) {
     } finally {
       setLoading(false);
     }
-  }, [userBranch]);
+  }, [getCurrentUserBranch]);
 
   // Unload an OGPL
   const unloadOGPL = async (
@@ -111,6 +111,7 @@ export function useUnloading(organizationId: string | null = null) {
     bookingIds: string[],
     conditions: Record<string, { status: string; remarks?: string; photo?: string }>
   ) => {
+    const userBranch = getCurrentUserBranch();
     try {
       setLoading(true);
       setError(null);
@@ -280,10 +281,11 @@ export function useUnloading(organizationId: string | null = null) {
 
   // Get completed unloadings
   const getCompletedUnloadings = useCallback(async () => {
+    const userBranch = getCurrentUserBranch();
     try {
       setLoading(true);
       setError(null);
-      
+
       const effectiveBranchId = userBranch?.id;
       
       console.log('Getting completed unloadings, branchId:', effectiveBranchId);
@@ -333,14 +335,15 @@ export function useUnloading(organizationId: string | null = null) {
     } finally {
       setLoading(false);
     }
-  }, [userBranch]);
+  }, [getCurrentUserBranch]);
 
   // Get unloading statistics
   const getUnloadingStats = useCallback(async () => {
+    const userBranch = getCurrentUserBranch();
     try {
       setLoading(true);
       setError(null);
-      
+
       const effectiveBranchId = userBranch?.id;
       
       if (!effectiveBranchId) {
@@ -414,7 +417,7 @@ export function useUnloading(organizationId: string | null = null) {
     } finally {
       setLoading(false);
     }
-  }, [userBranch]);
+  }, [getCurrentUserBranch]);
 
   return {
     loading,
