@@ -17,6 +17,15 @@ The server listens on `http://localhost:3000` and exposes the following endpoint
 
 The data is stored in memory for now, so restarting the server will clear all users and bookings.
 
+### Default Super Admin
+
+A super admin account is created automatically when the server starts:
+
+- **Email/Username:** `tabateeq@gmail.com`
+- **Password:** `superadmin`
+
+This user is not restricted to a single organization or branch and can access all data.
+
 **Note**: SMS notification support has been removed. The application no longer sends
 text messages when actions occur.
 
