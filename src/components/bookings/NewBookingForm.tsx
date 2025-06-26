@@ -253,7 +253,7 @@ export default function NewBookingForm({ onSubmit, onClose }: NewBookingFormProp
       rate: `₹${article.base_rate}`
     }
   }));
-  
+
   // Handle article selection to set default freight rate
   const handleArticleChange = async (articleId: string) => {
     setValue('article_id', articleId);
@@ -278,6 +278,32 @@ export default function NewBookingForm({ onSubmit, onClose }: NewBookingFormProp
       setValue('uom', selectedArticle.unit_of_measure);
     }
   };
+
+  // Update freight rate when payer or article changes
+  useEffect(() => {
+    const applyRate = async () => {
+      const articleId = watch('article_id');
+      if (!articleId) return;
+
+      const article = articles.find(a => a.id === articleId);
+      if (!article) return;
+
+      let rate = article.base_rate;
+      const payerId =
+        watchPaymentType === 'To Pay' ? watch('receiver_id') : watch('sender_id');
+      if (payerId) {
+        try {
+          const custom = await getCustomRateForCustomer(payerId, articleId);
+          if (custom !== null) rate = custom;
+        } catch (err) {
+          console.error('Failed to fetch custom rate:', err);
+        }
+      }
+      setValue('freight_per_qty', rate);
+    };
+
+    applyRate();
+  }, [watch('article_id'), watch('receiver_id'), watch('sender_id'), watchPaymentType]);
   
   // Navigate between steps
   const goToNextStep = async () => {
