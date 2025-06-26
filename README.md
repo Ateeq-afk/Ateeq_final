@@ -2,6 +2,8 @@
 
 This project contains a React front-end and a small Express backend used for demonstration purposes. The backend supports username based login with hierarchical organization, branch, and user IDs.
 
+For a review of logistics-related tables and how the new columns are used, see [docs/table_audit.md](docs/table_audit.md).
+
 ## Running the API server
 
 ```bash
