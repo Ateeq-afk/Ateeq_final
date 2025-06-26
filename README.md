@@ -36,3 +36,13 @@ text messages when actions occur.
 ## Front-end
 
 The React front-end (inside `src/`) was generated with Vite and now uses the Express API for authentication. Run the front-end with `npm run dev` and use the `/signup` and `/signin` pages to create accounts and log in. You can also create new organizations via `/new-organization`.
+
+## Seeding Supabase Data
+
+For development you can populate Supabase with some sample data using:
+
+```bash
+npm run seed:supabase
+```
+
+The script expects `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` environment variables (you can place them in a `.env` file). It will create an organization, a couple of branches, example users, customers, articles and vehicles.
