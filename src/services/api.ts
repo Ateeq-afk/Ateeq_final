@@ -10,6 +10,7 @@ export async function signUp(options: {
   desiredUsername: string
   password: string
   branchId: string
+  role: string
 }) {
   const { data } = await axios.post('/api/signup', options)
   return data

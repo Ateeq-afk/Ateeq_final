@@ -62,7 +62,7 @@ function generateUserCode(branchCode) {
 }
 
 app.post('/api/signup', async (req, res) => {
-  const { fullName, desiredUsername, password, branchId } = req.body;
+  const { fullName, desiredUsername, password, branchId, role } = req.body;
   const branch = branches.find(b => b.code === branchId);
   if (!branch) return res.status(400).json({ error: 'Invalid branch' });
 
@@ -84,7 +84,7 @@ app.post('/api/signup', async (req, res) => {
     username,
     fullName,
     passwordHash,
-    role: 'staff'
+    role: role || 'branch_user'
   };
   users.push(user);
   res.status(201).json({ userId: user.code, username: user.username });
