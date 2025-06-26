@@ -17,6 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { motion } from 'framer-motion';
+import { supabase } from '@/lib/supabaseClient';
 import { useNotificationSystem } from '@/hooks/useNotificationSystem';
 
 interface PODFormProps {
@@ -215,14 +216,39 @@ export default function PODForm({ booking, onSubmit, onCancel }: PODFormProps) {
   const handleSubmit = async () => {
     try {
       setSubmitting(true);
-      
+
+      let signatureUrl: string | null = null;
+      let photoUrl: string | null = null;
+
+      if (formData.signatureImage) {
+        const blob = await (await fetch(formData.signatureImage)).blob();
+        const sigPath = `signatures/${booking.id}-${Date.now()}.png`;
+        const { error } = await supabase.storage
+          .from('pod_files')
+          .upload(sigPath, blob, { upsert: true, contentType: 'image/png' });
+        if (error) throw error;
+        signatureUrl =
+          supabase.storage.from('pod_files').getPublicUrl(sigPath).data.publicUrl;
+      }
+
+      if (formData.photoEvidence) {
+        const blob = await (await fetch(formData.photoEvidence)).blob();
+        const photoPath = `photos/${booking.id}-${Date.now()}.png`;
+        const { error } = await supabase.storage
+          .from('pod_files')
+          .upload(photoPath, blob, { upsert: true, contentType: 'image/png' });
+        if (error) throw error;
+        photoUrl =
+          supabase.storage.from('pod_files').getPublicUrl(photoPath).data.publicUrl;
+      }
+
       await onSubmit({
         bookingId: booking.id,
         receiverName: formData.receiverName,
         receiverPhone: formData.receiverPhone,
         receiverDesignation: formData.receiverDesignation,
-        signatureImage: formData.signatureImage,
-        photoEvidence: formData.photoEvidence,
+        signatureImage: signatureUrl ?? undefined,
+        photoEvidence: photoUrl ?? undefined,
         remarks: formData.remarks
       });
       

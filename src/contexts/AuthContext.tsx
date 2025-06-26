@@ -1,20 +1,16 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
-import { login as apiLogin } from '@/services/api'
+import { supabase } from '@/lib/supabaseClient'
+import type { User } from '@supabase/supabase-js'
 
-interface UserPayload {
-  userId: string
-  orgId: number | null
-  branchId: number | null
-  role: string
-}
+interface UserPayload extends User {}
 
 interface AuthContextType {
   token: string | null
   user: UserPayload | null
   loading: boolean
   error: Error | null
-  login: (orgId: string, username: string, password: string) => Promise<void>
-  logout: () => void
+  login: (loginId: string, password: string) => Promise<void>
+  logout: () => Promise<void>
   getCurrentUserBranch: () => { id: string } | null
 }
 
@@ -24,19 +20,11 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   error: null,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  login: async (_o: string, _u: string, _p: string) => {},
-  logout: () => {},
+  login: async (_u: string, _p: string) => {},
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  logout: async () => {},
   getCurrentUserBranch: () => null
 })
-
-function decodeToken(token: string): UserPayload | null {
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1]))
-    return payload as UserPayload
-  } catch {
-    return null
-  }
-}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null)
@@ -45,21 +33,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<Error | null>(null)
 
   useEffect(() => {
-    const stored = localStorage.getItem('token')
-    if (stored) {
-      setToken(stored)
-      setUser(decodeToken(stored))
+    const { data: authListener } = supabase.auth.onAuthStateChange((_, session) => {
+      setToken(session?.access_token || null)
+      setUser(session?.user || null)
+    })
+
+    supabase.auth.getSession().then(({ data }) => {
+      setToken(data.session?.access_token || null)
+      setUser(data.session?.user || null)
+      setLoading(false)
+    })
+
+    return () => {
+      authListener.subscription.unsubscribe()
     }
-    setLoading(false)
   }, [])
 
-  async function login(orgId: string, username: string, password: string) {
+  async function login(loginId: string, password: string) {
     try {
       setLoading(true)
-      const tok = await apiLogin(orgId, username, password)
-      localStorage.setItem('token', tok)
-      setToken(tok)
-      setUser(decodeToken(tok))
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: loginId,
+        password
+      })
+      if (error) throw error
+      setToken(data.session?.access_token || null)
+      setUser(data.session?.user || null)
     } catch (err) {
       setError(err as Error)
       throw err
@@ -68,15 +67,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  function logout() {
-    localStorage.removeItem('token')
+  async function logout() {
+    await supabase.auth.signOut()
     setToken(null)
     setUser(null)
   }
 
   const getCurrentUserBranch = () => {
-    if (user?.branchId) {
-      return { id: String(user.branchId) }
+    const branchId = user?.user_metadata?.branch_id
+    if (branchId) {
+      return { id: String(branchId) }
     }
     return null
   }
