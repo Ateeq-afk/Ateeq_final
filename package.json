@@ -8,7 +8,6 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "start:server": "node server/index.js",
     "test": "node tests/ogpl.test.cjs"
   },
   "dependencies": {
