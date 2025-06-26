@@ -1024,7 +1024,14 @@ export default function NewBookingForm({ onSubmit, onClose }: NewBookingFormProp
             
             <div className="p-6 bg-gray-50 border-t border-gray-200 flex justify-between">
               {activeStep !== 'basic' ? (
-                <Button type="button" variant="outline" onClick={goToPrevStep}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    goToPrevStep();
+                  }}
+                >
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Previous
                 </Button>
@@ -1036,7 +1043,13 @@ export default function NewBookingForm({ onSubmit, onClose }: NewBookingFormProp
               )}
               
               {activeStep !== 'payment' ? (
-                <Button type="button" onClick={goToNextStep}>
+                <Button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    goToNextStep();
+                  }}
+                >
                   Next
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
