@@ -46,7 +46,7 @@ export default function Header() {
   };
 
   return (
-    <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+    <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 bg-white/80 backdrop-blur-md rounded-xl px-6 py-4 shadow-soft">
       <div>
         <h1 className="text-2xl md:text-3xl font-black text-gray-900">
           <span className="bg-gradient-to-r from-brand-600 to-brand-800 bg-clip-text text-transparent">DesiCargo</span>
