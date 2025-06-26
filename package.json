@@ -8,9 +8,13 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
+<<<<<<< codex/remove-mock-express-backend
+    "test": "node tests/ogpl.test.cjs"
+=======
     "start:server": "node server/index.js",
     "test": "node tests/ogpl.test.cjs",
     "seed:supabase": "node scripts/seedSupabase.js"
+>>>>>>> main
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.4",

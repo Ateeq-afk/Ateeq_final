@@ -1,8 +1,13 @@
 // src/services/bookings.ts
-import axios from 'axios'
+import { supabase } from '@/lib/supabaseClient'
 import type { Booking } from '../types'
 
 export async function fetchBookings(): Promise<Booking[]> {
-  const { data } = await axios.get('/api/bookings')
-  return data
+  const { data, error } = await supabase
+    .from('bookings')
+    .select('*')
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+  return data || []
 }
