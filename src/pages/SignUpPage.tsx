@@ -54,7 +54,7 @@ export default function SignUpPage() {
               </SelectTrigger>
               <SelectContent>
                 {branches.map(b => (
-                  <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                  <SelectItem key={b.id} value={b.code || b.id}>{b.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
