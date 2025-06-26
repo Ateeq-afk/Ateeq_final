@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useNavigate } from 'react-router-dom'
-import { signUp } from '@/services/api'
+import { supabase } from '@/lib/supabaseClient'
 import { useBranches } from '@/hooks/useBranches'
 import { Card } from '@/components/ui/card'
 
@@ -18,13 +18,18 @@ export default function SignUpPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    await signUp({
-      fullName,
-      desiredUsername: username,
+    const { error } = await supabase.auth.signUp({
+      email: username,
       password,
-      branchId: branch
+      options: {
+        data: { full_name: fullName, branch_id: branch }
+      }
     })
-    navigate('/signin')
+    if (!error) {
+      navigate('/signin')
+    } else {
+      console.error('Sign up failed', error)
+    }
   }
 
   return (
