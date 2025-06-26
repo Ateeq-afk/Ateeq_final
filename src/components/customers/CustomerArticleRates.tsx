@@ -13,11 +13,6 @@ interface Props {
   onClose: () => void
 }
 
-interface CustomRate {
-  article_id: string
-  rate: number
-}
-
 export default function CustomerArticleRates({ customer, onClose }: Props) {
   const [articles, setArticles] = useState<Article[]>([])
   const [customRateMap, setCustomRateMap] = useState<Record<string, number>>({})
@@ -126,6 +121,7 @@ export default function CustomerArticleRates({ customer, onClose }: Props) {
                     <Input
                       type="number"
                       value={customRateMap[article.id] ?? ''}
+                      placeholder={article.base_rate.toString()}
                       onChange={e => updateRate(article.id, e.target.value)}
                       className="h-8"
                     />
