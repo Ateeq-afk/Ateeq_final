@@ -33,44 +33,15 @@ export function useBranchUsers(branchId: string | null) {
         return;
       }
 
-      // For demo purposes, we'll use mock data
-      const mockUsers: BranchUser[] = [
-        {
-          id: '123e4567-e89b-12d3-a456-426614174100',
-          branch_id: branchId,
-          user_id: '123e4567-e89b-12d3-a456-426614174200',
-          role: 'admin',
-          name: 'Rajesh Kumar',
-          email: 'rajesh@desicargo.com',
-          phone: '+91 9876543210',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        },
-        {
-          id: '123e4567-e89b-12d3-a456-426614174101',
-          branch_id: branchId,
-          user_id: '123e4567-e89b-12d3-a456-426614174201',
-          role: 'operator',
-          name: 'Priya Sharma',
-          email: 'priya@desicargo.com',
-          phone: '+91 9876543211',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        },
-        {
-          id: '123e4567-e89b-12d3-a456-426614174102',
-          branch_id: branchId,
-          user_id: '123e4567-e89b-12d3-a456-426614174202',
-          role: 'operator',
-          name: 'Amit Patel',
-          email: 'amit@desicargo.com',
-          phone: '+91 9876543212',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }
-      ];
+      const { data, error: fetchError } = await supabase
+        .from('custom_users')
+        .select('*')
+        .eq('branch_id', branchId)
+        .order('name', { ascending: true });
 
-      setUsers(mockUsers);
+      if (fetchError) throw fetchError;
+
+      setUsers(data || []);
     } catch (err) {
       console.error('Failed to load branch users:', err);
       setError(err instanceof Error ? err : new Error('Failed to load branch users'));
@@ -89,18 +60,16 @@ export function useBranchUsers(branchId: string | null) {
         throw new Error('Invalid branch ID format');
       }
 
-      console.log('Adding branch user:', userData);
-      
-      // For demo purposes, we'll create a mock user
-      const mockUser: BranchUser = {
-        id: crypto.randomUUID(),
-        ...userData,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-      
-      setUsers(prev => [...prev, mockUser]);
-      return mockUser;
+      const { data, error: createError } = await supabase
+        .from('custom_users')
+        .insert(userData)
+        .select('*')
+        .single();
+
+      if (createError) throw createError;
+
+      setUsers(prev => [...prev, data]);
+      return data;
     } catch (err) {
       console.error('Failed to add branch user:', err);
       throw err instanceof Error ? err : new Error('Failed to add branch user');
@@ -118,19 +87,17 @@ export function useBranchUsers(branchId: string | null) {
       }
 
       console.log(`Updating branch user ${id}:`, updates);
-      
-      // For demo purposes, we'll update the local state
-      const updatedUser = users.find(u => u.id === id);
-      if (!updatedUser) throw new Error('User not found');
-      
-      const updatedData = {
-        ...updatedUser,
-        ...updates,
-        updated_at: new Date().toISOString()
-      };
-      
-      setUsers(prev => prev.map(user => user.id === id ? updatedData : user));
-      return updatedData;
+      const { data, error: updateError } = await supabase
+        .from('custom_users')
+        .update(updates)
+        .eq('id', id)
+        .select('*')
+        .single();
+
+      if (updateError) throw updateError;
+
+      setUsers(prev => prev.map(user => (user.id === id ? data : user)));
+      return data;
     } catch (err) {
       console.error('Failed to update branch user:', err);
       throw err instanceof Error ? err : new Error('Failed to update branch user');
@@ -144,12 +111,33 @@ export function useBranchUsers(branchId: string | null) {
       }
 
       console.log(`Removing branch user ${id}`);
-      
-      // For demo purposes, we'll update the local state
+      const { error: deleteError } = await supabase
+        .from('custom_users')
+        .delete()
+        .eq('id', id);
+
+      if (deleteError) throw deleteError;
+
       setUsers(prev => prev.filter(user => user.id !== id));
     } catch (err) {
       console.error('Failed to remove branch user:', err);
       throw err instanceof Error ? err : new Error('Failed to remove branch user');
+    }
+  }
+
+  // Basic invitation flow using a Supabase Edge Function
+  async function inviteUser(email: string, role: string) {
+    try {
+      const { data, error } = await supabase.functions.invoke('invite-user', {
+        body: { email, branchId, role }
+      });
+
+      if (error) throw error;
+
+      return data;
+    } catch (err) {
+      console.error('Failed to invite user:', err);
+      throw err instanceof Error ? err : new Error('Failed to invite user');
     }
   }
 
@@ -160,6 +148,7 @@ export function useBranchUsers(branchId: string | null) {
     addUser,
     updateUser,
     removeUser,
+    inviteUser,
     refresh: loadUsers
   };
 }

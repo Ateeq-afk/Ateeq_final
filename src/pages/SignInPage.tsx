@@ -4,19 +4,24 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Card } from '@/components/ui/card'
 import { Link, useNavigate } from 'react-router-dom'
-import { useAuth } from '@/contexts/AuthContext'
+import { supabase } from '@/lib/supabaseClient'
 
 export default function SignInPage() {
-  const [orgId, setOrgId] = useState('')
   const [loginId, setLoginId] = useState('')
   const [password, setPassword] = useState('')
-  const { login } = useAuth()
   const navigate = useNavigate()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    await login(orgId, loginId, password)
-    navigate('/dashboard')
+    const { error } = await supabase.auth.signInWithPassword({
+      email: loginId,
+      password
+    })
+    if (!error) {
+      navigate('/dashboard')
+    } else {
+      console.error('Sign in failed', error)
+    }
   }
 
   return (
@@ -24,10 +29,6 @@ export default function SignInPage() {
       <form onSubmit={handleSubmit}>
         <Card className="w-80 space-y-4 p-8">
           <h2 className="text-center text-xl font-bold">Sign In</h2>
-          <div className="space-y-2">
-            <Label htmlFor="org">Organization</Label>
-            <Input id="org" value={orgId} onChange={e => setOrgId(e.target.value)} />
-          </div>
           <div className="space-y-2">
             <Label htmlFor="login">Username or Email</Label>
             <Input id="login" value={loginId} onChange={e => setLoginId(e.target.value)} />
