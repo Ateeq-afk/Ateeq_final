@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Plus, Loader2 } from 'lucide-react'
+import { Plus, Loader2, X } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -91,9 +91,14 @@ export default function CustomerArticleRates({ customer, onClose }: Props) {
 
   return (
     <Card className="max-h-[80vh] overflow-auto">
-      <CardHeader>
-        <CardTitle>Article Rates</CardTitle>
-        <CardDescription>Set custom rates for {customer.name}</CardDescription>
+      <CardHeader className="flex items-start justify-between">
+        <div>
+          <CardTitle>Article Rates</CardTitle>
+          <CardDescription>Set custom rates for {customer.name}</CardDescription>
+        </div>
+        <Button variant="ghost" size="icon" onClick={onClose}>
+          <X className="h-4 w-4" />
+        </Button>
       </CardHeader>
       <CardContent className="space-y-4">
         <Input placeholder="Search articles..." onChange={e => setSearch(e.target.value)} />
