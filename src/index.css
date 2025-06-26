@@ -92,6 +92,13 @@
   .scrollbar-hidden::-webkit-scrollbar {
     display: none;
   }
+
+  /* Dark mode fixes for legacy classes */
+  .dark .bg-white { @apply bg-card; }
+  .dark .border-gray-200 { @apply border-border; }
+  .dark .text-gray-900 { @apply text-foreground; }
+  .dark .text-gray-600 { @apply text-muted-foreground; }
+  .dark .bg-gray-50 { @apply bg-muted; }
 }
 
 /* Custom styles for modern UI */
