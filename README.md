@@ -20,6 +20,15 @@ The server listens on `http://localhost:3000` and exposes the following endpoint
 - `POST /api/branches` – create a new branch under an organization.
 - `GET /api/bookings` – list bookings scoped to the authenticated user.
 - `POST /api/bookings` – create a booking scoped to the authenticated user.
+- `POST /edge/lr-number` – generate a unique LR number for a branch.
+- `POST /edge/ogpl` – create an OGPL and mark included bookings as in transit.
+- `POST /edge/unload-ogpl` – complete unloading for an OGPL.
+- `POST /edge/submit-pod` – mark a booking as delivered.
+- `GET /edge/reports/bookings` – return a simple booking status summary.
+
+These `/edge/*` routes act as lightweight equivalents of Supabase Edge
+functions, allowing the demo to handle complex logic such as LR number
+generation or transactional OGPL updates without a full database setup.
 
 The data is stored in memory for now, so restarting the server will clear all users and bookings.
 
