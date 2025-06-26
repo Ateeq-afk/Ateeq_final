@@ -19,9 +19,9 @@ export default function SignInPage() {
   }
 
   return (
-    <div className="flex h-screen items-center justify-center bg-background">
+    <div className="flex h-screen items-center justify-center bg-gradient-to-br from-brand-50 to-white">
       <form onSubmit={handleSubmit}>
-        <Card className="w-80 space-y-4 p-8">
+        <Card className="w-80 space-y-4 p-8 shadow-medium">
           <h2 className="text-center text-xl font-bold">Sign In</h2>
           <div className="space-y-2">
             <Label htmlFor="login">Username or Email</Label>
