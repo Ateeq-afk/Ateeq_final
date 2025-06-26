@@ -13,6 +13,7 @@ export default function SignUpPage() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [branch, setBranch] = useState('')
+  const [role, setRole] = useState('branch_user')
   const navigate = useNavigate()
   const { branches } = useBranches()
 
@@ -22,7 +23,8 @@ export default function SignUpPage() {
       fullName,
       desiredUsername: username,
       password,
-      branchId: branch
+      branchId: branch,
+      role
     })
     navigate('/signin')
   }
@@ -52,8 +54,20 @@ export default function SignUpPage() {
               </SelectTrigger>
               <SelectContent>
                 {branches.map(b => (
-                  <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                  <SelectItem key={b.id} value={b.code || b.id}>{b.name}</SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="role">Role</Label>
+            <Select onValueChange={setRole} value={role}>
+              <SelectTrigger id="role">
+                <SelectValue placeholder="Select role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="branch_user">Branch User</SelectItem>
+                <SelectItem value="accountant">Accountant</SelectItem>
               </SelectContent>
             </Select>
           </div>
