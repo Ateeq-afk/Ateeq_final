@@ -1,93 +1,65 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
-import type { Session } from '@supabase/supabase-js'
-import { supabase } from '@/lib/supabaseClient'
-import { signIn, signOut } from '@/services/auth'
+import { login as apiLogin } from '@/services/api'
 
-interface AuthUser {
-  id: string
-  email: string
-  name?: string | null
-}
-
-interface UserRole {
+interface UserPayload {
+  userId: string
+  orgId: number | null
+  branchId: number | null
   role: string
-  branchId: string | null
 }
 
 interface AuthContextType {
-  user: AuthUser | null
-  role: UserRole | null
+  token: string | null
+  user: UserPayload | null
   loading: boolean
   error: Error | null
-  login: (loginId: string, password: string) => Promise<void>
-  logout: () => Promise<void>
+  login: (orgId: string, username: string, password: string) => Promise<void>
+  logout: () => void
   getCurrentUserBranch: () => { id: string } | null
 }
 
 const AuthContext = createContext<AuthContextType>({
+  token: null,
   user: null,
-  role: null,
   loading: true,
   error: null,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  login: async (_id: string, _p: string) => {},
-  logout: async () => {},
+  login: async (_o: string, _u: string, _p: string) => {},
+  logout: () => {},
   getCurrentUserBranch: () => null
 })
 
+function decodeToken(token: string): UserPayload | null {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    return payload as UserPayload
+  } catch {
+    return null
+  }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null)
-  const [user, setUser] = useState<AuthUser | null>(null)
-  const [role, setRole] = useState<UserRole | null>(null)
+  const [token, setToken] = useState<string | null>(null)
+  const [user, setUser] = useState<UserPayload | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session)
-    })
-
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session)
-    })
-
-    return () => {
-      listener.subscription.unsubscribe()
+    const stored = localStorage.getItem('token')
+    if (stored) {
+      setToken(stored)
+      setUser(decodeToken(stored))
     }
+    setLoading(false)
   }, [])
 
-  useEffect(() => {
-    async function loadUser() {
-      if (!session?.user) {
-        setUser(null)
-        setRole(null)
-        setLoading(false)
-        return
-      }
-      setLoading(true)
-      const { data, error: fetchError } = await supabase
-        .from('users')
-        .select('name, role, branch_id')
-        .eq('id', session.user.id)
-        .single()
-
-      if (fetchError) {
-        setError(fetchError)
-        setUser({ id: session.user.id, email: session.user.email ?? '' })
-        setRole(null)
-      } else {
-        setUser({ id: session.user.id, email: session.user.email ?? '', name: data?.name })
-        setRole({ role: data?.role ?? 'staff', branchId: data?.branch_id ?? null })
-      }
-      setLoading(false)
-    }
-    loadUser()
-  }, [session])
-
-  async function login(loginId: string, password: string) {
+  async function login(orgId: string, username: string, password: string) {
     try {
       setLoading(true)
-      await signIn(loginId, password)
+      const tok = await apiLogin(orgId, username, password)
+      localStorage.setItem('token', tok)
+      setToken(tok)
+      setUser(decodeToken(tok))
     } catch (err) {
       setError(err as Error)
       throw err
@@ -96,22 +68,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  async function logout() {
-    await signOut()
-    setSession(null)
+  function logout() {
+    localStorage.removeItem('token')
+    setToken(null)
     setUser(null)
-    setRole(null)
   }
 
   const getCurrentUserBranch = () => {
-    if (role?.branchId) {
-      return { id: role.branchId }
+    if (user?.branchId) {
+      return { id: String(user.branchId) }
     }
     return null
   }
 
   return (
-    <AuthContext.Provider value={{ user, role, loading, error, login, logout, getCurrentUserBranch }}>
+    <AuthContext.Provider value={{ token, user, loading, error, login, logout, getCurrentUserBranch }}>
       {children}
     </AuthContext.Provider>
   )

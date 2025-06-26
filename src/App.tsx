@@ -5,6 +5,7 @@ import TrackingPage from './pages/TrackingPage';
 import LandingPage from './pages/LandingPage';
 import SignInPage from './pages/SignInPage';
 import SignUpPage from './pages/SignUpPage';
+import CreateOrganizationPage from './pages/CreateOrganizationPage';
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/signin" element={<SignInPage />} />
         <Route path="/signup" element={<SignUpPage />} />
+        <Route path="/new-organization" element={<CreateOrganizationPage />} />
         <Route path="/dashboard/*" element={<Dashboard />} />
         <Route path="/track" element={<TrackingPage />} />
         <Route path="/track/:lrNumber" element={<TrackingPage />} />
