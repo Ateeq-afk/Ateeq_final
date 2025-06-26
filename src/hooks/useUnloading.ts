@@ -5,16 +5,20 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useBookings } from '@/hooks/useBookings';
 import type { OGPL } from '@/types';
 
+// Simple UUID validation used across hooks
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const isValidUUID = (uuid: string | null): boolean => !!uuid && UUID_REGEX.test(uuid);
+
 export function useUnloading(organizationId: string | null = null) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const { showSuccess, showError } = useNotificationSystem();
   const { getCurrentUserBranch } = useAuth();
   const { updateBookingStatus } = useBookings();
-  const userBranch = getCurrentUserBranch();
 
   // Get incoming OGPLs that need to be unloaded
   const getIncomingOGPLs = useCallback(async () => {
+    const userBranch = getCurrentUserBranch();
     try {
       setLoading(true);
       setError(null);
@@ -99,17 +103,39 @@ export function useUnloading(organizationId: string | null = null) {
     } finally {
       setLoading(false);
     }
-  }, [userBranch]);
+  }, [getCurrentUserBranch]);
 
   // Unload an OGPL
   const unloadOGPL = async (
-    ogplId: string, 
-    bookingIds: string[], 
+    ogplId: string,
+    bookingIds: string[],
     conditions: Record<string, { status: string; remarks?: string; photo?: string }>
   ) => {
+    const userBranch = getCurrentUserBranch();
     try {
       setLoading(true);
       setError(null);
+
+      // Validate identifiers before hitting the database
+      if (!isValidUUID(ogplId)) {
+        throw new Error('Invalid OGPL ID');
+      }
+
+      if (!userBranch?.id || !isValidUUID(userBranch.id)) {
+        throw new Error('Invalid or missing branch ID');
+      }
+
+      if (!bookingIds.length) {
+        throw new Error('No bookings provided for unloading');
+      }
+      for (const id of bookingIds) {
+        if (!isValidUUID(id)) {
+          throw new Error(`Invalid booking ID: ${id}`);
+        }
+        if (!conditions[id]) {
+          throw new Error(`Missing unloading condition for booking ${id}`);
+        }
+      }
 
       console.log('Unloading OGPL:', ogplId);
       console.log('Booking IDs:', bookingIds);
@@ -139,7 +165,7 @@ export function useUnloading(organizationId: string | null = null) {
         .insert({
           ogpl_id: ogplId,
           unloaded_by: 'Admin User', // In a real app, this would be the current user
-          branch_id: userBranch?.id,
+          branch_id: userBranch.id,
           total_items: bookingIds.length,
           items_damaged: damagedCount,
           items_missing: missingCount,
@@ -255,10 +281,11 @@ export function useUnloading(organizationId: string | null = null) {
 
   // Get completed unloadings
   const getCompletedUnloadings = useCallback(async () => {
+    const userBranch = getCurrentUserBranch();
     try {
       setLoading(true);
       setError(null);
-      
+
       const effectiveBranchId = userBranch?.id;
       
       console.log('Getting completed unloadings, branchId:', effectiveBranchId);
@@ -308,14 +335,15 @@ export function useUnloading(organizationId: string | null = null) {
     } finally {
       setLoading(false);
     }
-  }, [userBranch]);
+  }, [getCurrentUserBranch]);
 
   // Get unloading statistics
   const getUnloadingStats = useCallback(async () => {
+    const userBranch = getCurrentUserBranch();
     try {
       setLoading(true);
       setError(null);
-      
+
       const effectiveBranchId = userBranch?.id;
       
       if (!effectiveBranchId) {
@@ -389,7 +417,7 @@ export function useUnloading(organizationId: string | null = null) {
     } finally {
       setLoading(false);
     }
-  }, [userBranch]);
+  }, [getCurrentUserBranch]);
 
   return {
     loading,
