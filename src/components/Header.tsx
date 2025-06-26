@@ -15,6 +15,7 @@ import {
   DropdownMenuItem
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import ThemeToggle from './ThemeToggle';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCurrentBranch } from '@/hooks/useCurrentBranch';
 import { useNavigate } from 'react-router-dom';
@@ -58,7 +59,7 @@ export default function Header() {
           <Input
             type="text"
             placeholder="Search anything..."
-            className="pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-opacity-20 w-full"
+            className="pl-10 pr-4 py-2.5 rounded-xl border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-opacity-20 w-full"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -68,7 +69,7 @@ export default function Header() {
             <Button
               variant="outline"
               size="icon"
-              className="rounded-xl h-10 w-10 border-gray-200 bg-white shadow-soft relative"
+              className="rounded-xl h-10 w-10 shadow-soft relative"
             >
               <Bell className="h-5 w-5 text-gray-700" />
               {unreadCount > 0 && (
@@ -80,10 +81,12 @@ export default function Header() {
           </motion.div>
 
           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-            <Button variant="outline" size="icon" className="rounded-xl h-10 w-10 border-gray-200 bg-white shadow-soft">
+            <Button variant="outline" size="icon" className="rounded-xl h-10 w-10 shadow-soft">
               <HelpCircle className="h-5 w-5 text-gray-700" />
             </Button>
           </motion.div>
+
+          <ThemeToggle />
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
