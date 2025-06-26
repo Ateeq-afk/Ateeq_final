@@ -2,6 +2,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const ogplService = require('./ogplService.cjs');
 
 const app = express();
 app.use(bodyParser.json());
@@ -31,6 +32,17 @@ const users = [
   }
 ];
 const bookings = [];
+const lrSequences = {};
+
+function generateLRNumber(branchCode = 'DC') {
+  const date = new Date();
+  const year = date.getFullYear().toString().slice(-2);
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const key = `${branchCode}-${year}${month}`;
+  lrSequences[key] = (lrSequences[key] || 0) + 1;
+  const sequence = lrSequences[key];
+  return `${branchCode}${year}${month}-${String(sequence).padStart(4, '0')}`;
+}
 
 function pad(num, size) {
   return num.toString().padStart(size, '0');
@@ -161,6 +173,50 @@ app.post('/api/bookings', auth, (req, res) => {
   };
   bookings.push(booking);
   res.status(201).json(booking);
+});
+
+// ----- Edge Function Equivalents -----
+
+app.post('/edge/lr-number', auth, (req, res) => {
+  const { branchCode } = req.body;
+  const code = branchCode || 'DC';
+  const lrNumber = generateLRNumber(code.slice(0, 2).toUpperCase());
+  res.json({ lrNumber });
+});
+
+app.post('/edge/ogpl', auth, (req, res) => {
+  try {
+    const ogpl = ogplService.createOGPL(req.body);
+    res.status(201).json(ogpl);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.post('/edge/unload-ogpl', auth, (req, res) => {
+  try {
+    const ogpl = ogplService.completeUnloading(req.body.ogplId);
+    res.json(ogpl);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.post('/edge/submit-pod', auth, (req, res) => {
+  try {
+    const booking = ogplService.markDelivered(req.body.lrId);
+    res.json(booking);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.get('/edge/reports/bookings', auth, (req, res) => {
+  const summary = ogplService.bookings.reduce((acc, b) => {
+    acc[b.status] = (acc[b.status] || 0) + 1;
+    return acc;
+  }, {});
+  res.json(summary);
 });
 
 app.listen(3000, () => {
