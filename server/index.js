@@ -18,7 +18,18 @@ const branches = [
   { id: 2, orgId: 1, code: 'DC001-BR02', name: 'Second Branch' }
 ];
 
-const users = [];
+const users = [
+  {
+    id: 1,
+    code: 'SA-000',
+    orgId: null,
+    branchId: null,
+    username: 'tabateeq@gmail.com',
+    fullName: 'Super Admin',
+    passwordHash: bcrypt.hashSync('superadmin', 10),
+    role: 'superadmin'
+  }
+];
 const bookings = [];
 
 function pad(num, size) {
@@ -52,7 +63,8 @@ app.post('/api/signup', async (req, res) => {
     branchId: branch.id,
     username,
     fullName,
-    passwordHash
+    passwordHash,
+    role: 'staff'
   };
   users.push(user);
   res.status(201).json({ userId: user.code, username: user.username });
@@ -60,13 +72,17 @@ app.post('/api/signup', async (req, res) => {
 
 app.post('/api/login', async (req, res) => {
   const { orgId, username, password } = req.body;
-  const user = users.find(u => u.orgId === orgId && u.username === username);
+  const user = users.find(
+    u =>
+      (u.role === 'superadmin' && u.username === username) ||
+      (u.orgId === orgId && u.username === username)
+  );
   if (!user) return res.status(401).json({ error: 'Invalid credentials' });
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
 
   const token = jwt.sign(
-    { userId: user.code, orgId: user.orgId, branchId: user.branchId },
+    { userId: user.code, orgId: user.orgId, branchId: user.branchId, role: user.role },
     SECRET,
     { expiresIn: '1h' }
   );
@@ -87,19 +103,21 @@ function auth(req, res, next) {
 }
 
 app.get('/api/bookings', auth, (req, res) => {
-  const { orgId, branchId } = req.user;
-  const filtered = bookings.filter(
-    b => b.orgId === orgId && b.branchId === branchId
-  );
+  const { orgId, branchId, role } = req.user;
+  const filtered = role === 'superadmin'
+    ? bookings
+    : bookings.filter(b => b.orgId === orgId && b.branchId === branchId);
   res.json(filtered);
 });
 
 app.post('/api/bookings', auth, (req, res) => {
-  const { orgId, branchId, userId } = req.user;
+  const { orgId, branchId, userId, role } = req.user;
+  const bookingOrgId = role === 'superadmin' ? req.body.orgId ?? orgId : orgId;
+  const bookingBranchId = role === 'superadmin' ? req.body.branchId ?? branchId : branchId;
   const booking = {
     id: bookings.length + 1,
-    orgId,
-    branchId,
+    orgId: bookingOrgId,
+    branchId: bookingBranchId,
     userId,
     details: req.body.details || ''
   };
