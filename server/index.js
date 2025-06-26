@@ -36,6 +36,14 @@ function pad(num, size) {
   return num.toString().padStart(size, '0');
 }
 
+function generateOrgCode(num) {
+  return `ORG${pad(num, 3)}`;
+}
+
+function generateBranchCode(org, num) {
+  return `${org.code}-BR${pad(num, 2)}`;
+}
+
 function generateUserCode(branchCode) {
   const count = users.filter(u => u.code.startsWith(branchCode)).length + 1;
   return `${branchCode}-USR${pad(count, 3)}`;
@@ -87,6 +95,36 @@ app.post('/api/login', async (req, res) => {
     { expiresIn: '1h' }
   );
   res.json({ token });
+});
+
+app.get('/api/organizations', (req, res) => {
+  res.json(organizations);
+});
+
+app.post('/api/organizations', (req, res) => {
+  const { name } = req.body;
+  if (!name) return res.status(400).json({ error: 'Name required' });
+  const id = organizations.length + 1;
+  const org = { id, code: generateOrgCode(id), name };
+  organizations.push(org);
+  res.status(201).json(org);
+});
+
+app.get('/api/branches', (req, res) => {
+  const { orgId } = req.query;
+  const result = orgId ? branches.filter(b => b.orgId == orgId) : branches;
+  res.json(result);
+});
+
+app.post('/api/branches', (req, res) => {
+  const { orgId, name } = req.body;
+  const org = organizations.find(o => o.id == orgId);
+  if (!org) return res.status(400).json({ error: 'Invalid organization' });
+  const num = branches.filter(b => b.orgId == org.id).length + 1;
+  const id = branches.length + 1;
+  const branch = { id, orgId: org.id, code: generateBranchCode(org, num), name };
+  branches.push(branch);
+  res.status(201).json(branch);
 });
 
 function auth(req, res, next) {

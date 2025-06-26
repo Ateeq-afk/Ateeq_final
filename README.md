@@ -12,6 +12,10 @@ The server listens on `http://localhost:3000` and exposes the following endpoint
 
 - `POST /api/signup` – create a user within a branch. The username must be unique within the organization.
 - `POST /api/login` – login using organization ID, username and password. Returns a JWT.
+- `GET /api/organizations` – list organizations.
+- `POST /api/organizations` – create a new organization.
+- `GET /api/branches` – list branches, optionally filtered by organization.
+- `POST /api/branches` – create a new branch under an organization.
 - `GET /api/bookings` – list bookings scoped to the authenticated user.
 - `POST /api/bookings` – create a booking scoped to the authenticated user.
 
@@ -31,4 +35,4 @@ text messages when actions occur.
 
 ## Front-end
 
-The React front-end (inside `src/`) was generated with Vite and uses Supabase for authentication. Run the front-end with `npm run dev` and use the `/signup` and `/signin` pages to create an account in Supabase and log in. The Express server remains as a small example of username based APIs but is not required for Supabase auth.
+The React front-end (inside `src/`) was generated with Vite and now uses the Express API for authentication. Run the front-end with `npm run dev` and use the `/signup` and `/signin` pages to create accounts and log in. You can also create new organizations via `/new-organization`.

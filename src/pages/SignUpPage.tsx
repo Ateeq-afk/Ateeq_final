@@ -4,14 +4,13 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useNavigate } from 'react-router-dom'
-import { signUp } from '@/services/auth'
+import { signUp } from '@/services/api'
 import { useBranches } from '@/hooks/useBranches'
 import { Card } from '@/components/ui/card'
 
 export default function SignUpPage() {
   const [fullName, setFullName] = useState('')
   const [username, setUsername] = useState('')
-  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [branch, setBranch] = useState('')
   const navigate = useNavigate()
@@ -20,10 +19,9 @@ export default function SignUpPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     await signUp({
-      email,
-      username,
+      fullName,
+      desiredUsername: username,
       password,
-      name: fullName,
       branchId: branch
     })
     navigate('/signin')
@@ -41,10 +39,6 @@ export default function SignUpPage() {
           <div className="space-y-2">
             <Label htmlFor="username">Username</Label>
             <Input id="username" value={username} onChange={e => setUsername(e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" value={email} onChange={e => setEmail(e.target.value)} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>

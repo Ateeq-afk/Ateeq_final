@@ -7,6 +7,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 
 export default function SignInPage() {
+  const [orgId, setOrgId] = useState('')
   const [loginId, setLoginId] = useState('')
   const [password, setPassword] = useState('')
   const { login } = useAuth()
@@ -14,7 +15,7 @@ export default function SignInPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    await login(loginId, password)
+    await login(orgId, loginId, password)
     navigate('/dashboard')
   }
 
@@ -23,6 +24,10 @@ export default function SignInPage() {
       <form onSubmit={handleSubmit}>
         <Card className="w-80 space-y-4 p-8">
           <h2 className="text-center text-xl font-bold">Sign In</h2>
+          <div className="space-y-2">
+            <Label htmlFor="org">Organization</Label>
+            <Input id="org" value={orgId} onChange={e => setOrgId(e.target.value)} />
+          </div>
           <div className="space-y-2">
             <Label htmlFor="login">Username or Email</Label>
             <Input id="login" value={loginId} onChange={e => setLoginId(e.target.value)} />
@@ -39,6 +44,9 @@ export default function SignInPage() {
           <Button type="submit" className="w-full">Sign In</Button>
           <p className="text-center text-sm">
             Don't have an account? <Link className="text-blue-600" to="/signup">Sign Up</Link>
+          </p>
+          <p className="text-center text-sm">
+            New company? <Link className="text-blue-600" to="/new-organization">Create Organization</Link>
           </p>
         </Card>
       </form>
