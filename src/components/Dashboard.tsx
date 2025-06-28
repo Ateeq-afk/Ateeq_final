@@ -28,6 +28,7 @@ import ArticleList from './articles/ArticleList';
 import CustomerList from './customers/CustomerList';
 import VehicleList from './vehicles/VehicleList';
 import BranchManagementPage from '@/pages/BranchManagementPage';
+import WarehouseManagementPage from '@/pages/WarehouseManagementPage';
 import RevenuePage from '@/components/revenue/RevenuePage';
 import ReportsPage from '@/pages/ReportsPage';
 import LoadingManagementPage from '@/pages/LoadingManagementPage';
@@ -124,6 +125,7 @@ export default function Dashboard() {
                 <Route path="/bookings/:id" element={<BookingDetails />} />
                 <Route path="/new-booking" element={<LazyBook />} />
                 <Route path="/branches" element={<BranchManagementPage />} />
+                <Route path="/warehouse" element={<WarehouseManagementPage />} />
                 <Route path="/revenue" element={<RevenuePage />} />
                 <Route path="/reports" element={<ReportsPage />} />
                 <Route path="/loading" element={<LoadingManagementPage />} />
