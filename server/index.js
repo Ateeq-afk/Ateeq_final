@@ -3,6 +3,7 @@ const bodyParser = require('body-parser');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const ogplService = require('./ogplService.cjs');
+const warehouseService = require('./warehouseService.cjs');
 
 const app = express();
 app.use(bodyParser.json());
@@ -173,6 +174,61 @@ app.post('/api/bookings', auth, (req, res) => {
   };
   bookings.push(booking);
   res.status(201).json(booking);
+});
+
+// ----- Warehouse & Inventory Management -----
+app.get('/api/warehouses', auth, (req, res) => {
+  res.json(warehouseService.warehouses);
+});
+
+app.post('/api/warehouses', auth, (req, res) => {
+  try {
+    const warehouse = warehouseService.createWarehouse(req.body.name);
+    res.status(201).json(warehouse);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.get('/api/locations', auth, (req, res) => {
+  res.json(warehouseService.locations);
+});
+
+app.post('/api/locations', auth, (req, res) => {
+  try {
+    const location = warehouseService.createLocation(req.body.warehouseId, req.body.name);
+    res.status(201).json(location);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.post('/api/inbound', auth, (req, res) => {
+  try {
+    const qty = warehouseService.inbound(req.body);
+    res.json({ quantity: qty });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.post('/api/outbound', auth, (req, res) => {
+  try {
+    const qty = warehouseService.outbound(req.body);
+    res.json({ quantity: qty });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.get('/api/inventory', auth, (req, res) => {
+  try {
+    const { locationId, itemId } = req.query;
+    const qty = warehouseService.getInventory(Number(locationId), itemId);
+    res.json({ quantity: qty });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
 });
 
 // ----- Edge Function Equivalents -----
