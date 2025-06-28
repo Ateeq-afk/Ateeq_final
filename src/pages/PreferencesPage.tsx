@@ -55,7 +55,12 @@ export default function PreferencesPage() {
 
   const updatePref = async (updates: Partial<Preferences>) => {
     if (!user) return
-    await supabase.from('user_preferences').upsert({ user_id: user.id, ...updates })
+    await supabase
+      .from('user_preferences')
+      .upsert(
+        { user_id: user.id, ...updates },
+        { onConflict: ['user_id'] }
+      )
   }
 
   const prefs = watch()
@@ -151,7 +156,7 @@ export default function PreferencesPage() {
           <CardDescription>A quick guide to help you manage your logistics</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p>Welcome to DesiCargo! Here’s how to get started:</p>
+          <p>Welcome to DesiCargo! Here's how to get started:</p>
           <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
             <li>Go to <strong>Bookings</strong> and click <em>+ New Booking</em></li>
             <li>Fill LR number, sender/receiver info, source and destination</li>
