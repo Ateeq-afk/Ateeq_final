@@ -70,3 +70,8 @@ npm run dev
 
 Environment variables are defined in `backend/.env.example`.
 
+## Warehouse & Inventory Management
+
+Additional endpoints provide a lightweight way to track cargo inside warehouses.
+See [docs/warehouse_inventory.md](docs/warehouse_inventory.md) for details.
+
