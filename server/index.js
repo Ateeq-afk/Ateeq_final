@@ -31,7 +31,9 @@ const users = [
     role: 'superadmin'
   }
 ];
-const bookings = [];
+// Share the same bookings array with the OGPL service so that status updates
+// performed there are reflected in API responses
+const bookings = ogplService.bookings;
 const lrSequences = {};
 
 function generateLRNumber(branchCode = 'DC') {
@@ -169,7 +171,10 @@ app.post('/api/bookings', auth, (req, res) => {
     orgId: bookingOrgId,
     branchId: bookingBranchId,
     userId,
-    details: req.body.details || ''
+    details: req.body.details || '',
+    // Newly created bookings start in the 'booked' status. The OGPL service
+    // will automatically transition them through subsequent statuses.
+    status: 'booked'
   };
   bookings.push(booking);
   res.status(201).json(booking);
