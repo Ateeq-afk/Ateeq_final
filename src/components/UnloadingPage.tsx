@@ -40,9 +40,13 @@ export default function UnloadingPage() {
   const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending');
 
   const { organizations } = useOrganizations();
-  const { getCurrentUserBranch } = useAuth();
+  const { user, getCurrentUserBranch } = useAuth();
   const organizationId = organizations[0]?.id;
-  const selectedBranch = getCurrentUserBranch();
+  const [selectedBranch, setSelectedBranch] = useState<{ id: string } | null>(() => getCurrentUserBranch());
+
+  useEffect(() => {
+    setSelectedBranch(getCurrentUserBranch());
+  }, [user, getCurrentUserBranch]);
   const { getIncomingOGPLs, unloadOGPL, loading, error } =
     useUnloading(organizationId);
 
