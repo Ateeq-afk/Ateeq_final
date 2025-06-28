@@ -48,10 +48,10 @@ export default function Header() {
   return (
     <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
       <div>
-        <h1 className="text-2xl md:text-3xl font-black text-gray-900">
-          <span className="bg-gradient-to-r from-brand-600 to-brand-800 bg-clip-text text-transparent">DesiCargo</span>
+        <h1 className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white">
+          <span className="bg-gradient-to-r from-brand-600 to-brand-800 dark:from-brand-400 dark:to-brand-600 bg-clip-text text-transparent">DesiCargo</span>
         </h1>
-        <p className="text-gray-600 mt-1">K2K Logistics Management System</p>
+        <p className="text-gray-600 dark:text-gray-400 mt-1">K2K Logistics Management System</p>
       </div>
       <div className="flex flex-col md:flex-row items-stretch md:items-center gap-4">
         <form onSubmit={handleSearch} className="relative flex-1 md:w-72">
@@ -69,9 +69,9 @@ export default function Header() {
             <Button
               variant="outline"
               size="icon"
-              className="rounded-xl h-10 w-10 shadow-soft relative"
+              className="rounded-xl h-10 w-10 shadow-soft relative dark:bg-gray-800"
             >
-              <Bell className="h-5 w-5 text-gray-700" />
+              <Bell className="h-5 w-5 text-gray-700 dark:text-gray-300" />
               {unreadCount > 0 && (
                 <span className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-medium">
                   {unreadCount > 9 ? '9+' : unreadCount}
@@ -81,8 +81,8 @@ export default function Header() {
           </motion.div>
 
           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-            <Button variant="outline" size="icon" className="rounded-xl h-10 w-10 shadow-soft">
-              <HelpCircle className="h-5 w-5 text-gray-700" />
+            <Button variant="outline" size="icon" className="rounded-xl h-10 w-10 shadow-soft dark:bg-gray-800">
+              <HelpCircle className="h-5 w-5 text-gray-700 dark:text-gray-300" />
             </Button>
           </motion.div>
 
@@ -91,18 +91,23 @@ export default function Header() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="flex items-center gap-2">
-                <Avatar className="h-8 w-8">
+                <Avatar className="h-8 w-8 border border-gray-200 dark:border-gray-700">
                   <AvatarImage src="/user-icon.png" alt="User" />
-                  <AvatarFallback>{userInitials}</AvatarFallback>
+                  <AvatarFallback className="bg-brand-100 text-brand-700 dark:bg-brand-900/50 dark:text-brand-400">{userInitials}</AvatarFallback>
                 </Avatar>
                 <div className="text-sm text-left hidden md:block">
-                  <div className="font-medium">{user?.name}</div>
+                  <div className="font-medium dark:text-gray-200">{user?.name}</div>
                   <div className="text-xs text-muted-foreground">{branch?.name}</div>
                 </div>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={signOut}>Sign Out</DropdownMenuItem>
+            <DropdownMenuContent align="end" className="w-56 dark:bg-gray-800 dark:border-gray-700">
+              <DropdownMenuItem className="cursor-pointer dark:text-gray-200 dark:hover:bg-gray-700" onClick={() => navigate('/dashboard/settings')}>
+                Settings
+              </DropdownMenuItem>
+              <DropdownMenuItem className="cursor-pointer dark:text-gray-200 dark:hover:bg-gray-700" onClick={signOut}>
+                Sign Out
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
+import { BroadcastChannel } from 'broadcast-channel'
 
 type Theme = 'light' | 'dark'
 
@@ -21,13 +22,48 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     if (stored) return stored
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
   })
+  
+  // Create a broadcast channel for theme sync across tabs
+  const [themeChannel] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return new BroadcastChannel('theme-channel')
+    }
+    return null
+  })
 
-  const setTheme = (value: Theme) => setThemeState(value)
+  const setTheme = (value: Theme) => {
+    setThemeState(value)
+    if (themeChannel) {
+      themeChannel.postMessage(value)
+    }
+  }
+
+  // Listen for theme changes from other tabs
+  useEffect(() => {
+    if (themeChannel) {
+      themeChannel.onmessage = (msg: Theme) => {
+        setThemeState(msg)
+      }
+      return () => {
+        themeChannel.close()
+      }
+    }
+  }, [themeChannel])
 
   useEffect(() => {
-    document.documentElement.classList.remove('light', 'dark')
-    document.documentElement.classList.add(theme)
+    const root = window.document.documentElement
+    root.classList.remove('light', 'dark')
+    root.classList.add(theme)
     localStorage.setItem('theme', theme)
+    
+    // Update meta theme-color for mobile browsers
+    const metaThemeColor = document.querySelector('meta[name="theme-color"]')
+    if (metaThemeColor) {
+      metaThemeColor.setAttribute(
+        'content', 
+        theme === 'dark' ? '#1e293b' : '#ffffff'
+      )
+    }
   }, [theme])
 
   return (

@@ -37,33 +37,33 @@
     --radius: 0.75rem;
   }
   .dark {
-    --background: 222.2 84% 4.9%;
+    --background: 222.2 47.4% 11.2%;
     --foreground: 210 40% 98%;
 
-    --card: 222.2 84% 4.9%;
+    --card: 222.2 47.4% 11.2%;
     --card-foreground: 210 40% 98%;
 
-    --popover: 222.2 84% 4.9%;
+    --popover: 222.2 47.4% 11.2%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 221 83% 53%;
+    --primary: 217.2 91.2% 59.8%;
     --primary-foreground: 210 40% 98%;
 
-    --secondary: 215 27.9% 16.9%;
+    --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 215 27.9% 16.9%;
-    --muted-foreground: 217.9 10.6% 64.9%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
 
-    --accent: 215 27.9% 16.9%;
+    --accent: 217.2 32.6% 17.5%;
     --accent-foreground: 210 40% 98%;
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 216 34% 17%;
-    --input: 216 34% 17%;
-    --ring: 216 34% 17%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 48%;
   }
 }
  
@@ -99,28 +99,55 @@
   .dark .text-gray-900 { @apply text-foreground; }
   .dark .text-gray-600 { @apply text-muted-foreground; }
   .dark .bg-gray-50 { @apply bg-muted; }
+  .dark .text-gray-500 { @apply text-muted-foreground; }
+  .dark .text-gray-400 { @apply text-muted-foreground/70; }
+  .dark .bg-gray-100 { @apply bg-muted/70; }
+  .dark .bg-blue-50 { @apply bg-blue-950/20; }
+  .dark .bg-green-50 { @apply bg-green-950/20; }
+  .dark .bg-red-50 { @apply bg-red-950/20; }
+  .dark .bg-yellow-50 { @apply bg-yellow-950/20; }
+  .dark .bg-purple-50 { @apply bg-purple-950/20; }
+  .dark .border-blue-100 { @apply border-blue-900/30; }
+  .dark .border-green-100 { @apply border-green-900/30; }
+  .dark .border-red-100 { @apply border-red-900/30; }
+  .dark .border-yellow-100 { @apply border-yellow-900/30; }
+  .dark .border-purple-100 { @apply border-purple-900/30; }
+  
+  /* Glass effect for dark mode */
+  .dark .glass-card {
+    @apply bg-card/60 backdrop-blur-md border-white/10;
+  }
 }
 
 /* Custom styles for modern UI */
 .card-hover {
-  @apply transition-all duration-200 hover:shadow-md hover:border-blue-100;
+  @apply transition-all duration-200 hover:shadow-md dark:hover:shadow-lg dark:hover:shadow-black/20 hover:border-blue-100 dark:hover:border-blue-800/30;
 }
 
 .btn-primary {
-  @apply bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg px-4 py-2 transition-colors;
+  @apply bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg px-4 py-2 transition-colors dark:bg-blue-700 dark:hover:bg-blue-600;
 }
 
 .btn-secondary {
-  @apply bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium rounded-lg px-4 py-2 transition-colors;
+  @apply bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium rounded-lg px-4 py-2 transition-colors dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-200;
 }
 
 .input-modern {
-  @apply rounded-lg border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-20;
+  @apply rounded-lg border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-20 dark:border-gray-700 dark:bg-gray-800 dark:focus:border-blue-400 dark:focus:ring-blue-400/30;
 }
 
 /* Skeleton loading animation */
 .skeleton {
-  @apply bg-gray-200 animate-pulse;
+  @apply bg-gray-200 animate-pulse dark:bg-gray-700;
+}
+
+/* Glass morphism effects */
+.glass-effect {
+  @apply bg-white/80 backdrop-blur-md border border-white/20 dark:bg-black/30 dark:border-white/10;
+}
+
+.glass-card {
+  @apply bg-white/90 backdrop-blur-md border border-white/20 shadow-lg rounded-xl dark:bg-black/40 dark:border-white/10;
 }
 
 /* Print styles */

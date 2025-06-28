@@ -6,6 +6,7 @@ import {
   Users,
   LayoutDashboard,
   Home,
+  LogOut,
   FileText,
   IndianRupee,
   Building2,
@@ -24,6 +25,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useBookings } from '@/hooks/useBookings';
 import { useState as useHookState } from 'react';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface NavItemProps {
   icon: React.ElementType;
@@ -56,6 +58,7 @@ function Sidebar({ onNavigate, currentPage }: SidebarProps) {
   });
   const [showRecentBookings, setShowRecentBookings] = useState(false);
   const { bookings, updateBookingStatus } = useBookings();
+  const { theme } = useTheme();
 
   // Get the 5 most recent bookings
   const recentBookings = bookings.slice(0, 5);
@@ -263,23 +266,23 @@ function Sidebar({ onNavigate, currentPage }: SidebarProps) {
   };
 
   return (
-    <aside className="flex flex-col h-full bg-white">
+    <aside className="flex flex-col h-full bg-white dark:bg-gray-900 dark:border-gray-800">
       {/* Logo */}
-      <div className="h-16 flex items-center gap-3 px-6 border-b border-gray-100">
-        <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-brand-600 to-brand-800 flex items-center justify-center text-white shadow-md">
+      <div className="h-16 flex items-center gap-3 px-6 border-b border-gray-100 dark:border-gray-800">
+        <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-brand-600 to-brand-800 dark:from-brand-500 dark:to-brand-700 flex items-center justify-center text-white shadow-md">
           <Truck className="h-5 w-5" />
         </div>
         <div className="flex flex-col">
-          <span className="text-lg font-bold bg-gradient-to-r from-brand-600 to-brand-800 text-transparent bg-clip-text">
+          <span className="text-lg font-bold bg-gradient-to-r from-brand-600 to-brand-800 dark:from-brand-400 dark:to-brand-600 text-transparent bg-clip-text">
             DesiCargo
           </span>
-          <span className="text-xs text-gray-500">K2K Logistics</span>
+          <span className="text-xs text-gray-500 dark:text-gray-400">K2K Logistics</span>
         </div>
       </div>
       
       <nav className="flex-1 p-4 space-y-6 overflow-y-auto scrollbar-hidden">
         {/* Quick Actions */}
-        <div className="px-3 py-2 bg-gradient-to-r from-brand-50 to-blue-50 rounded-xl border border-brand-100 shadow-sm">
+        <div className="px-3 py-2 bg-gradient-to-r from-brand-50 to-blue-50 dark:from-brand-900/20 dark:to-blue-900/20 rounded-xl border border-brand-100 dark:border-brand-800/30 shadow-sm">
           <motion.div 
             whileHover={{ scale: 1.02 }} 
             whileTap={{ scale: 0.98 }}
@@ -330,7 +333,7 @@ function Sidebar({ onNavigate, currentPage }: SidebarProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="flex items-center text-xs"
+                className="flex items-center text-xs dark:text-gray-400 dark:hover:text-gray-300"
                 onClick={() => setShowRecentBookings(!showRecentBookings)}
               >
                 <ChevronDown
@@ -352,7 +355,7 @@ function Sidebar({ onNavigate, currentPage }: SidebarProps) {
                       recentBookings.map((booking) => (
                         <div 
                           key={booking.id} 
-                          className="pl-2 pr-1 py-1.5 rounded-lg text-xs hover:bg-gray-50 flex items-center justify-between"
+                          className="pl-2 pr-1 py-1.5 rounded-lg text-xs hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center justify-between"
                         >
                           <div className="flex items-center gap-1.5 overflow-hidden">
                             <div className={`h-2 w-2 rounded-full flex-shrink-0 ${
@@ -364,8 +367,8 @@ function Sidebar({ onNavigate, currentPage }: SidebarProps) {
                               'bg-yellow-500'
                             }`}></div>
                             <div className="truncate">
-                              <span className="font-medium">{booking.lr_number}</span>
-                              <span className="text-gray-400 ml-1">({booking.article?.name || 'N/A'})</span>
+                              <span className="font-medium dark:text-gray-300">{booking.lr_number}</span>
+                              <span className="text-gray-400 dark:text-gray-500 ml-1">({booking.article?.name || 'N/A'})</span>
                             </div>
                           </div>
                           <div className="flex items-center">
@@ -373,7 +376,7 @@ function Sidebar({ onNavigate, currentPage }: SidebarProps) {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-6 w-6 text-gray-400 hover:text-orange-600"
+                                className="h-6 w-6 text-gray-400 hover:text-orange-600 dark:hover:text-orange-500"
                                 onClick={async (e) => {
                                   e.stopPropagation();
                                   await updateBookingStatus(booking.id, 'out_for_delivery');
@@ -386,7 +389,7 @@ function Sidebar({ onNavigate, currentPage }: SidebarProps) {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-6 w-6 text-gray-400 hover:text-green-600"
+                                className="h-6 w-6 text-gray-400 hover:text-green-600 dark:hover:text-green-500"
                                 onClick={async (e) => {
                                   e.stopPropagation();
                                   await updateBookingStatus(booking.id, 'delivered');
@@ -398,7 +401,7 @@ function Sidebar({ onNavigate, currentPage }: SidebarProps) {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-6 w-6 text-gray-400 hover:text-brand-600"
+                              className="h-6 w-6 text-gray-400 hover:text-brand-600 dark:hover:text-brand-500"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handlePrintLR(booking);
@@ -409,7 +412,7 @@ function Sidebar({ onNavigate, currentPage }: SidebarProps) {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-6 w-6 text-gray-400 hover:text-brand-600"
+                              className="h-6 w-6 text-gray-400 hover:text-brand-600 dark:hover:text-brand-500"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 navigate(`/dashboard/bookings/${booking.id}`);
@@ -421,7 +424,7 @@ function Sidebar({ onNavigate, currentPage }: SidebarProps) {
                         </div>
                       ))
                     ) : (
-                      <div className="pl-2 py-1.5 text-xs text-gray-400">
+                      <div className="pl-2 py-1.5 text-xs text-gray-400 dark:text-gray-500">
                         No recent bookings
                       </div>
                     )}
@@ -430,7 +433,7 @@ function Sidebar({ onNavigate, currentPage }: SidebarProps) {
                       <Button 
                         variant="ghost" 
                         size="sm" 
-                        className="text-xs text-brand-600 hover:text-brand-700 p-0 h-auto"
+                        className="text-xs text-brand-600 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300 p-0 h-auto"
                         onClick={() => handleNavigate('bookings')}
                       >
                         View all bookings
@@ -537,11 +540,11 @@ function NavGroup({ title, children, defaultOpen = true, onToggle, isCollapsed }
         className="px-3 flex items-center justify-between cursor-pointer group"
         onClick={onToggle}
       >
-        <span className="text-xs font-semibold text-gray-500 tracking-wider group-hover:text-brand-600 transition-colors">
+        <span className="text-xs font-semibold text-gray-500 tracking-wider group-hover:text-brand-600 transition-colors dark:text-gray-400 dark:group-hover:text-brand-400">
           {title}
         </span>
         <ChevronDown 
-          className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${isCollapsed ? '-rotate-90' : ''}`} 
+          className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${isCollapsed ? '-rotate-90' : ''} dark:text-gray-500`} 
         />
       </div>
       <AnimatePresence initial={false}>
@@ -568,15 +571,15 @@ function NavItem({ icon: Icon, text, active = false, onClick, badge, children }:
       className={cn(
         "flex items-center justify-between w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
         active 
-          ? "bg-gradient-to-r from-brand-50 to-brand-100 text-brand-700 shadow-sm border border-brand-200/50" 
-          : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+          ? "bg-gradient-to-r from-brand-50 to-brand-100 text-brand-700 shadow-sm border border-brand-200/50 dark:from-brand-900/30 dark:to-brand-800/30 dark:text-brand-400 dark:border-brand-700/30" 
+          : "text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
       )}
       whileHover={{ x: 4 }}
       whileTap={{ scale: 0.98 }}
     >
       <div className="flex items-center gap-3">
         <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${
-          active ? 'bg-brand-100 text-brand-600' : 'bg-gray-100 text-gray-500'
+          active ? 'bg-brand-100 text-brand-600 dark:bg-brand-900/50 dark:text-brand-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'
         }`}>
           <Icon className="h-4 w-4" />
         </div>
@@ -586,8 +589,8 @@ function NavItem({ icon: Icon, text, active = false, onClick, badge, children }:
         <span className={cn(
           "px-2 py-0.5 text-xs rounded-full",
           active
-            ? "bg-brand-200 text-brand-700"
-            : "bg-gray-100 text-gray-600"
+            ? "bg-brand-200 text-brand-700 dark:bg-brand-800 dark:text-brand-300"
+            : "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300"
         )}>
           {badge}
         </span>
