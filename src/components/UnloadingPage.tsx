@@ -209,7 +209,7 @@ export default function UnloadingPage() {
           </p>
           {selectedBranch && (
             <p className="text-sm text-blue-600 mt-1">
-              Current Branch: {selectedBranch.name}
+              Current Branch: {selectedBranch.id}
             </p>
           )}
         </div>
