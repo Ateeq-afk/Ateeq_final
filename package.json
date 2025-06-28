@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "start:server": "node server/index.js",
-    "test": "node tests/ogpl.test.cjs",
+    "test": "node tests/ogpl.test.cjs && node tests/billing.test.cjs",
     "seed:supabase": "node scripts/seedSupabase.js"
   },
   "dependencies": {
