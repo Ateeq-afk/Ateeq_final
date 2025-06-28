@@ -1109,10 +1109,10 @@ export default function BookingDetails() {
             </div>
             
             {/* Additional Information */}
-            {(booking.remarks || booking.private_mark_number) && (
+            {(booking.remarks || booking.private_mark_number || booking.current_warehouse_location_id) && (
               <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
                 <h3 className="font-medium text-gray-900 mb-4">Additional Information</h3>
-                
+
                 <div className="space-y-4">
                   {booking.private_mark_number && (
                     <div>
@@ -1125,6 +1125,12 @@ export default function BookingDetails() {
                     <div>
                       <p className="text-sm text-gray-600">Remarks</p>
                       <p className="font-medium text-gray-900">{booking.remarks}</p>
+                    </div>
+                  )}
+                  {booking.current_warehouse_location_id && (
+                    <div>
+                      <p className="text-sm text-gray-600">Current Warehouse Location</p>
+                      <p className="font-medium text-gray-900">{booking.current_warehouse_location_id}</p>
                     </div>
                   )}
                 </div>
