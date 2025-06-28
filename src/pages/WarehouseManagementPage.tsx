@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 
 interface Warehouse {
@@ -73,6 +74,4 @@ export default function WarehouseManagementPage() {
           )}
         </div>
       )}
-    </div>
-  );
-}
+
