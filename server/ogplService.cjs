@@ -64,6 +64,7 @@ function markDelivered(lrId) {
   const booking = bookings.find(b => b.id == lrId);
   if (!booking) throw new Error(`Booking ${lrId} not found`);
   booking.status = 'delivered';
+  booking.deliveredAt = new Date().toISOString();
   return booking;
 }
 

@@ -3,8 +3,8 @@ const bodyParser = require('body-parser');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const ogplService = require('./ogplService.cjs');
-const warehouseService = require('./warehouseService.cjs');
 
+const billingService = require('./billingService.cjs');
 const app = express();
 app.use(bodyParser.json());
 
@@ -262,6 +262,26 @@ app.post('/edge/submit-pod', auth, (req, res) => {
   try {
     const booking = ogplService.markDelivered(req.body.lrId);
     res.json(booking);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.post('/edge/generate-invoice', auth, (req, res) => {
+  try {
+    const booking = ogplService.bookings.find(b => b.id == req.body.lrId);
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+    const invoice = billingService.generateInvoiceForBooking(booking);
+    res.json(invoice);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.get('/edge/recurring-invoices/:customerId', auth, (req, res) => {
+  try {
+    const invoices = billingService.generateRecurringInvoices(req.params.customerId);
+    res.json(invoices);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
