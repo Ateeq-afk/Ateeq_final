@@ -175,13 +175,16 @@ app.post('/api/bookings', auth, (req, res) => {
     details: req.body.details || '',
     // Newly created bookings start in the 'booked' status. The OGPL service
     // will automatically transition them through subsequent statuses.
-    status: 'booked'
+    status: 'booked',
+    current_warehouse_location_id: null,
+    warehouse_status: null
   };
   bookings.push(booking);
   res.status(201).json(booking);
 });
 
 // ----- Warehouse & Inventory Management -----
+// Legacy routes
 app.get('/api/warehouses', auth, (req, res) => {
   res.json(warehouseService.warehouses);
 });
@@ -231,6 +234,77 @@ app.get('/api/inventory', auth, (req, res) => {
     const { locationId, itemId } = req.query;
     const qty = warehouseService.getInventory(Number(locationId), itemId);
     res.json({ quantity: qty });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// New CRUD style routes
+app.get('/warehouses', auth, (req, res) => {
+  res.json(warehouseService.warehouses);
+});
+
+app.post('/warehouses', auth, (req, res) => {
+  try {
+    const w = warehouseService.createWarehouse(
+      req.body.name,
+      req.body.branch_id,
+      req.body.address,
+      req.body.city,
+      req.body.status
+    );
+    res.status(201).json(w);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.get('/warehouse-locations', auth, (req, res) => {
+  res.json(warehouseService.locations);
+});
+
+app.post('/warehouse-locations', auth, (req, res) => {
+  try {
+    const l = warehouseService.createLocation(
+      req.body.warehouse_id,
+      req.body.name,
+      req.body.type,
+      req.body.capacity
+    );
+    res.status(201).json(l);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.get('/inventory', auth, (req, res) => {
+  const { location_id, article_id } = req.query;
+  const qty = warehouseService.getInventory(location_id, article_id);
+  res.json({ quantity: qty });
+});
+
+app.post('/inventory/receive', auth, (req, res) => {
+  try {
+    const qty = warehouseService.inbound(req.body);
+    res.json({ quantity: qty });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.post('/inventory/dispatch', auth, (req, res) => {
+  try {
+    const qty = warehouseService.outbound(req.body);
+    res.json({ quantity: qty });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.post('/inventory/transfer', auth, (req, res) => {
+  try {
+    warehouseService.transfer(req.body);
+    res.json({ success: true });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }

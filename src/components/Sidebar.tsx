@@ -479,14 +479,20 @@ function Sidebar({ onNavigate, currentPage }: SidebarProps) {
             active={currentPage === 'customers'}
             onClick={() => handleNavigate('customers')}
           />
-          <NavItem 
-            icon={Truck} 
+          <NavItem
+            icon={Truck}
             text="Vehicles"
             active={currentPage === 'vehicles'}
             onClick={() => handleNavigate('vehicles')}
           />
-          <NavItem 
-            icon={Building2} 
+          <NavItem
+            icon={Package}
+            text="Warehouse"
+            active={currentPage === 'warehouse'}
+            onClick={() => handleNavigate('warehouse')}
+          />
+          <NavItem
+            icon={Building2}
             text="Branches"
             active={currentPage === 'branches'}
             onClick={() => handleNavigate('branches')}
