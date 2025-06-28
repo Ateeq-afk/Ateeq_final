@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/select';
 import { useUnloading } from '@/hooks/useUnloading';
 import { useOrganizations } from '@/hooks/useOrganizations';
+import { useAuth } from '@/contexts/AuthContext';
 import UnloadingForm from './unloading/UnloadingForm';
 import UnloadingHistory from './unloading/UnloadingHistory';
 
@@ -39,7 +40,9 @@ export default function UnloadingPage() {
   const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending');
 
   const { organizations } = useOrganizations();
+  const { getCurrentUserBranch } = useAuth();
   const organizationId = organizations[0]?.id;
+  const selectedBranch = getCurrentUserBranch();
   const { getIncomingOGPLs, unloadOGPL, loading, error } =
     useUnloading(organizationId);
 
@@ -64,12 +67,25 @@ export default function UnloadingPage() {
     conditions: any
   ) => {
     try {
-      await unloadOGPL(ogplId, bookingIds, conditions);
+      console.log('Selected Branch:', selectedBranch);
+      console.log('Calling unloadOGPL with:', {
+        ogplId,
+        bookingIds: bookingIds.length,
+        branch_id: selectedBranch?.id,
+      });
+
+      if (!selectedBranch?.id) {
+        alert('Branch not selected. Please select a branch first.');
+        return;
+      }
+
+      await unloadOGPL(ogplId, bookingIds, conditions, selectedBranch.id);
       setShowForm(false);
       loadOGPLs(); // Refresh the list
     } catch (err) {
       console.error('Failed to unload OGPL:', err);
-      alert('Failed to unload OGPL');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to unload OGPL';
+      alert(`Failed to unload OGPL: ${errorMessage}`);
     }
   };
 
@@ -131,6 +147,22 @@ export default function UnloadingPage() {
     );
   }
 
+  if (!selectedBranch?.id) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-6 flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="h-12 w-12 text-orange-600 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900">
+            No Branch Selected
+          </h3>
+          <p className="text-gray-600 mt-1">
+            Please select a branch to continue with unloading operations
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-6 flex items-center justify-center">
@@ -175,6 +207,11 @@ export default function UnloadingPage() {
           <p className="text-gray-600 mt-1">
             Unload the transit / dispatch list received for delivery.
           </p>
+          {selectedBranch && (
+            <p className="text-sm text-blue-600 mt-1">
+              Current Branch: {selectedBranch.name}
+            </p>
+          )}
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-8">

@@ -109,12 +109,12 @@ export function useUnloading(organizationId: string | null = null) {
   const unloadOGPL = async (
     ogplId: string,
     bookingIds: string[],
-    conditions: Record<string, { status: string; remarks?: string; photo?: string }>
+    conditions: Record<string, { status: string; remarks?: string; photo?: string }>,
+    branchId: string
   ) => {
-    const userBranch = getCurrentUserBranch();
     try {
       console.log('=== UNLOAD OGPL FUNCTION START ===');
-      console.log('Parameters:', { ogplId, bookingIds: bookingIds.length, conditions: Object.keys(conditions).length });
+      console.log('Parameters:', { ogplId, bookingIds: bookingIds.length, conditions: Object.keys(conditions).length, branchId });
       
       setLoading(true);
       setError(null);
@@ -125,8 +125,8 @@ export function useUnloading(organizationId: string | null = null) {
         throw new Error('Invalid OGPL ID');
       }
 
-      if (!userBranch?.id || !isValidUUID(userBranch.id)) {
-        console.error('Invalid or missing branch ID:', userBranch?.id);
+      if (!branchId || !isValidUUID(branchId)) {
+        console.error('Invalid or missing branch ID:', branchId);
         throw new Error('Invalid or missing branch ID');
       }
 
@@ -149,6 +149,7 @@ export function useUnloading(organizationId: string | null = null) {
 
       console.log('Unloading OGPL:', ogplId);
       console.log('Booking IDs:', bookingIds);
+      console.log('Branch ID:', branchId);
       console.log('Conditions sample:', Object.entries(conditions).slice(0, 2));
 
       // Validate conditions
@@ -179,7 +180,7 @@ export function useUnloading(organizationId: string | null = null) {
         .insert({
           ogpl_id: ogplId,
           unloaded_by: 'Admin User', // In a real app, this would be the current user
-          branch_id: userBranch.id,
+          branch_id: branchId,
           total_items: bookingIds.length,
           items_damaged: damagedCount,
           items_missing: missingCount,
