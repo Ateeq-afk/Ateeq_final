@@ -55,14 +55,15 @@ CREATE TABLE bookings (
 
 Endpoint: `POST /api/signup`
 
+User accounts are provisioned by a DesiCargo Account Manager. A basic signup
+request only contains the user's name, desired username and password.
+
 Request body:
 ```json
 {
   "fullName": "Rama Devi",
   "desiredUsername": "rama123",
-  "password": "secret",
-  "branchId": "DC001-BR02",
-  "role": "branch_user"
+  "password": "secret"
 }
 ```
 
@@ -70,11 +71,10 @@ Pseudo backend logic (Node.js/Express):
 
 ```js
 app.post('/api/signup', async (req, res) => {
-  const { fullName, desiredUsername, password, branchId, role } = req.body;
+  const { fullName, desiredUsername, password } = req.body;
 
-  const branch = await db.branches.findOne({ branch_code: branchId });
-  if (!branch) return res.status(400).json({ error: 'Invalid branch' });
-
+  // Branch and role are assigned internally by the account manager
+  const branch = await chooseBranchForNewUser();
   const orgId = branch.org_id;
   let username = desiredUsername;
   let exists = await db.users.findOne({ org_id: orgId, username });
@@ -94,8 +94,7 @@ app.post('/api/signup', async (req, res) => {
     branch_id: branch.id,
     username,
     full_name: fullName,
-    password_hash: passwordHash,
-    role: role || 'branch_user'
+    password_hash: passwordHash
   });
 
   res.status(201).json({ userId: user.user_code, username: user.username });
@@ -213,7 +212,7 @@ export default function Login() {
 
 ## 8. Example Workflows
 
-- **Signup**: user submits desired username. If taken in that org, backend adds numeric suffix until unique. Record created with user/branch/org codes.
+- **Signup**: accounts are provisioned by a DesiCargo Account Manager who ensures unique usernames and assigns branches internally.
 - **Login**: user logs in with chosen username. JWT is issued containing full hierarchical IDs.
 - **Data requests**: every API uses middleware that injects `orgId` and `branchId` from the JWT so queries are automatically scoped.
 
