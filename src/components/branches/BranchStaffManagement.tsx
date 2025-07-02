@@ -1,19 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Users, 
-  User, 
-  Plus, 
-  Search, 
-  MoreVertical, 
-  Edit, 
-  Trash, 
-  Shield, 
-  Mail, 
-  Phone, 
-  Calendar, 
-  CheckCircle2, 
-  XCircle, 
-  Loader2 
+import {
+  Users,
+  User,
+  Plus,
+  UserPlus,
+  Search,
+  MoreVertical,
+  Edit,
+  Trash,
+  Shield,
+  Mail,
+  Phone,
+  Calendar,
+  CheckCircle2,
+  XCircle,
+  Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,11 +44,13 @@ export default function BranchStaffManagement() {
   const { selectedBranch: branchId } = useBranchSelection();
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddStaff, setShowAddStaff] = useState(false);
+  const [showInviteStaff, setShowInviteStaff] = useState(false);
   const [editingStaff, setEditingStaff] = useState<any | null>(null);
   const [staffToDelete, setStaffToDelete] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [inviteLoading, setInviteLoading] = useState(false);
   
-  const { users, loading: usersLoading, addUser, updateUser, removeUser } = useBranchUsers(branchId);
+  const { users, loading: usersLoading, addUser, updateUser, removeUser, inviteUser } = useBranchUsers(branchId);
   const { showSuccess, showError } = useNotificationSystem();
   
   // Filter users based on search
@@ -131,6 +134,21 @@ export default function BranchStaffManagement() {
       setLoading(false);
     }
   };
+
+  // Handle invite staff
+  const handleInviteStaff = async (data: { email: string; role: string }) => {
+    try {
+      setInviteLoading(true);
+      await inviteUser(data.email, data.role);
+      showSuccess('Invitation Sent', 'User has been invited successfully');
+      setShowInviteStaff(false);
+    } catch (err) {
+      console.error('Failed to invite staff:', err);
+      showError('Invite Failed', 'Failed to send invitation');
+    } finally {
+      setInviteLoading(false);
+    }
+  };
   
   if (!branchId) {
     return (
@@ -152,12 +170,20 @@ export default function BranchStaffManagement() {
           <p className="text-gray-600 mt-1">Manage branch staff members</p>
         </div>
         <div className="flex items-center gap-3">
-          <Button 
+          <Button
             onClick={() => setShowAddStaff(true)}
             className="flex items-center gap-2"
           >
             <Plus className="h-4 w-4" />
             Add Staff
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setShowInviteStaff(true)}
+            className="flex items-center gap-2"
+          >
+            <UserPlus className="h-4 w-4" />
+            Invite Staff
           </Button>
         </div>
       </div>
@@ -293,6 +319,24 @@ export default function BranchStaffManagement() {
             onSubmit={handleAddStaff}
             onCancel={() => setShowAddStaff(false)}
             loading={loading}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Invite Staff Dialog */}
+      <Dialog open={showInviteStaff} onOpenChange={setShowInviteStaff}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Invite Staff Member</DialogTitle>
+            <DialogDescription>
+              Send an invitation to join this branch
+            </DialogDescription>
+          </DialogHeader>
+
+          <InviteForm
+            onSubmit={handleInviteStaff}
+            onCancel={() => setShowInviteStaff(false)}
+            loading={inviteLoading}
           />
         </DialogContent>
       </Dialog>
@@ -495,6 +539,80 @@ function StaffForm({ initialData, onSubmit, onCancel, loading = false }: StaffFo
             <>
               {initialData ? 'Update Staff' : 'Add Staff'}
             </>
+          )}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+interface InviteFormProps {
+  onSubmit: (data: { email: string; role: string }) => void;
+  onCancel: () => void;
+  loading?: boolean;
+}
+
+function InviteForm({ onSubmit, onCancel, loading = false }: InviteFormProps) {
+  const [formData, setFormData] = useState({ email: '', role: 'operator' });
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit(formData);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <Label htmlFor="invite-email">Email</Label>
+        <Input
+          id="invite-email"
+          name="email"
+          type="email"
+          value={formData.email}
+          onChange={handleChange}
+          placeholder="Enter email address"
+          required
+        />
+      </div>
+
+      <div>
+        <Label htmlFor="invite-role">Role</Label>
+        <Select
+          value={formData.role}
+          onValueChange={(value) => setFormData(prev => ({ ...prev, role: value }))}
+        >
+          <SelectTrigger id="invite-role">
+            <SelectValue placeholder="Select role" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="admin">Admin</SelectItem>
+            <SelectItem value="operator">Operator</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="flex justify-end gap-3 pt-4">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancel}
+          disabled={loading}
+        >
+          Cancel
+        </Button>
+        <Button type="submit" disabled={loading} className="flex items-center gap-2">
+          {loading ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Sending...
+            </>
+          ) : (
+            'Send Invite'
           )}
         </Button>
       </div>
