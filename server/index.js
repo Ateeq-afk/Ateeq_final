@@ -87,7 +87,8 @@ app.post('/api/signup', async (req, res) => {
     username,
     fullName,
     passwordHash,
-    role: role || 'branch_user'
+    // default to operator if no role provided
+    role: role || 'operator'
   };
   users.push(user);
   res.status(201).json({ userId: user.code, username: user.username });
@@ -159,6 +160,8 @@ app.get('/api/bookings', auth, (req, res) => {
   const { orgId, branchId, role } = req.user;
   const filtered = role === 'superadmin'
     ? bookings
+    : role === 'admin'
+    ? bookings.filter(b => b.orgId === orgId)
     : bookings.filter(b => b.orgId === orgId && b.branchId === branchId);
   res.json(filtered);
 });
@@ -166,7 +169,10 @@ app.get('/api/bookings', auth, (req, res) => {
 app.post('/api/bookings', auth, (req, res) => {
   const { orgId, branchId, userId, role } = req.user;
   const bookingOrgId = role === 'superadmin' ? req.body.orgId ?? orgId : orgId;
-  const bookingBranchId = role === 'superadmin' ? req.body.branchId ?? branchId : branchId;
+  const bookingBranchId =
+    role === 'superadmin' || role === 'admin'
+      ? req.body.branchId ?? branchId
+      : branchId;
   const booking = {
     id: bookings.length + 1,
     orgId: bookingOrgId,
