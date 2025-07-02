@@ -12,7 +12,7 @@ npm run start:server
 
 The server listens on `http://localhost:3000` and exposes the following endpoints:
 
-- `POST /api/signup` – create a user within a branch. The username must be unique within the organization.
+- `POST /api/signup` – create a user. The username must be unique within the organization.
 - `POST /api/login` – login using organization ID, username and password. Returns a JWT.
 - `GET /api/organizations` – list organizations.
 - `POST /api/organizations` – create a new organization.

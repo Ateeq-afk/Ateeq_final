@@ -7,10 +7,8 @@ export async function login(orgId: string, username: string, password: string) {
 
 export async function signUp(options: {
   fullName: string
-  desiredUsername: string
+  email: string
   password: string
-  branchId: string
-  role: string
 }) {
   const { data } = await axios.post('/api/signup', options)
   return data

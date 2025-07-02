@@ -1,24 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Truck, User, Mail, Lock, Eye, EyeOff, Building2, ArrowRight, Loader2, CheckCircle } from 'lucide-react';
+import { Truck, User, Mail, Lock, Eye, EyeOff, ArrowRight, CheckCircle, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
-import { useBranches } from '@/hooks/useBranches';
 
 const formSchema = z.object({
   fullName: z.string().min(2, 'Full name is required'),
   email: z.string().email('Please enter a valid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   confirmPassword: z.string(),
-  branch: z.string().min(1, 'Please select a branch'),
-  role: z.string().min(1, 'Please select a role'),
 }).refine(data => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ['confirmPassword'],
@@ -33,13 +29,10 @@ export default function SignUpPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const navigate = useNavigate();
-  const { branches, loading: branchesLoading } = useBranches();
 
   const {
     register,
     handleSubmit,
-    setValue,
-    watch,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -48,8 +41,6 @@ export default function SignUpPage() {
       email: '',
       password: '',
       confirmPassword: '',
-      branch: '',
-      role: 'branch_user',
     },
   });
 
@@ -62,10 +53,8 @@ export default function SignUpPage() {
         email: data.email,
         password: data.password,
         options: {
-          data: { 
-            full_name: data.fullName, 
-            branch_id: data.branch,
-            role: data.role
+          data: {
+            full_name: data.fullName,
           }
         }
       });
@@ -275,59 +264,7 @@ export default function SignUpPage() {
                 </div>
               </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="branch" className="text-gray-700 dark:text-gray-300">Branch</Label>
-                <div className="relative">
-                  <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
-                  <Select
-                    value={watch('branch')}
-                    onValueChange={(value) => setValue('branch', value)}
-                  >
-                    <SelectTrigger id="branch" className="pl-10 h-12">
-                      <SelectValue placeholder="Select branch" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {branchesLoading ? (
-                        <div className="flex items-center justify-center p-2">
-                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                          <span>Loading branches...</span>
-                        </div>
-                      ) : branches.length > 0 ? (
-                        branches.map((branch) => (
-                          <SelectItem key={branch.id} value={branch.id}>
-                            {branch.name} - {branch.city}
-                          </SelectItem>
-                        ))
-                      ) : (
-                        <div className="p-2 text-center text-gray-500">No branches available</div>
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
-                {errors.branch && (
-                  <p className="text-sm text-red-500 mt-1">{errors.branch.message}</p>
-                )}
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="role" className="text-gray-700 dark:text-gray-300">Role</Label>
-                <Select
-                  value={watch('role')}
-                  onValueChange={(value) => setValue('role', value)}
-                >
-                  <SelectTrigger id="role" className="h-12">
-                    <SelectValue placeholder="Select role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="branch_user">Branch User</SelectItem>
-                    <SelectItem value="accountant">Accountant</SelectItem>
-                    <SelectItem value="admin">Administrator</SelectItem>
-                  </SelectContent>
-                </Select>
-                {errors.role && (
-                  <p className="text-sm text-red-500 mt-1">{errors.role.message}</p>
-                )}
-              </div>
+
               
               <Button 
                 type="submit" 
