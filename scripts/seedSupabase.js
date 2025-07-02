@@ -44,7 +44,12 @@ async function seed() {
     const { data: adminUser, error: adminAuthErr } = await supabase.auth.admin.createUser({
       email: 'admin@example.com',
       password: 'password',
-      email_confirm: true
+      email_confirm: true,
+      user_metadata: {
+        role: 'admin',
+        branch_id: branches[0].id,
+        organization_id: org.id
+      }
     });
     if (adminAuthErr) throw adminAuthErr;
 
@@ -62,7 +67,12 @@ async function seed() {
     const { data: staffUser, error: staffAuthErr } = await supabase.auth.admin.createUser({
       email: 'staff@example.com',
       password: 'password',
-      email_confirm: true
+      email_confirm: true,
+      user_metadata: {
+        role: 'staff',
+        branch_id: branches[1].id,
+        organization_id: org.id
+      }
     });
     if (staffAuthErr) throw staffAuthErr;
 
