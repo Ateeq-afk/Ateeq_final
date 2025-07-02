@@ -35,7 +35,10 @@ async function seed() {
       .from('branches')
       .insert([
         { organization_id: org.id, name: 'Head Office', city: 'Mumbai', is_head_office: true, status: 'active' },
-        { organization_id: org.id, name: 'Delhi Branch', city: 'Delhi', is_head_office: false, status: 'active' }
+        { organization_id: org.id, name: 'Delhi Branch', city: 'Delhi', is_head_office: false, status: 'active' },
+        { organization_id: org.id, name: 'Surat', city: 'Surat', is_head_office: false, status: 'active' },
+        { organization_id: org.id, name: 'Bangalore', city: 'Bangalore', is_head_office: false, status: 'active' },
+        { organization_id: org.id, name: 'Bhiwandi', city: 'Bhiwandi', is_head_office: false, status: 'active' }
       ])
       .select();
     if (branchErr) throw branchErr;
