@@ -8,7 +8,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "start:server": "node server/index.js",
+    "start:server": "node server/index.cjs",
     "test": "node tests/ogpl.test.cjs && node tests/warehouse.test.cjs && node tests/bookings.test.cjs",
 
     "seed:supabase": "node scripts/seedSupabase.js"

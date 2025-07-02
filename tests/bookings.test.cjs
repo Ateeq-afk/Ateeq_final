@@ -1,7 +1,7 @@
 const assert = require('assert');
 const { spawn } = require('child_process');
 
-const server = spawn('node', ['server/index.js']);
+const server = spawn('node', ['server/index.cjs']);
 
 function waitForServer() {
   return new Promise((resolve, reject) => {

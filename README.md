@@ -25,6 +25,7 @@ The server listens on `http://localhost:3000` and exposes the following endpoint
 - `POST /edge/unload-ogpl` – complete unloading for an OGPL.
 - `POST /edge/submit-pod` – mark a booking as delivered.
 - `GET /edge/reports/bookings` – return a simple booking status summary.
+- `POST /edge/invite-user` – create a Supabase user invitation.
 
 These `/edge/*` routes act as lightweight equivalents of Supabase Edge
 functions, allowing the demo to handle complex logic such as LR number
@@ -82,4 +83,27 @@ Environment variables are defined in `backend/.env.example`.
 
 Additional endpoints provide a lightweight way to track cargo inside warehouses.
 See [docs/warehouse_inventory.md](docs/warehouse_inventory.md) for details.
+
+## Invite User Edge Function
+
+The `invite-user` function creates a pending user in Supabase and sends the
+invite email. Deploy it with the Supabase CLI:
+
+```bash
+supabase functions deploy invite-user
+```
+
+The following environment variables must be available when running the
+function:
+
+- `SUPABASE_URL` – your project URL
+- `SUPABASE_SERVICE_ROLE_KEY` – service role key used to create the user
+- `SMTP_HOST` – SMTP server host
+- `SMTP_PORT` – SMTP server port
+- `SMTP_USER` – SMTP username
+- `SMTP_PASS` – SMTP password
+- `EMAIL_REDIRECT_TO` – (optional) URL the user is sent to after accepting the invite
+
+Configure these values in your Supabase project or in `supabase/.env` before
+deploying.
 
