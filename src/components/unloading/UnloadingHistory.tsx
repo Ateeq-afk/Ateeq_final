@@ -9,15 +9,19 @@ import UnloadingDetails from './UnloadingDetails';
 
 interface Props {
   organizationId: string;
+  branchId?: string | null;
 }
 
-export default function UnloadingHistory({ organizationId }: Props) {
+export default function UnloadingHistory({ organizationId, branchId }: Props) {
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFilter, setDateFilter] = useState('all');
   const [vehicleFilter, setVehicleFilter] = useState('all');
   const [selectedOGPL, setSelectedOGPL] = useState<string | null>(null);
   
-  const { getCompletedUnloadings, loading, error } = useUnloading(organizationId);
+  const { getCompletedUnloadings, loading, error } = useUnloading(
+    organizationId,
+    branchId
+  );
   const [unloadings, setUnloadings] = useState<any[]>([]);
   
   React.useEffect(() => {
