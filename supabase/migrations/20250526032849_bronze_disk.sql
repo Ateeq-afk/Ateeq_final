@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS public.users (
   id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   name text,
   email text,
-  role text DEFAULT 'staff',  -- roles: 'admin', 'branch_manager', 'staff', 'accountant'
+  role text DEFAULT 'operator',  -- roles: 'admin', 'operator', 'accountant'
   branch_id uuid REFERENCES branches(id),
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now()
@@ -56,12 +56,12 @@ CREATE POLICY "Admins can update all users"
   );
 
 -- Branch managers can view users in their branch
-CREATE POLICY "Branch managers can view users in their branch"
-  ON public.users FOR SELECT 
+CREATE POLICY "Operators can view users in their branch"
+  ON public.users FOR SELECT
   USING (
     EXISTS (
       SELECT 1 FROM public.users
-      WHERE id = auth.uid() AND role = 'branch_manager' AND branch_id = users.branch_id
+      WHERE id = auth.uid() AND role = 'operator' AND branch_id = users.branch_id
     )
   );
 

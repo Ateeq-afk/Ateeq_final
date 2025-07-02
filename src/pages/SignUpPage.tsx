@@ -49,7 +49,7 @@ export default function SignUpPage() {
       password: '',
       confirmPassword: '',
       branch: '',
-      role: 'branch_user',
+      role: 'operator',
     },
   });
 
@@ -319,7 +319,7 @@ export default function SignUpPage() {
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="branch_user">Branch User</SelectItem>
+                  <SelectItem value="operator">Operator</SelectItem>
                     <SelectItem value="accountant">Accountant</SelectItem>
                     <SelectItem value="admin">Administrator</SelectItem>
                   </SelectContent>

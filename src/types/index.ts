@@ -202,7 +202,7 @@ export interface BranchUser {
   id: string;
   branch_id: string;
   user_id: string;
-  role: 'admin' | 'operator';
+  role: 'admin' | 'operator' | 'accountant';
   name: string;
   email: string;
   phone: string;

@@ -64,6 +64,8 @@ function generateUserCode(branchCode) {
   return `${branchCode}-USR${pad(count, 3)}`;
 }
 
+const ALLOWED_ROLES = ['admin', 'operator', 'accountant'];
+
 app.post('/api/signup', async (req, res) => {
   const { fullName, desiredUsername, password, branchId, role } = req.body;
   const branch = branches.find(b => b.code === branchId);
@@ -79,6 +81,7 @@ app.post('/api/signup', async (req, res) => {
 
   const passwordHash = await bcrypt.hash(password, 10);
   const userCode = generateUserCode(branch.code);
+  const userRole = ALLOWED_ROLES.includes(role) ? role : 'operator';
   const user = {
     id: users.length + 1,
     code: userCode,
@@ -87,8 +90,7 @@ app.post('/api/signup', async (req, res) => {
     username,
     fullName,
     passwordHash,
-    // default to operator if no role provided
-    role: role || 'operator'
+    role: userRole
   };
   users.push(user);
   res.status(201).json({ userId: user.code, username: user.username });
