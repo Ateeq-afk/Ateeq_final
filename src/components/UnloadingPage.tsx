@@ -27,6 +27,8 @@ import {
 import { useUnloading } from '@/hooks/useUnloading';
 import { useOrganizations } from '@/hooks/useOrganizations';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBranchSelection } from '@/contexts/BranchSelectionContext';
+import { useBranches } from '@/hooks/useBranches';
 import UnloadingForm from './unloading/UnloadingForm';
 import UnloadingHistory from './unloading/UnloadingHistory';
 
@@ -40,15 +42,17 @@ export default function UnloadingPage() {
   const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending');
 
   const { organizations } = useOrganizations();
-  const { user, getCurrentUserBranch } = useAuth();
-  const organizationId = organizations[0]?.id;
-  const [selectedBranch, setSelectedBranch] = useState<{ id: string } | null>(() => getCurrentUserBranch());
+  const { getCurrentUserBranch } = useAuth();
+  const { selectedBranch, setSelectedBranch } = useBranchSelection();
+  const { branches } = useBranches();
 
-  useEffect(() => {
-    setSelectedBranch(getCurrentUserBranch());
-  }, [user, getCurrentUserBranch]);
+  const organizationId = organizations[0]?.id;
+
+  const userBranch = getCurrentUserBranch();
+  const effectiveBranchId = selectedBranch || userBranch?.id;
+
   const { getIncomingOGPLs, unloadOGPL, loading, error } =
-    useUnloading(organizationId);
+    useUnloading(organizationId, effectiveBranchId);
 
   useEffect(() => {
     if (organizationId) {
@@ -75,15 +79,15 @@ export default function UnloadingPage() {
       console.log('Calling unloadOGPL with:', {
         ogplId,
         bookingIds: bookingIds.length,
-        branch_id: selectedBranch?.id,
+        branch_id: effectiveBranchId,
       });
 
-      if (!selectedBranch?.id) {
+      if (!effectiveBranchId) {
         alert('Branch not selected. Please select a branch first.');
         return;
       }
 
-      await unloadOGPL(ogplId, bookingIds, conditions, selectedBranch.id);
+      await unloadOGPL(ogplId, bookingIds, conditions, effectiveBranchId);
       setShowForm(false);
       loadOGPLs(); // Refresh the list
     } catch (err) {
@@ -151,17 +155,31 @@ export default function UnloadingPage() {
     );
   }
 
-  if (!selectedBranch?.id) {
+  if (!effectiveBranchId) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-6 flex items-center justify-center">
-        <div className="text-center">
-          <AlertCircle className="h-12 w-12 text-orange-600 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900">
-            No Branch Selected
-          </h3>
-          <p className="text-gray-600 mt-1">
-            Please select a branch to continue with unloading operations
-          </p>
+      <div className="p-6 bg-yellow-50 border border-yellow-200 rounded-xl">
+        <div className="flex items-start gap-3">
+          <AlertCircle className="h-6 w-6 text-yellow-600 mt-0.5" />
+          <div>
+            <h3 className="font-medium text-yellow-800">No Branch Selected</h3>
+            <p className="text-yellow-700 mt-1">
+              Please select a branch to continue with unloading operations.
+            </p>
+            <div className="mt-4">
+              <Select value={selectedBranch || ''} onValueChange={setSelectedBranch}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="Select branch" />
+                </SelectTrigger>
+                <SelectContent>
+                  {branches.map((branch) => (
+                    <SelectItem key={branch.id} value={branch.id}>
+                      {branch.name} - {branch.city}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -211,9 +229,9 @@ export default function UnloadingPage() {
           <p className="text-gray-600 mt-1">
             Unload the transit / dispatch list received for delivery.
           </p>
-          {selectedBranch && (
+          {effectiveBranchId && (
             <p className="text-sm text-blue-600 mt-1">
-              Current Branch: {selectedBranch.id}
+              Current Branch: {effectiveBranchId}
             </p>
           )}
         </div>
@@ -419,7 +437,10 @@ export default function UnloadingPage() {
             </div>
           </>
         ) : (
-          <UnloadingHistory organizationId={organizationId} />
+          <UnloadingHistory
+            organizationId={organizationId}
+            branchId={effectiveBranchId}
+          />
         )}
       </div>
     </div>
