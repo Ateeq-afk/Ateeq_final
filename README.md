@@ -48,6 +48,7 @@ The system supports multiple user roles:
 - **superadmin** – unrestricted access across all organizations and branches.
 - **admin** – manages all branches within a single organization.
 - **operator** – limited to a single branch.
+- **accountant** – read-only access for financial reports.
 
 **Note**: SMS notification support has been removed. The application no longer sends
 text messages when actions occur.

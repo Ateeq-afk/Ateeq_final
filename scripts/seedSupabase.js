@@ -72,7 +72,7 @@ async function seed() {
       password: 'password',
       email_confirm: true,
       user_metadata: {
-        role: 'staff',
+        role: 'operator',
         branch_id: branches[1].id,
         organization_id: org.id
       }
@@ -85,7 +85,7 @@ async function seed() {
         id: staffUser.user.id,
         name: 'Staff User',
         email: 'staff@example.com',
-        role: 'staff',
+        role: 'operator',
         branch_id: branches[1].id
       });
     if (staffInsertErr) throw staffInsertErr;

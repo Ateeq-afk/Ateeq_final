@@ -62,7 +62,7 @@ Request body:
   "desiredUsername": "rama123",
   "password": "secret",
   "branchId": "DC001-BR02",
-  "role": "branch_user"
+  "role": "operator"
 }
 ```
 
@@ -95,7 +95,7 @@ app.post('/api/signup', async (req, res) => {
     username,
     full_name: fullName,
     password_hash: passwordHash,
-    role: role || 'branch_user'
+    role: role || 'operator'
   });
 
   res.status(201).json({ userId: user.user_code, username: user.username });
