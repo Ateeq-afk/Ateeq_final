@@ -34,7 +34,7 @@ async function main() {
     res = await fetch(`${base}/api/signup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fullName: 'Branch User', desiredUsername: 'branchuser', password: 'pass', branchId: 'DC001-BR01' })
+      body: JSON.stringify({ fullName: 'Branch User', desiredUsername: 'branchuser', password: 'pass' })
     });
     body = await res.json();
     assert.strictEqual(res.status, 201);

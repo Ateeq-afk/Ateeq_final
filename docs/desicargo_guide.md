@@ -60,9 +60,7 @@ Request body:
 {
   "fullName": "Rama Devi",
   "desiredUsername": "rama123",
-  "password": "secret",
-  "branchId": "DC001-BR02",
-  "role": "branch_user"
+  "password": "secret"
 }
 ```
 
@@ -70,10 +68,10 @@ Pseudo backend logic (Node.js/Express):
 
 ```js
 app.post('/api/signup', async (req, res) => {
-  const { fullName, desiredUsername, password, branchId, role } = req.body;
+  const { fullName, desiredUsername, password } = req.body;
 
-  const branch = await db.branches.findOne({ branch_code: branchId });
-  if (!branch) return res.status(400).json({ error: 'Invalid branch' });
+  // Automatically assign the first branch for demo purposes
+  const branch = await db.branches.findOne({ order: 'id', limit: 1 });
 
   const orgId = branch.org_id;
   let username = desiredUsername;
@@ -95,7 +93,7 @@ app.post('/api/signup', async (req, res) => {
     username,
     full_name: fullName,
     password_hash: passwordHash,
-    role: role || 'branch_user'
+    role: 'branch_user'
   });
 
   res.status(201).json({ userId: user.user_code, username: user.username });

@@ -64,10 +64,15 @@ function generateUserCode(branchCode) {
   return `${branchCode}-USR${pad(count, 3)}`;
 }
 
+function getDefaultBranch() {
+  // In this simple in-memory model the first branch acts as the default
+  return branches[0];
+}
+
 app.post('/api/signup', async (req, res) => {
-  const { fullName, desiredUsername, password, branchId, role } = req.body;
-  const branch = branches.find(b => b.code === branchId);
-  if (!branch) return res.status(400).json({ error: 'Invalid branch' });
+  const { fullName, desiredUsername, password } = req.body;
+  // Always assign the new user to the default branch
+  const branch = getDefaultBranch();
 
   const orgId = branch.orgId;
   let username = desiredUsername;
@@ -87,8 +92,7 @@ app.post('/api/signup', async (req, res) => {
     username,
     fullName,
     passwordHash,
-    // default to operator if no role provided
-    role: role || 'operator'
+    role: 'operator'
   };
   users.push(user);
   res.status(201).json({ userId: user.code, username: user.username });
