@@ -41,6 +41,14 @@ A super admin account is created automatically when the server starts:
 
 This user is not restricted to a single organization or branch and can access all data.
 
+### Roles
+
+The system supports multiple user roles:
+
+- **superadmin** – unrestricted access across all organizations and branches.
+- **admin** – manages all branches within a single organization.
+- **operator** – limited to a single branch.
+
 **Note**: SMS notification support has been removed. The application no longer sends
 text messages when actions occur.
 
