@@ -72,5 +72,8 @@ export default function WarehouseManagementPage() {
               </tbody>
             </table>
           )}
-          )
-      
+        </div>
+      )}
+</div>
+  );
+} 
