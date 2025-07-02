@@ -8,16 +8,18 @@ export function useCurrentBranch() {
   const [branch, setBranch] = useState<Branch | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const { role } = useAuth(); 
+  const { user } = useAuth();
+
+  const branchId = user?.user_metadata?.branch_id as string | undefined;
 
   useEffect(() => {
-    if (role?.branchId) {
-      loadBranch(role.branchId);
+    if (branchId) {
+      loadBranch(branchId);
     } else {
       setBranch(null);
       setLoading(false);
     }
-  }, [role?.branchId]);
+  }, [branchId]);
 
   async function loadBranch(branchId: string) {
     try {
@@ -44,6 +46,6 @@ export function useCurrentBranch() {
     branch,
     loading,
     error,
-    refresh: () => role?.branchId ? loadBranch(role.branchId) : Promise.resolve()
+    refresh: () => branchId ? loadBranch(branchId) : Promise.resolve()
   };
 }
