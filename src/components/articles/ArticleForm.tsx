@@ -129,9 +129,9 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 interface Props {
-  onSubmit: (data: FormValues) => Promise<void>;
+  onSubmit: (data: any) => Promise<void>;
   onCancel: () => void;
-  initialData?: Partial<FormValues>;
+  initialData?: Partial<FormValues> & { id?: string; created_at?: string; updated_at?: string };
 }
 
 // Common HSN codes for suggestions
