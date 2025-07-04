@@ -236,8 +236,7 @@ export default function ArticleList() {
     return { total, avgPrice, minPrice, maxPrice };
   }, [filtered]);
 
-  // —— Handlers ——
-  const handleCreate = useCallback(async (data: Omit<Article, 'id' | 'created_at' | 'updated_at'>) => {
+  const handleCreate = useCallback(async (data: any) => {
     try {
       await createArticle({
         ...data,
@@ -250,7 +249,7 @@ export default function ArticleList() {
     }
   }, [createArticle, userBranch, branches, showSuccess, showError]);
 
-  const handleUpdate = useCallback(async (data: Partial<Article>) => {
+  const handleUpdate = useCallback(async (data: any) => {
     if (!editArticle) return;
     try {
       await updateArticle(editArticle.id, data);
