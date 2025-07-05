@@ -3,16 +3,18 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import type { Booking } from '@/types'
 import { useAuth } from '@/contexts/AuthContext'
+import { useBranchSelection } from '@/contexts/BranchSelectionContext'
 
 // Simple UUID check
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const isValidUUID = (id: string | null) => !!id && UUID_REGEX.test(id)
 
-export function useArticleBookings(articleId: string, branchId: string | null = null) {
+export function useArticleBookings(articleId: string) {
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
   const { getCurrentUserBranch } = useAuth()
+  const { selectedBranch } = useBranchSelection()
   const userBranch = getCurrentUserBranch()
 
   const load = useCallback(async () => {
@@ -28,12 +30,7 @@ export function useArticleBookings(articleId: string, branchId: string | null = 
     }
 
     // 2. Determine branch scope
-    const useBranch =
-      branchId && isValidUUID(branchId)
-        ? branchId
-        : userBranch?.id && isValidUUID(userBranch.id)
-        ? userBranch.id
-        : null
+    const useBranch = selectedBranch || userBranch?.id
 
     try {
       // 3. Build the query string as a single-line literal
@@ -67,7 +64,7 @@ export function useArticleBookings(articleId: string, branchId: string | null = 
     } finally {
       setLoading(false)
     }
-  }, [articleId, branchId, userBranch])
+  }, [articleId, selectedBranch, userBranch])
 
   // 6. Fetch on mount / change
   useEffect(() => {

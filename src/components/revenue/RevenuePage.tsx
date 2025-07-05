@@ -255,8 +255,8 @@ export default function RevenuePage() {
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Financial Settings</h3>
                   <p className="text-gray-600 mb-6">Configure your financial preferences and accounting settings</p>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-100">
                       <h4 className="font-medium text-gray-900 mb-4">General Settings</h4>
                       <div className="space-y-4">
                         <div>
@@ -304,7 +304,7 @@ export default function RevenuePage() {
                       </div>
                     </div>
                     
-                    <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                    <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 border border-green-100">
                       <h4 className="font-medium text-gray-900 mb-4">Invoice Settings</h4>
                       <div className="space-y-4">
                         <div>
@@ -333,7 +333,7 @@ export default function RevenuePage() {
                       </div>
                     </div>
                     
-                    <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                    <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-6 border border-purple-100">
                       <h4 className="font-medium text-gray-900 mb-4">Tax Settings</h4>
                       <div className="space-y-4">
                         <div>
@@ -359,7 +359,7 @@ export default function RevenuePage() {
                       </div>
                     </div>
                     
-                    <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                    <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl p-6 border border-amber-100">
                       <h4 className="font-medium text-gray-900 mb-4">Payment Settings</h4>
                       <div className="space-y-4">
                         <div>

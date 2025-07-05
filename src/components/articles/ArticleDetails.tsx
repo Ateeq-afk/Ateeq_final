@@ -6,19 +6,15 @@ import {
   AlertTriangle,
   ShieldCheck,
   Truck,
-  BarChart3,
   IndianRupee,
   Calendar,
   Users,
   Building2,
   TrendingUp,
-  TrendingDown,
   Clock,
-  FileText,
   Hash,
   Percent,
   Box,
-  Info,
   Download,
   Copy,
   CheckCircle2,
@@ -58,7 +54,6 @@ import { useArticleBookings } from '@/hooks/useArticleBookings';
 import { useArticles } from '@/hooks/useArticles';
 import { useNotificationSystem } from '@/hooks/useNotificationSystem';
 import type { Article } from '@/types';
-import type { Booking as BookingType } from '@/hooks/useArticleBookings';
 import ArticleForm from './ArticleForm';
 
 interface Props {

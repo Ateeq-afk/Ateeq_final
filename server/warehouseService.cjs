@@ -1,15 +1,31 @@
 // Simple warehouse and inventory management
-const warehouses = [];
-const locations = [];
+const warehouses = [
+  { id: 1, name: 'Main Warehouse', branchId: 1, address: '123 Storage Street', city: 'Mumbai', status: 'active' },
+  { id: 2, name: 'Secondary Storage', branchId: 1, address: '456 Logistics Lane', city: 'Delhi', status: 'active' },
+  { id: 3, name: 'Cold Storage Facility', branchId: 2, address: '789 Refrigeration Road', city: 'Bangalore', status: 'maintenance' }
+];
+const locations = [
+  { id: 1, warehouseId: 1, name: 'A-1-001', type: 'bin', capacity: 100 },
+  { id: 2, warehouseId: 1, name: 'A-1-002', type: 'bin', capacity: 100 },
+  { id: 3, warehouseId: 1, name: 'B-2-001', type: 'rack', capacity: 500 },
+  { id: 4, warehouseId: 2, name: 'C-1-001', type: 'shelf', capacity: 50 },
+  { id: 5, warehouseId: 3, name: 'COLD-001', type: 'floor', capacity: 1000 }
+];
 // Inventory is stored as an array of records with explicit IDs so tests can
 // inspect individual items when needed.
-const inventory = [];
+const inventory = [
+  { id: 1, articleId: '1', warehouseLocationId: 1, quantity: 50, lastMovedAt: new Date().toISOString(), status: 'available' },
+  { id: 2, articleId: '2', warehouseLocationId: 2, quantity: 25, lastMovedAt: new Date().toISOString(), status: 'available' },
+  { id: 3, articleId: '3', warehouseLocationId: 3, quantity: 100, lastMovedAt: new Date().toISOString(), status: 'available' },
+  { id: 4, articleId: '1', warehouseLocationId: 4, quantity: 75, lastMovedAt: new Date().toISOString(), status: 'available' }
+];
 // Access bookings so inventory actions can update booking warehouse information
 const { bookings } = require('./ogplService.cjs');
 
 function createWarehouse(name, branchId = null, address = '', city = '', status = 'active') {
   if (!name) throw new Error('Name required');
-  const warehouse = { id: warehouses.length + 1, name, branchId, address, city, status };
+  const id = warehouses.length > 0 ? Math.max(...warehouses.map(w => w.id)) + 1 : 1;
+  const warehouse = { id, name, branchId, address, city, status };
   warehouses.push(warehouse);
   return warehouse;
 }
@@ -18,7 +34,8 @@ function createLocation(warehouseId, name, type = 'bin', capacity = null) {
   const warehouse = warehouses.find(w => w.id == warehouseId);
   if (!warehouse) throw new Error(`Warehouse ${warehouseId} not found`);
   if (!name) throw new Error('Name required');
-  const location = { id: locations.length + 1, warehouseId, name, type, capacity };
+  const id = locations.length > 0 ? Math.max(...locations.map(l => l.id)) + 1 : 1;
+  const location = { id, warehouseId, name, type, capacity };
   locations.push(location);
   return location;
 }

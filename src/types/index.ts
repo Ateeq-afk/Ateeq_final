@@ -88,6 +88,7 @@ export interface Booking {
   description?: string;
   uom: string;
   actual_weight: number;
+  charged_weight?: number;
   quantity: number;
   freight_per_qty: number;
   loading_charges: number;
@@ -134,13 +135,16 @@ export interface Booking {
   // Logistics tracking fields
   loading_status?: 'pending' | 'loaded';
   unloading_status?: 'pending' | 'unloaded' | 'missing';
-  pod_status?: 'pending' | 'completed';
+  pod_status?: 'pending' | 'in_progress' | 'completed' | 'rejected';
   loading_session_id?: string;
   unloading_session_id?: string;
   pod_record_id?: string;
   delivery_date?: string;
   pod_data?: any;
   cancellation_reason?: string;
+  pod_required?: boolean;
+  delivery_attempts?: number;
+  delivery_attempted_at?: string;
 }
 
 // Organization types
@@ -226,3 +230,85 @@ export interface AuditLog {
 }
 
 export const STATUS_UNLOADED = 'unloaded';
+
+// Filter and Sort types
+export interface Filters {
+  search: string;
+  status: string;
+  dateRange: string;
+  paymentType: string;
+  branch: string;
+  customer?: string;
+}
+
+export type SortField = 'lr_number' | 'consignor' | 'consignee' | 'from_city' | 'to_city' | 'created_at' | 'total_amount';
+export type SortDirection = 'asc' | 'desc';
+
+// POD (Proof of Delivery) types
+export interface PODRecord {
+  id: string;
+  booking_id: string;
+  branch_id: string;
+  delivered_at: string;
+  delivered_by: string;
+  delivery_latitude?: number;
+  delivery_longitude?: number;
+  receiver_name: string;
+  receiver_phone: string;
+  receiver_designation?: string;
+  receiver_company?: string;
+  receiver_id_type?: 'Aadhaar' | 'PAN' | 'Driving License' | 'Voter ID' | 'Other';
+  receiver_id_number?: string;
+  signature_image_url?: string;
+  photo_evidence_url?: string;
+  receiver_photo_url?: string;
+  delivery_condition: 'good' | 'damaged' | 'partial';
+  damage_description?: string;
+  shortage_description?: string;
+  remarks?: string;
+  created_at: string;
+  updated_at: string;
+  created_by?: string;
+  booking?: Booking;
+}
+
+export interface PODAttempt {
+  id: string;
+  booking_id: string;
+  attempt_number: number;
+  attempted_at: string;
+  attempted_by: string;
+  reason_for_failure?: string;
+  next_attempt_date?: string;
+  notes?: string;
+  created_at: string;
+}
+
+export interface PODTemplate {
+  id: string;
+  branch_id?: string;
+  template_name: string;
+  delivery_instructions?: string;
+  required_documents?: string[];
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PODFormData {
+  receiverName: string;
+  receiverPhone: string;
+  receiverDesignation?: string;
+  receiverCompany?: string;
+  receiverIdType?: 'Aadhaar' | 'PAN' | 'Driving License' | 'Voter ID' | 'Other';
+  receiverIdNumber?: string;
+  receivedDate: string;
+  receivedTime: string;
+  deliveryCondition: 'good' | 'damaged' | 'partial';
+  damageDescription?: string;
+  shortageDescription?: string;
+  remarks?: string;
+  signatureImage: string | null;
+  photoEvidence: string | null;
+  receiverPhoto?: string | null;
+}

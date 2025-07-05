@@ -10,19 +10,29 @@ import {
   User, 
   Calendar, 
   MapPin,
-  X
+  X,
+  CreditCard,
+  Truck,
+  FileText,
+  AlertTriangle,
+  Printer
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useBookings } from '@/hooks/useBookings';
+import { usePOD } from '@/hooks/usePOD';
 import { motion } from 'framer-motion';
-import type { Booking } from '@/types';
+import type { Booking, PODFormData } from '@/types';
 
 interface ProofOfDeliveryProps {
   bookingId: string;
   onClose: () => void;
-  onSubmit: (data: any) => Promise<void>;
+  onSubmit?: (data: any) => Promise<void>;
 }
 
 export default function ProofOfDelivery({ 
@@ -30,25 +40,34 @@ export default function ProofOfDelivery({
   onClose, 
   onSubmit 
 }: ProofOfDeliveryProps) {
-  const [step, setStep] = useState<'details' | 'signature' | 'photo' | 'complete'>('details');
+  const [step, setStep] = useState<'details' | 'verification' | 'condition' | 'signature' | 'photo' | 'complete'>('details');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<PODFormData>({
     receiverName: '',
     receiverPhone: '',
     receiverDesignation: '',
+    receiverCompany: '',
+    receiverIdType: undefined,
+    receiverIdNumber: '',
     receivedDate: new Date().toISOString().split('T')[0],
     receivedTime: new Date().toTimeString().split(' ')[0].substring(0, 5),
+    deliveryCondition: 'good',
+    damageDescription: '',
+    shortageDescription: '',
     remarks: '',
-    signatureImage: null as string | null,
-    photoEvidence: null as string | null,
+    signatureImage: null,
+    photoEvidence: null,
+    receiverPhoto: null,
   });
   
   const { bookings } = useBookings();
+  const { submitPOD } = usePOD();
   const booking = bookings.find(b => b.id === bookingId);
   
   const signatureCanvasRef = useRef<HTMLCanvasElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const receiverPhotoRef = useRef<HTMLInputElement>(null);
   
   // Initialize form with receiver details if available
   React.useEffect(() => {
@@ -66,11 +85,33 @@ export default function ProofOfDelivery({
     setFormData(prev => ({ ...prev, [name]: value }));
   };
   
+  const handleSelectChange = (name: string, value: string) => {
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+  
   const handleNextStep = () => {
     if (step === 'details') {
       // Validate details
       if (!formData.receiverName || !formData.receiverPhone) {
         setError('Please fill in all required fields');
+        return;
+      }
+      if (formData.receiverPhone.length < 10) {
+        setError('Please enter a valid phone number');
+        return;
+      }
+      setStep('verification');
+    } else if (step === 'verification') {
+      // ID verification is optional
+      setStep('condition');
+    } else if (step === 'condition') {
+      // Check if damage/shortage description is provided when needed
+      if (formData.deliveryCondition === 'damaged' && !formData.damageDescription) {
+        setError('Please describe the damage');
+        return;
+      }
+      if (formData.deliveryCondition === 'partial' && !formData.shortageDescription) {
+        setError('Please describe the shortage');
         return;
       }
       setStep('signature');
@@ -90,8 +131,12 @@ export default function ProofOfDelivery({
   };
   
   const handlePrevStep = () => {
-    if (step === 'signature') {
+    if (step === 'verification') {
       setStep('details');
+    } else if (step === 'condition') {
+      setStep('verification');
+    } else if (step === 'signature') {
+      setStep('condition');
     } else if (step === 'photo') {
       setStep('signature');
     } else if (step === 'complete') {
@@ -118,13 +163,17 @@ export default function ProofOfDelivery({
     }
   };
   
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = (type: 'evidence' | 'receiver') => (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       const reader = new FileReader();
       
       reader.onloadend = () => {
-        setFormData(prev => ({ ...prev, photoEvidence: reader.result as string }));
+        if (type === 'evidence') {
+          setFormData(prev => ({ ...prev, photoEvidence: reader.result as string }));
+        } else {
+          setFormData(prev => ({ ...prev, receiverPhoto: reader.result as string }));
+        }
       };
       
       reader.readAsDataURL(file);
@@ -136,14 +185,29 @@ export default function ProofOfDelivery({
       setLoading(true);
       setError(null);
       
-      // Prepare data for submission
-      const podData = {
-        bookingId,
-        ...formData,
-        submittedAt: new Date().toISOString(),
-      };
-      
-      await onSubmit(podData);
+      // Use the provided onSubmit or the default submitPOD
+      if (onSubmit) {
+        await onSubmit(formData);
+      } else {
+        // Submit using the POD service
+        await submitPOD({
+          bookingId,
+          deliveredBy: 'Current User', // This should come from auth context
+          receiverName: formData.receiverName,
+          receiverPhone: formData.receiverPhone,
+          receiverDesignation: formData.receiverDesignation,
+          receiverCompany: formData.receiverCompany,
+          receiverIdType: formData.receiverIdType,
+          receiverIdNumber: formData.receiverIdNumber,
+          signatureImage: formData.signatureImage || undefined,
+          photoEvidence: formData.photoEvidence || undefined,
+          receiverPhoto: formData.receiverPhoto || undefined,
+          deliveryCondition: formData.deliveryCondition,
+          damageDescription: formData.damageDescription,
+          shortageDescription: formData.shortageDescription,
+          remarks: formData.remarks,
+        });
+      }
       
       // Success! The complete step will be shown
     } catch (err) {
@@ -153,6 +217,138 @@ export default function ProofOfDelivery({
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePrint = () => {
+    // Create a print-friendly version of the POD
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Proof of Delivery - ${booking.lr_number}</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            .header { text-align: center; margin-bottom: 30px; }
+            .company-name { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
+            .pod-title { font-size: 20px; color: #333; }
+            .section { margin-bottom: 20px; border: 1px solid #ddd; padding: 15px; border-radius: 5px; }
+            .section-title { font-weight: bold; margin-bottom: 10px; color: #555; }
+            .info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+            .info-item { margin-bottom: 8px; }
+            .label { font-weight: bold; color: #666; }
+            .value { color: #333; }
+            .signature-section { margin-top: 30px; text-align: center; }
+            .signature-image { max-width: 300px; border: 1px solid #ddd; padding: 10px; }
+            .photo-evidence { max-width: 400px; margin: 10px auto; }
+            @media print { 
+              body { margin: 10px; }
+              .no-print { display: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="company-name">DesiCargo</div>
+            <div class="pod-title">Proof of Delivery</div>
+          </div>
+
+          <div class="section">
+            <div class="section-title">Booking Details</div>
+            <div class="info-grid">
+              <div class="info-item">
+                <span class="label">LR Number:</span> <span class="value">${booking.lr_number}</span>
+              </div>
+              <div class="info-item">
+                <span class="label">Booking Date:</span> <span class="value">${new Date(booking.booking_date).toLocaleDateString()}</span>
+              </div>
+              <div class="info-item">
+                <span class="label">From:</span> <span class="value">${booking.from_branch_details?.name || 'N/A'}</span>
+              </div>
+              <div class="info-item">
+                <span class="label">To:</span> <span class="value">${booking.to_branch_details?.name || 'N/A'}</span>
+              </div>
+              <div class="info-item">
+                <span class="label">Article:</span> <span class="value">${booking.article?.name || 'N/A'}</span>
+              </div>
+              <div class="info-item">
+                <span class="label">Quantity:</span> <span class="value">${booking.quantity || 0}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="section-title">Receiver Details</div>
+            <div class="info-grid">
+              <div class="info-item">
+                <span class="label">Name:</span> <span class="value">${formData.receiverName}</span>
+              </div>
+              <div class="info-item">
+                <span class="label">Phone:</span> <span class="value">${formData.receiverPhone}</span>
+              </div>
+              ${formData.receiverDesignation ? `
+              <div class="info-item">
+                <span class="label">Designation:</span> <span class="value">${formData.receiverDesignation}</span>
+              </div>` : ''}
+              ${formData.receiverCompany ? `
+              <div class="info-item">
+                <span class="label">Company:</span> <span class="value">${formData.receiverCompany}</span>
+              </div>` : ''}
+              ${formData.receiverIdType ? `
+              <div class="info-item">
+                <span class="label">ID Type:</span> <span class="value">${formData.receiverIdType}</span>
+              </div>` : ''}
+              ${formData.receiverIdNumber ? `
+              <div class="info-item">
+                <span class="label">ID Number:</span> <span class="value">${formData.receiverIdNumber}</span>
+              </div>` : ''}
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="section-title">Delivery Details</div>
+            <div class="info-grid">
+              <div class="info-item">
+                <span class="label">Delivery Date:</span> <span class="value">${formData.receivedDate}</span>
+              </div>
+              <div class="info-item">
+                <span class="label">Delivery Time:</span> <span class="value">${formData.receivedTime}</span>
+              </div>
+              <div class="info-item">
+                <span class="label">Condition:</span> <span class="value">${formData.deliveryCondition}</span>
+              </div>
+              ${formData.remarks ? `
+              <div class="info-item" style="grid-column: span 2;">
+                <span class="label">Remarks:</span> <span class="value">${formData.remarks}</span>
+              </div>` : ''}
+            </div>
+          </div>
+
+          ${formData.signatureImage ? `
+          <div class="signature-section">
+            <div class="section-title">Receiver Signature</div>
+            <img src="${formData.signatureImage}" class="signature-image" alt="Signature" />
+          </div>` : ''}
+
+          ${formData.photoEvidence ? `
+          <div class="signature-section">
+            <div class="section-title">Photo Evidence</div>
+            <img src="${formData.photoEvidence}" class="photo-evidence" alt="Delivery Photo" />
+          </div>` : ''}
+
+          <script>
+            window.onload = function() {
+              window.print();
+            };
+          </script>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(printContent);
+    printWindow.document.close();
   };
   
   // Set up signature canvas
@@ -274,7 +470,7 @@ export default function ProofOfDelivery({
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.3 }}
-        className="bg-white rounded-2xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col"
+        className="bg-white rounded-2xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col"
       >
         {/* Header */}
         <div className="p-6 border-b border-gray-200 flex items-center justify-between">
@@ -297,12 +493,12 @@ export default function ProofOfDelivery({
           {/* Progress Steps */}
           <div className="mb-8">
             <div className="flex items-center justify-between">
-              {['details', 'signature', 'photo', 'complete'].map((stepName, index) => (
+              {['details', 'verification', 'condition', 'signature', 'photo', 'complete'].map((stepName, index) => (
                 <React.Fragment key={stepName}>
                   {index > 0 && (
                     <div 
                       className={`flex-1 h-1 ${
-                        ['details', 'signature', 'photo', 'complete'].indexOf(step) >= index 
+                        ['details', 'verification', 'condition', 'signature', 'photo', 'complete'].indexOf(step) >= index 
                           ? 'bg-green-500' 
                           : 'bg-gray-200'
                       }`}
@@ -312,8 +508,8 @@ export default function ProofOfDelivery({
                     className={`h-8 w-8 rounded-full flex items-center justify-center ${
                       step === stepName 
                         ? 'bg-green-500 text-white' 
-                        : ['details', 'signature', 'photo', 'complete'].indexOf(step) > 
-                          ['details', 'signature', 'photo', 'complete'].indexOf(stepName)
+                        : ['details', 'verification', 'condition', 'signature', 'photo', 'complete'].indexOf(step) > 
+                          ['details', 'verification', 'condition', 'signature', 'photo', 'complete'].indexOf(stepName)
                         ? 'bg-green-100 text-green-600' 
                         : 'bg-gray-200 text-gray-600'
                     }`}
@@ -324,9 +520,11 @@ export default function ProofOfDelivery({
               ))}
             </div>
             <div className="flex justify-between mt-2 text-xs text-gray-600">
-              <span>Receiver Details</span>
+              <span>Receiver</span>
+              <span>Verification</span>
+              <span>Condition</span>
               <span>Signature</span>
-              <span>Photo Evidence</span>
+              <span>Photo</span>
               <span>Complete</span>
             </div>
           </div>
@@ -356,10 +554,10 @@ export default function ProofOfDelivery({
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <Calendar className="h-5 w-5 text-gray-500" />
+                <Truck className="h-5 w-5 text-gray-500" />
                 <div>
-                  <p className="text-sm text-gray-600">Booking Date</p>
-                  <p className="font-medium">{new Date(booking.created_at).toLocaleDateString()}</p>
+                  <p className="text-sm text-gray-600">Payment</p>
+                  <p className="font-medium">{booking.payment_type}</p>
                 </div>
               </div>
             </div>
@@ -368,6 +566,10 @@ export default function ProofOfDelivery({
           {/* Step Content */}
           {step === 'details' && (
             <div className="space-y-6">
+              <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2">
+                <User className="h-5 w-5" />
+                Receiver Details
+              </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <Label>Receiver Name <span className="text-red-500">*</span></Label>
@@ -397,7 +599,17 @@ export default function ProofOfDelivery({
                     name="receiverDesignation"
                     value={formData.receiverDesignation}
                     onChange={handleInputChange}
-                    placeholder="Enter receiver's designation"
+                    placeholder="e.g., Manager, Owner"
+                  />
+                </div>
+                
+                <div>
+                  <Label>Company/Organization</Label>
+                  <Input
+                    name="receiverCompany"
+                    value={formData.receiverCompany}
+                    onChange={handleInputChange}
+                    placeholder="Enter company name"
                   />
                 </div>
                 
@@ -420,16 +632,171 @@ export default function ProofOfDelivery({
                     onChange={handleInputChange}
                   />
                 </div>
+              </div>
+            </div>
+          )}
+          
+          {step === 'verification' && (
+            <div className="space-y-6">
+              <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2">
+                <CreditCard className="h-5 w-5" />
+                Identity Verification (Optional)
+              </h3>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-blue-800">
+                  For additional security, you can verify the receiver's identity. This step is optional.
+                </p>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <Label>ID Type</Label>
+                  <Select
+                    value={formData.receiverIdType}
+                    onValueChange={(value) => handleSelectChange('receiverIdType', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select ID type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Aadhaar">Aadhaar Card</SelectItem>
+                      <SelectItem value="PAN">PAN Card</SelectItem>
+                      <SelectItem value="Driving License">Driving License</SelectItem>
+                      <SelectItem value="Voter ID">Voter ID</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 
-                <div className="md:col-span-2">
-                  <Label>Remarks</Label>
+                <div>
+                  <Label>ID Number</Label>
                   <Input
-                    name="remarks"
-                    value={formData.remarks}
+                    name="receiverIdNumber"
+                    value={formData.receiverIdNumber}
                     onChange={handleInputChange}
-                    placeholder="Enter any remarks about the delivery"
+                    placeholder="Enter ID number"
+                    disabled={!formData.receiverIdType}
                   />
                 </div>
+                
+                <div className="md:col-span-2">
+                  <Label>Receiver Photo</Label>
+                  <div className="mt-2">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      ref={receiverPhotoRef}
+                      onChange={handlePhotoUpload('receiver')}
+                      className="hidden"
+                    />
+                    
+                    {formData.receiverPhoto ? (
+                      <div className="relative">
+                        <img 
+                          src={formData.receiverPhoto} 
+                          alt="Receiver" 
+                          className="w-32 h-32 object-cover rounded-lg"
+                        />
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          className="absolute -top-2 -right-2"
+                          onClick={() => setFormData(prev => ({ ...prev, receiverPhoto: null }))}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button 
+                        type="button" 
+                        variant="outline"
+                        onClick={() => receiverPhotoRef.current?.click()}
+                      >
+                        <Camera className="h-4 w-4 mr-2" />
+                        Take Photo
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {step === 'condition' && (
+            <div className="space-y-6">
+              <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Delivery Condition
+              </h3>
+              
+              <div>
+                <Label>Shipment Condition</Label>
+                <RadioGroup
+                  value={formData.deliveryCondition}
+                  onValueChange={(value: any) => handleSelectChange('deliveryCondition', value)}
+                  className="mt-2 space-y-3"
+                >
+                  <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-gray-50">
+                    <RadioGroupItem value="good" id="good" />
+                    <Label htmlFor="good" className="cursor-pointer flex-1">
+                      <span className="font-medium">Good Condition</span>
+                      <p className="text-sm text-gray-500">All items received in perfect condition</p>
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-gray-50">
+                    <RadioGroupItem value="damaged" id="damaged" />
+                    <Label htmlFor="damaged" className="cursor-pointer flex-1">
+                      <span className="font-medium">Damaged</span>
+                      <p className="text-sm text-gray-500">Some or all items received with damage</p>
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-gray-50">
+                    <RadioGroupItem value="partial" id="partial" />
+                    <Label htmlFor="partial" className="cursor-pointer flex-1">
+                      <span className="font-medium">Partial Delivery</span>
+                      <p className="text-sm text-gray-500">Not all items were received</p>
+                    </Label>
+                  </div>
+                </RadioGroup>
+              </div>
+              
+              {formData.deliveryCondition === 'damaged' && (
+                <div>
+                  <Label>Damage Description <span className="text-red-500">*</span></Label>
+                  <Textarea
+                    name="damageDescription"
+                    value={formData.damageDescription}
+                    onChange={handleInputChange}
+                    placeholder="Please describe the damage in detail"
+                    rows={3}
+                    required
+                  />
+                </div>
+              )}
+              
+              {formData.deliveryCondition === 'partial' && (
+                <div>
+                  <Label>Shortage Description <span className="text-red-500">*</span></Label>
+                  <Textarea
+                    name="shortageDescription"
+                    value={formData.shortageDescription}
+                    onChange={handleInputChange}
+                    placeholder="Please describe what items are missing"
+                    rows={3}
+                    required
+                  />
+                </div>
+              )}
+              
+              <div>
+                <Label>Additional Remarks</Label>
+                <Textarea
+                  name="remarks"
+                  value={formData.remarks}
+                  onChange={handleInputChange}
+                  placeholder="Any additional notes about the delivery"
+                  rows={2}
+                />
               </div>
             </div>
           )}
@@ -448,22 +815,25 @@ export default function ProofOfDelivery({
                     className="w-full touch-none"
                   ></canvas>
                 </div>
-                <div className="flex justify-end gap-2 mt-2">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    size="sm"
-                    onClick={handleSignatureClear}
-                  >
-                    Clear
-                  </Button>
-                  <Button 
-                    type="button" 
-                    size="sm"
-                    onClick={handleSignatureSave}
-                  >
-                    Save Signature
-                  </Button>
+                <div className="flex justify-between items-center mt-2">
+                  <p className="text-xs text-gray-500">Draw signature above</p>
+                  <div className="flex gap-2">
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      size="sm"
+                      onClick={handleSignatureClear}
+                    >
+                      Clear
+                    </Button>
+                    <Button 
+                      type="button" 
+                      size="sm"
+                      onClick={handleSignatureSave}
+                    >
+                      Save Signature
+                    </Button>
+                  </div>
                 </div>
               </div>
               
@@ -487,7 +857,7 @@ export default function ProofOfDelivery({
                 <div className="mb-4">
                   <Camera className="h-12 w-12 text-gray-400 mx-auto" />
                   <p className="text-gray-600 mt-2">
-                    Take a photo of the delivered goods or upload an existing photo
+                    Take a photo of the delivered goods as evidence
                   </p>
                 </div>
                 
@@ -495,7 +865,7 @@ export default function ProofOfDelivery({
                   type="file"
                   accept="image/*"
                   ref={photoInputRef}
-                  onChange={handlePhotoUpload}
+                  onChange={handlePhotoUpload('evidence')}
                   className="hidden"
                 />
                 
@@ -511,7 +881,7 @@ export default function ProofOfDelivery({
                   </Button>
                   
                   <p className="text-xs text-gray-500">
-                    (Optional) You can skip this step if no photo evidence is required
+                    Recommended but optional - helps with dispute resolution
                   </p>
                 </div>
               </div>
@@ -526,6 +896,15 @@ export default function ProofOfDelivery({
                       className="w-full h-auto max-h-[300px] object-contain"
                     />
                   </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="mt-2"
+                    onClick={() => setFormData(prev => ({ ...prev, photoEvidence: null }))}
+                  >
+                    Remove Photo
+                  </Button>
                 </div>
               )}
             </div>
@@ -561,9 +940,23 @@ export default function ProofOfDelivery({
                   </div>
                   
                   <div>
-                    <p className="text-sm text-gray-600">Designation</p>
-                    <p className="font-medium text-gray-900">{formData.receiverDesignation || 'N/A'}</p>
+                    <p className="text-sm text-gray-600">Condition</p>
+                    <p className="font-medium text-gray-900 capitalize">{formData.deliveryCondition}</p>
                   </div>
+                  
+                  {formData.receiverDesignation && (
+                    <div>
+                      <p className="text-sm text-gray-600">Designation</p>
+                      <p className="font-medium text-gray-900">{formData.receiverDesignation}</p>
+                    </div>
+                  )}
+                  
+                  {formData.receiverCompany && (
+                    <div>
+                      <p className="text-sm text-gray-600">Company</p>
+                      <p className="font-medium text-gray-900">{formData.receiverCompany}</p>
+                    </div>
+                  )}
                   
                   {formData.remarks && (
                     <div className="md:col-span-2">
@@ -572,6 +965,27 @@ export default function ProofOfDelivery({
                     </div>
                   )}
                 </div>
+                
+                {(formData.damageDescription || formData.shortageDescription) && (
+                  <div className="mt-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="h-5 w-5 text-yellow-600 shrink-0" />
+                      <div>
+                        <p className="font-medium text-yellow-800">Issues Reported</p>
+                        {formData.damageDescription && (
+                          <p className="text-sm text-yellow-700 mt-1">
+                            <strong>Damage:</strong> {formData.damageDescription}
+                          </p>
+                        )}
+                        {formData.shortageDescription && (
+                          <p className="text-sm text-yellow-700 mt-1">
+                            <strong>Shortage:</strong> {formData.shortageDescription}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -635,25 +1049,38 @@ export default function ProofOfDelivery({
                 type="button" 
                 onClick={handleNextStep}
                 disabled={loading}
+                className="ml-auto"
               >
                 Next
               </Button>
             ) : (
-              <Button 
-                type="button" 
-                onClick={handleSubmitPOD}
-                disabled={loading}
-                className="bg-green-600 hover:bg-green-700"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    Submitting...
-                  </>
-                ) : (
-                  'Confirm Delivery'
-                )}
-              </Button>
+              <>
+                <Button 
+                  type="button" 
+                  onClick={handlePrint}
+                  disabled={loading}
+                  variant="outline"
+                  className="ml-auto"
+                >
+                  <Printer className="h-4 w-4 mr-2" />
+                  Print POD
+                </Button>
+                <Button 
+                  type="button" 
+                  onClick={handleSubmitPOD}
+                  disabled={loading}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Submitting...
+                    </>
+                  ) : (
+                    'Confirm Delivery'
+                  )}
+                </Button>
+              </>
             )}
           </div>
         </div>

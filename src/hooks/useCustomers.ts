@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import type { Customer } from '@/types';
+import { useBranchSelection } from '@/contexts/BranchSelectionContext';
 
 // UUID validation regex
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -10,24 +11,25 @@ const isValidUUID = (uuid: string | null): boolean => {
   return UUID_REGEX.test(uuid);
 };
 
-export function useCustomers(branchId: string | null = null) {
+export function useCustomers() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const { selectedBranch } = useBranchSelection();
 
   const loadCustomers = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      // If branchId is provided but invalid, return empty array
-      if (branchId && !isValidUUID(branchId)) {
-        console.log('Invalid branch ID, returning empty array:', branchId);
+      // If selectedBranch is provided but invalid, return empty array
+      if (selectedBranch && !isValidUUID(selectedBranch)) {
+        console.log('Invalid branch ID, returning empty array:', selectedBranch);
         setCustomers([]);
         return;
       }
 
-      console.log('Loading customers, branchId:', branchId);
+      console.log('Loading customers, branchId:', selectedBranch);
       
       let query = supabase
         .from('customers')
@@ -37,8 +39,8 @@ export function useCustomers(branchId: string | null = null) {
         `)
         .order('name', { ascending: true });
       
-      if (branchId) {
-        query = query.eq('branch_id', branchId);
+      if (selectedBranch) {
+        query = query.eq('branch_id', selectedBranch);
       }
       
       const { data, error: fetchError } = await query;
@@ -60,7 +62,7 @@ export function useCustomers(branchId: string | null = null) {
     } finally {
       setLoading(false);
     }
-  }, [branchId]);
+  }, [selectedBranch]);
 
   useEffect(() => {
     loadCustomers();
@@ -210,11 +212,11 @@ export function useCustomers(branchId: string | null = null) {
       
       setCustomers(prev => prev.filter(customer => customer.id !== id));
       console.log('Customer deleted successfully');
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to delete customer:', err);
       throw err instanceof Error ? err : new Error(
-        err.message === 'Cannot delete customer with existing bookings' ||
-        err.message === 'A customer with this mobile number already exists for this branch.'
+        err?.message === 'Cannot delete customer with existing bookings' ||
+        err?.message === 'A customer with this mobile number already exists for this branch.'
           ? err.message
           : 'Failed to delete customer'
       );

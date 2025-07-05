@@ -15,27 +15,19 @@ import {
   ChevronLeft,
   Eye,
   EyeOff,
-  RefreshCw,
   Zap,
   Shield,
   Package,
   Hash,
   IndianRupee,
   Box,
-  Calendar,
   TrendingUp,
   CheckCheck,
   XCircle,
-  Filter,
   Search,
-  Settings,
   Sparkles,
   Database,
-  FileCheck,
-  FileX,
   Copy,
-  ClipboardCheck,
-  BarChart3,
 } from 'lucide-react';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
@@ -206,7 +198,7 @@ export default function ArticleImport({ onClose, onSuccess }: Props) {
 
   const { createArticle, articles } = useArticles();
   const { branches } = useBranches();
-  const { showSuccess, showError, showWarning, showInfo } = useNotificationSystem();
+  const { showSuccess, showError, showInfo } = useNotificationSystem();
 
   // Calculate statistics
   const stats = useMemo<ImportStats>(() => {
@@ -578,7 +570,7 @@ export default function ArticleImport({ onClose, onSuccess }: Props) {
     }
 
     if (failedRows.length > 0) {
-      showWarning(
+      showInfo(
         'Partial Import',
         `Imported ${successCount} articles. ${failedRows.length} failed.`
       );

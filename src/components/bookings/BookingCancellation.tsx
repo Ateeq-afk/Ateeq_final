@@ -15,7 +15,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useBookings } from '@/hooks/useBookings';
 import { motion } from 'framer-motion';
-import type { Booking } from '@/types';
 
 interface BookingCancellationProps {
   bookingId: string;

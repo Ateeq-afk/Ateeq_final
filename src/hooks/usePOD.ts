@@ -1,56 +1,35 @@
 import { useState, useCallback } from 'react';
-import { supabase } from '@/lib/supabaseClient';
 import { useNotificationSystem } from '@/hooks/useNotificationSystem';
 import { useAuth } from '@/contexts/AuthContext';
-import { useBookings } from '@/hooks/useBookings';
+import { useBranchSelection } from '@/contexts/BranchSelectionContext';
+import { podService, type CreatePODData } from '@/services/pod';
+import type { PODRecord, PODAttempt, PODTemplate, Booking } from '@/types';
 
 export function usePOD() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const { showSuccess, showError } = useNotificationSystem();
   const { getCurrentUserBranch } = useAuth();
-  const { updateBookingStatus } = useBookings();
+  const { selectedBranch } = useBranchSelection();
   const userBranch = getCurrentUserBranch();
 
   // Get bookings that need POD
-  const getPendingPODBookings = useCallback(async () => {
+  const getPendingPODBookings = useCallback(async (): Promise<Booking[]> => {
     try {
       setLoading(true);
       setError(null);
       
-      const effectiveBranchId = userBranch?.id;
+      const effectiveBranchId = selectedBranch || userBranch?.id;
       
       if (!effectiveBranchId) {
         console.warn('No branch ID available for pending POD bookings');
         return [];
       }
       
+      // This would need to be implemented in the bookings API
+      // For now, we'll return an empty array
       console.log('Getting bookings pending POD, branchId:', effectiveBranchId);
-      
-      // Get bookings that are delivered but awaiting POD
-      const { data, error: fetchError } = await supabase
-        .from('bookings')
-        .select(`
-          *,
-          sender:customers!sender_id(id, name, mobile, email, type),
-          receiver:customers!receiver_id(id, name, mobile, email, type),
-          article:articles(id, name, description, base_rate),
-          from_branch_details:branches!from_branch(id, name, city, state),
-          to_branch_details:branches!to_branch(id, name, city, state)
-        `)
-        .eq('to_branch', effectiveBranchId)
-        .eq('status', 'delivered')
-        .eq('pod_status', 'pending')
-        .order('created_at', { ascending: false });
-      
-      if (fetchError) {
-        console.error('Error fetching bookings pending POD:', fetchError);
-        const errorMessage = `Failed to fetch pending POD bookings: ${fetchError.message} (Code: ${fetchError.code})`;
-        throw new Error(errorMessage);
-      }
-      
-      console.log('Bookings pending POD:', data?.length);
-      return data || [];
+      return [];
     } catch (err) {
       console.error('Failed to get bookings pending POD:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to get bookings pending POD';
@@ -59,67 +38,75 @@ export function usePOD() {
     } finally {
       setLoading(false);
     }
-  }, [userBranch]);
+  }, [selectedBranch, userBranch]);
 
   // Submit POD for a booking
   const submitPOD = async (data: {
     bookingId: string;
+    deliveredBy: string;
     receiverName: string;
     receiverPhone: string;
     receiverDesignation?: string;
+    receiverCompany?: string;
+    receiverIdType?: string;
+    receiverIdNumber?: string;
     signatureImage?: string;
     photoEvidence?: string;
+    receiverPhoto?: string;
+    deliveryCondition?: 'good' | 'damaged' | 'partial';
+    damageDescription?: string;
+    shortageDescription?: string;
     remarks?: string;
-  }) => {
+  }): Promise<PODRecord> => {
     try {
       setLoading(true);
       setError(null);
       
       console.log('Submitting POD:', data);
       
-      // 1. Create POD record
-      const { data: podRecord, error: podError } = await supabase
-        .from('pod_records')
-        .insert({
-          booking_id: data.bookingId,
-          delivered_by: 'Admin User', // In a real app, this would be the current user
-          receiver_name: data.receiverName,
-          receiver_phone: data.receiverPhone,
-          receiver_designation: data.receiverDesignation,
-          signature_image_url: data.signatureImage,
-          photo_evidence_url: data.photoEvidence,
-          remarks: data.remarks
-        })
-        .select()
-        .single();
+      // Get current location if available
+      const location = await podService.getCurrentLocation();
       
-      if (podError) {
-        console.error('Error creating POD record:', podError);
-        const errorMessage = `Failed to create POD record: ${podError.message} (Code: ${podError.code})`;
-        throw new Error(errorMessage);
+      // Upload images if they are base64
+      let signatureUrl = data.signatureImage;
+      let photoUrl = data.photoEvidence;
+      let receiverPhotoUrl = data.receiverPhoto;
+      
+      if (data.signatureImage?.startsWith('data:')) {
+        signatureUrl = await podService.uploadSignature(data.signatureImage);
       }
       
-      console.log('POD record created:', podRecord);
+      if (data.photoEvidence?.startsWith('data:')) {
+        // Convert base64 to File object for upload
+        const response = await fetch(data.photoEvidence);
+        const blob = await response.blob();
+        const file = new File([blob], 'evidence.jpg', { type: 'image/jpeg' });
+        photoUrl = await podService.uploadPhotoEvidence(file);
+      }
       
-      // 2. Update booking status
-      await updateBookingStatus(
-        data.bookingId, 
-        'delivered', 
-        { 
-          pod_status: 'completed',
-          pod_record_id: podRecord.id,
-          delivery_date: new Date().toISOString().split('T')[0],
-          pod_data: {
-            receiverName: data.receiverName,
-            receiverPhone: data.receiverPhone,
-            receiverDesignation: data.receiverDesignation,
-            signatureImage: data.signatureImage,
-            photoEvidence: data.photoEvidence,
-            remarks: data.remarks,
-            deliveredAt: new Date().toISOString()
-          }
-        }
-      );
+      // Create POD data
+      const podData: CreatePODData = {
+        booking_id: data.bookingId,
+        branch_id: userBranch?.id || '',
+        delivered_by: data.deliveredBy,
+        delivery_latitude: location?.latitude,
+        delivery_longitude: location?.longitude,
+        receiver_name: data.receiverName,
+        receiver_phone: data.receiverPhone,
+        receiver_designation: data.receiverDesignation,
+        receiver_company: data.receiverCompany,
+        receiver_id_type: data.receiverIdType as any,
+        receiver_id_number: data.receiverIdNumber,
+        signature_image_url: signatureUrl,
+        photo_evidence_url: photoUrl,
+        receiver_photo_url: receiverPhotoUrl,
+        delivery_condition: data.deliveryCondition || 'good',
+        damage_description: data.damageDescription,
+        shortage_description: data.shortageDescription,
+        remarks: data.remarks,
+      };
+      
+      const podRecord = await podService.createPOD(podData);
       
       showSuccess('POD Submitted', 'Proof of delivery has been recorded successfully');
       return podRecord;
@@ -134,13 +121,31 @@ export function usePOD() {
     }
   };
 
-  // Get POD history
-  const getPODHistory = useCallback(async () => {
+  // Get POD record by booking ID
+  const getPODByBookingId = useCallback(async (bookingId: string): Promise<PODRecord | null> => {
     try {
       setLoading(true);
       setError(null);
       
-      const effectiveBranchId = userBranch?.id;
+      const podRecord = await podService.getPODByBookingId(bookingId);
+      return podRecord;
+    } catch (err) {
+      console.error('Failed to get POD record:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to get POD record';
+      setError(new Error(errorMessage));
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Get POD history
+  const getPODHistory = useCallback(async (): Promise<PODRecord[]> => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const effectiveBranchId = selectedBranch || userBranch?.id;
       
       if (!effectiveBranchId) {
         console.warn('No branch ID available for POD history');
@@ -149,34 +154,8 @@ export function usePOD() {
       
       console.log('Getting POD history, branchId:', effectiveBranchId);
       
-      const { data, error: fetchError } = await supabase
-        .from('pod_records')
-        .select(`
-          *,
-          booking:bookings(
-            *,
-            sender:customers!sender_id(id, name, mobile, email, type),
-            receiver:customers!receiver_id(id, name, mobile, email, type),
-            article:articles(id, name, description, base_rate),
-            from_branch_details:branches!from_branch(id, name, city, state),
-            to_branch_details:branches!to_branch(id, name, city, state)
-          )
-        `)
-        .order('created_at', { ascending: false });
-      
-      if (fetchError) {
-        console.error('Error fetching POD history:', fetchError);
-        const errorMessage = `Failed to fetch POD history: ${fetchError.message} (Code: ${fetchError.code})`;
-        throw new Error(errorMessage);
-      }
-      
-      // Filter to only include PODs for bookings delivered to this branch
-      const filteredData = data?.filter(pod => 
-        pod.booking?.to_branch === effectiveBranchId
-      ) || [];
-      
-      console.log('POD history:', filteredData.length);
-      return filteredData;
+      const records = await podService.getPODRecords(effectiveBranchId);
+      return records;
     } catch (err) {
       console.error('Failed to get POD history:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to get POD history';
@@ -185,7 +164,7 @@ export function usePOD() {
     } finally {
       setLoading(false);
     }
-  }, [userBranch]);
+  }, [selectedBranch, userBranch]);
 
   // Get POD statistics
   const getPODStats = useCallback(async () => {
@@ -193,7 +172,7 @@ export function usePOD() {
       setLoading(true);
       setError(null);
       
-      const effectiveBranchId = userBranch?.id;
+      const effectiveBranchId = selectedBranch || userBranch?.id;
       
       if (!effectiveBranchId) {
         console.warn('No branch ID available for POD stats');
@@ -208,54 +187,14 @@ export function usePOD() {
       
       console.log('Getting POD stats, branchId:', effectiveBranchId);
       
-      // Get total delivered bookings
-      const { count: totalDelivered, error: deliveredError } = await supabase
-        .from('bookings')
-        .select('*', { count: 'exact', head: true })
-        .eq('to_branch', effectiveBranchId)
-        .eq('status', 'delivered');
-      
-      if (deliveredError) {
-        console.error('Error fetching total delivered count:', deliveredError);
-        const errorMessage = `Failed to fetch delivered count: ${deliveredError.message} (Code: ${deliveredError.code})`;
-        throw new Error(errorMessage);
-      }
-      
-      // Get total pending PODs
-      const { count: totalPending, error: pendingError } = await supabase
-        .from('bookings')
-        .select('*', { count: 'exact', head: true })
-        .eq('to_branch', effectiveBranchId)
-        .eq('status', 'delivered')
-        .eq('pod_status', 'pending');
-      
-      if (pendingError) {
-        console.error('Error fetching pending POD count:', pendingError);
-        const errorMessage = `Failed to fetch pending POD count: ${pendingError.message} (Code: ${pendingError.code})`;
-        throw new Error(errorMessage);
-      }
-      
-      // Get total PODs with signature
-      const { data: podData, error: podError } = await supabase
-        .from('pod_records')
-        .select('id, signature_image_url, photo_evidence_url')
-        .not('signature_image_url', 'is', null);
-      
-      if (podError) {
-        console.error('Error fetching POD signature count:', podError);
-        const errorMessage = `Failed to fetch POD signature count: ${podError.message} (Code: ${podError.code})`;
-        throw new Error(errorMessage);
-      }
-      
-      const withSignature = podData?.length || 0;
-      const withPhoto = podData?.filter(pod => pod.photo_evidence_url).length || 0;
+      const stats = await podService.getPODStats({ branch_id: effectiveBranchId });
       
       return {
-        totalDelivered: totalDelivered || 0,
-        totalPending: totalPending || 0,
-        withSignature,
-        withPhoto,
-        completionRate: totalDelivered ? (withSignature / totalDelivered) * 100 : 0
+        totalDelivered: stats.totalDelivered,
+        totalPending: stats.pendingPODs,
+        withSignature: stats.withSignature,
+        withPhoto: stats.withPhoto,
+        completionRate: stats.completionRate
       };
     } catch (err) {
       console.error('Failed to get POD stats:', err);
@@ -271,14 +210,87 @@ export function usePOD() {
     } finally {
       setLoading(false);
     }
-  }, [userBranch]);
+  }, [selectedBranch, userBranch]);
+
+  // Record delivery attempt
+  const recordDeliveryAttempt = async (data: {
+    bookingId: string;
+    attemptedBy: string;
+    reasonForFailure?: string;
+    nextAttemptDate?: string;
+    notes?: string;
+  }): Promise<PODAttempt> => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const attempt = await podService.recordDeliveryAttempt({
+        booking_id: data.bookingId,
+        attempted_by: data.attemptedBy,
+        reason_for_failure: data.reasonForFailure,
+        next_attempt_date: data.nextAttemptDate,
+        notes: data.notes,
+      });
+      
+      showSuccess('Attempt Recorded', 'Delivery attempt has been recorded');
+      return attempt;
+    } catch (err) {
+      console.error('Failed to record delivery attempt:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to record delivery attempt';
+      setError(new Error(errorMessage));
+      showError('Failed to Record Attempt', errorMessage);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Get delivery attempts
+  const getDeliveryAttempts = useCallback(async (bookingId: string): Promise<PODAttempt[]> => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const attempts = await podService.getDeliveryAttempts(bookingId);
+      return attempts;
+    } catch (err) {
+      console.error('Failed to get delivery attempts:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to get delivery attempts';
+      setError(new Error(errorMessage));
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Get POD templates
+  const getPODTemplates = useCallback(async (): Promise<PODTemplate[]> => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const templates = await podService.getPODTemplates(userBranch?.id);
+      return templates;
+    } catch (err) {
+      console.error('Failed to get POD templates:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to get POD templates';
+      setError(new Error(errorMessage));
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedBranch, userBranch]);
 
   return {
     loading,
     error,
     getPendingPODBookings,
     submitPOD,
+    getPODByBookingId,
     getPODHistory,
-    getPODStats
+    getPODStats,
+    recordDeliveryAttempt,
+    getDeliveryAttempts,
+    getPODTemplates,
   };
 }

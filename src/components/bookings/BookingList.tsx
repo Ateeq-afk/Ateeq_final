@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   Search,
   MoreVertical,
@@ -22,6 +22,7 @@ import {
 } from '../ui/dropdown-menu';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '../ui/select';
 import StatusBadge from '../ui/StatusBadge';
+import { ResponsiveTable, MobileCard, MobileCardRow, useIsMobile } from '../ui/responsive-table';
 
 import { useBookings } from '@/hooks/useBookings';
 import { useBranches } from '../../hooks/useBranches';
@@ -29,7 +30,18 @@ import { useFilteredSortedBookings } from '../../hooks/useFilteredSortedBookings
 import { printBookings, downloadBookingLR } from '../../utils/printUtils';
 import { usePOD } from '@/hooks/usePOD';
 import { useNotificationSystem } from '@/hooks/useNotificationSystem';
-import type { Booking, Filters, SortField, SortDirection } from '../../types';
+import type { Booking, SortDirection } from '../../types';
+
+// Define types locally since the ones in types have different structure
+interface Filters {
+  search: string;
+  dateRange: string;
+  status: string;
+  paymentType: string;
+  branch: string;
+}
+
+type SortField = 'lr_number' | 'created_at' | 'total_amount';
 
 // If these modals live elsewhere, adjust paths accordingly:
 import BookingModification from './BookingModification';
@@ -46,6 +58,7 @@ const DEFAULT_FILTERS: Filters = {
 
 export default function BookingList() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
   // UI State
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
@@ -135,20 +148,20 @@ export default function BookingList() {
       {/* Header & Actions */}
       <div className="bg-gradient-to-r from-brand-50 to-brand-100 p-6 rounded-2xl shadow-sm flex flex-col sm:flex-row justify-between items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-brand-800">Bookings</h2>
-          <p className="text-brand-600">{filtered.length} found</p>
+          <h2 className="text-2xl font-bold">Bookings</h2>
+          <p className="text-muted-foreground">{filtered.length} found</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button
             variant="outline"
-            className="border-brand-300 text-brand-700 hover:bg-brand-50"
+            className="border-border text-foreground hover:bg-accent"
             onClick={() => setShowAll(!showAll)}
           >
             {showAll ? 'Paginated' : 'Show All'}
           </Button>
           <Button
             variant="outline"
-            className="border-brand-300 text-brand-700 hover:bg-brand-50"
+            className="border-border text-foreground hover:bg-accent"
             onClick={handlePrint}
           >
             <Printer className="mr-1 h-4 w-4" />
@@ -156,14 +169,14 @@ export default function BookingList() {
           </Button>
           <Button
             variant="outline"
-            className="border-brand-300 text-brand-700 hover:bg-brand-50"
+            className="border-border text-foreground hover:bg-accent"
             onClick={handleRefresh}
           >
             <RefreshCw className="mr-1 h-4 w-4" />
             Refresh
           </Button>
           <Button
-            className="bg-brand-700 text-white hover:bg-brand-600"
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={() => navigate('/dashboard/new-booking')}
           >
             <Plus className="mr-1 h-4 w-4" />
@@ -173,9 +186,9 @@ export default function BookingList() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div className="bg-card p-4 rounded-2xl shadow-sm border border-border grid grid-cols-1 md:grid-cols-5 gap-4">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search..."
             value={filters.search}
@@ -247,9 +260,59 @@ export default function BookingList() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-gradient-to-r from-brand-50 to-blue-50 text-brand-800">
+      <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
+        {/* Mobile view */}
+        {isMobile ? (
+          <div className="p-4 space-y-3">
+            {(showAll ? filtered : filtered.slice(0, 100)).map((booking) => (
+              <MobileCard key={booking.id}>
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <span className="text-primary font-medium">{booking.lr_number}</span>
+                    <div className="text-xs text-muted-foreground">
+                      {new Date(booking.created_at).toLocaleDateString()}
+                    </div>
+                  </div>
+                  <StatusBadge status={booking.status} />
+                </div>
+                <MobileCardRow label="Route" value={`${booking.from_branch_details?.name || 'N/A'} → ${booking.to_branch_details?.name || 'N/A'}`} />
+                <MobileCardRow label="Sender" value={booking.sender?.name || 'N/A'} />
+                <MobileCardRow label="Receiver" value={booking.receiver?.name || 'N/A'} />
+                <MobileCardRow label="Amount" value={`₹${booking.total_amount.toFixed(2)}`} />
+                <div className="flex gap-2 mt-3">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => navigate(`/dashboard/bookings/${booking.id}`)}
+                  >
+                    <Eye className="h-3 w-3 mr-1" />
+                    View
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button size="sm" variant="ghost">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => downloadBookingLR(booking)}>
+                        <Download className="h-4 w-4 mr-2" />
+                        Download LR
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate(`/dashboard/bookings/${booking.id}/print`)}>
+                        <Printer className="h-4 w-4 mr-2" />
+                        Print
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </MobileCard>
+            ))}
+          </div>
+        ) : (
+          <ResponsiveTable>
+            <table className="w-full text-sm">
+          <thead className="bg-muted/50 text-foreground">
             <tr>
               <th className="px-4 py-3 text-left">
                 <input
@@ -284,9 +347,9 @@ export default function BookingList() {
               <th className="px-4 py-3 text-right">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-border">
             {(showAll ? filtered : filtered.slice(0, 100)).map((booking) => (
-              <tr key={booking.id} className="hover:bg-gray-50">
+              <tr key={booking.id} className="hover:bg-muted/50 transition-colors">
                 <td className="px-4 py-3">
                   <input
                     type="checkbox"
@@ -295,14 +358,14 @@ export default function BookingList() {
                   />
                 </td>
                 <td
-                  className="px-4 py-3 text-blue-600 font-medium cursor-pointer"
+                  className="px-4 py-3 text-primary font-medium cursor-pointer hover:underline"
                   onClick={() => handleBookingClick(booking)}
                 >
                   {booking.lr_number}
                 </td>
                 <td className="px-4 py-3">
                   <div>{new Date(booking.created_at).toLocaleDateString()}</div>
-                  <div className="text-gray-500 text-xs">
+                  <div className="text-muted-foreground text-xs">
                     {new Date(booking.created_at).toLocaleTimeString()}
                   </div>
                 </td>
@@ -366,14 +429,16 @@ export default function BookingList() {
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={10} className="text-center py-8 text-gray-500">
+                <td colSpan={10} className="text-center py-8 text-muted-foreground">
                   <Package className="mx-auto mb-2" />
                   No bookings found
                 </td>
               </tr>
             )}
           </tbody>
-        </table>
+            </table>
+          </ResponsiveTable>
+        )}
       </div>
 
       {/* Modals */}

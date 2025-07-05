@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import type { Branch } from '@/types/index';
 import { useNotificationSystem } from '@/hooks/useNotificationSystem';
+import { useAuth } from '@/contexts/AuthContext';
 
 // UUID validation regex
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -16,16 +17,37 @@ export function useBranches() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const { showSuccess, showError } = useNotificationSystem();
+  const { user } = useAuth();
 
   const loadBranches = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const { data, error: fetchError } = await supabase
-        .from('branches')
-        .select('*')
-        .order('name', { ascending: true });
+      const userRole = user?.user_metadata?.role || user?.role;
+      const userBranchId = user?.user_metadata?.branch_id || user?.branch_id;
+      const userOrgId = user?.user_metadata?.organization_id || user?.organization_id;
+
+      let query = supabase.from('branches').select('*');
+
+      // Apply filtering based on user role
+      if (userRole === 'superadmin') {
+        // Superadmins can see all branches
+        query = query.order('name', { ascending: true });
+      } else if (userRole === 'admin' && userOrgId) {
+        // Admins can see all branches in their organization
+        query = query.eq('organization_id', userOrgId).order('name', { ascending: true });
+      } else if (userBranchId) {
+        // Regular users can only see their assigned branch
+        query = query.eq('id', userBranchId);
+      } else {
+        // If no branch assignment, return empty array
+        setBranches([]);
+        setLoading(false);
+        return;
+      }
+
+      const { data, error: fetchError } = await query;
 
       if (fetchError) throw fetchError;
       setBranches(data || []);
@@ -35,7 +57,7 @@ export function useBranches() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     loadBranches();

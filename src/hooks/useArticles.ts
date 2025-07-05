@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import type { Article, CustomerArticleRate } from '@/types';
+import { useBranchSelection } from '@/contexts/BranchSelectionContext';
 
-export function useArticles(branchId?: string) {
+export function useArticles() {
   const [articles, setArticles]   = useState<Article[]>([]);
   const [loading, setLoading]     = useState<boolean>(false);
   const [error, setError]         = useState<Error | null>(null);
+  const { selectedBranch } = useBranchSelection();
 
   // 1) Fetch the list of articles (filtered by branchId if provided)
   // 2) Fetch one article by ID
@@ -27,7 +29,7 @@ const getArticle = useCallback(async (id: string): Promise<Article> => {
       is_fragile,
       requires_special_handling,
       notes,
-      branch:branches(name)
+      branches!inner(name)
     `)
     .eq('id', id)
     .single();
@@ -36,7 +38,7 @@ const getArticle = useCallback(async (id: string): Promise<Article> => {
   // pull out the branch name
   return {
     ...data,
-    branch_name: data.branch?.name ?? null,
+    branch_name: (data as any).branches?.name ?? null,
   };
 }, []);
 
@@ -112,8 +114,8 @@ const getCustomRateForCustomer = useCallback(
         .select('id, name, description, base_rate, branch_id, created_at, updated_at')
         .order('name', { ascending: true });
 
-      if (branchId) {
-        simpleQuery = simpleQuery.eq('branch_id', branchId);
+      if (selectedBranch) {
+        simpleQuery = simpleQuery.eq('branch_id', selectedBranch);
       }
 
       const { data: simpleData, error: simpleError } = await simpleQuery;
@@ -141,12 +143,12 @@ const getCustomRateForCustomer = useCallback(
           is_fragile,
           requires_special_handling,
           notes,
-          branch:branches(name)
+          branches!inner(name)
         `)
         .order('name', { ascending: true });
 
-      if (branchId) {
-        query = query.eq('branch_id', branchId);
+      if (selectedBranch) {
+        query = query.eq('branch_id', selectedBranch);
       }
 
       const { data, error: sbError } = await query;
@@ -172,7 +174,7 @@ const getCustomRateForCustomer = useCallback(
       // Transform the data to match our Article type
       const transformedData = data?.map(article => ({
         ...article,
-        branch_name: article.branch?.name
+        branch_name: article.branches?.name || null
       })) || [];
 
       setArticles(transformedData);
@@ -182,7 +184,7 @@ const getCustomRateForCustomer = useCallback(
     } finally {
       setLoading(false);
     }
-  }, [branchId]);
+  }, [selectedBranch]);
 
   // reload whenever branchId changes
   useEffect(() => {
@@ -241,7 +243,7 @@ const getCustomRateForCustomer = useCallback(
           is_fragile,
           requires_special_handling,
           notes,
-          branch:branches(name)
+          branches!inner(name)
         `)
         .single();
 
@@ -268,7 +270,7 @@ const getCustomRateForCustomer = useCallback(
       // Transform the data to match our Article type
       const transformedData = {
         ...data,
-        branch_name: data.branch?.name
+        branch_name: data.branches?.name || null
       };
       
       setArticles(prev => [...prev, transformedData]);
@@ -305,7 +307,7 @@ const getCustomRateForCustomer = useCallback(
           is_fragile,
           requires_special_handling,
           notes,
-          branch:branches(name)
+          branches!inner(name)
         `)
         .single();
 
@@ -314,7 +316,7 @@ const getCustomRateForCustomer = useCallback(
       // Transform the data to match our Article type
       const transformedData = {
         ...data,
-        branch_name: data.branch?.name
+        branch_name: data.branches?.name || null
       };
       
       setArticles(prev => prev.map(a => (a.id === id ? transformedData : a)));

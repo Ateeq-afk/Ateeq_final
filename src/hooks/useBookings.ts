@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import type { Booking } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBranchSelection } from '@/contexts/BranchSelectionContext';
 
 // Loosened UUID validation regex (matches any UUID version)
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -11,29 +12,59 @@ const isValidUUID = (uuid: string | null): boolean => {
   return UUID_REGEX.test(uuid);
 };
 
-export function useBookings<T = Booking>(branchId: string | null = null) {
+// Status transition validation (should match backend validation)
+const validateStatusTransition = (currentStatus: string, newStatus: string) => {
+  const statusTransitions: Record<string, string[]> = {
+    'booked': ['in_transit', 'cancelled'],
+    'in_transit': ['unloaded', 'cancelled'],
+    'unloaded': ['out_for_delivery', 'cancelled'],
+    'out_for_delivery': ['delivered', 'cancelled'],
+    'delivered': ['pod_received'],
+    'pod_received': [], // Final state
+    'cancelled': [] // Final state
+  };
+
+  const allowedTransitions = statusTransitions[currentStatus] || [];
+  
+  // Allow staying in the same status (for updates without status change)
+  if (currentStatus === newStatus) {
+    return { valid: true, message: 'Status unchanged' };
+  }
+
+  if (allowedTransitions.includes(newStatus)) {
+    return { valid: true, message: 'Valid transition' };
+  }
+
+  return {
+    valid: false,
+    message: `Cannot transition from '${currentStatus}' to '${newStatus}'`,
+    allowedTransitions
+  };
+};
+
+export function useBookings<T = Booking>() {
   const [bookings, setBookings] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const { getCurrentUserBranch } = useAuth();
+  const { getCurrentUserBranch, getOrganizationContext, user } = useAuth();
+  const { selectedBranch } = useBranchSelection();
   const userBranch = getCurrentUserBranch();
+  const organizationContext = getOrganizationContext();
 
   const loadBookings = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const validBranchId = branchId && isValidUUID(branchId);
-      const validUserBranchId = userBranch?.id && isValidUUID(userBranch.id);
-
-      if ((branchId && !validBranchId) || (!branchId && userBranch?.id && !validUserBranchId)) {
-        console.error('Invalid branch ID detected', { branchId, userBranchId: userBranch?.id });
+      // Use selected branch if available, otherwise fall back to user's branch
+      const branchToUse = selectedBranch || userBranch?.id;
+      
+      if (branchToUse && !isValidUUID(branchToUse)) {
+        console.error('Invalid branch ID detected', { selectedBranch, userBranchId: userBranch?.id });
         throw new Error('Invalid branch ID format');
       }
 
-      const effectiveBranchId = validBranchId ? branchId : validUserBranchId ? userBranch?.id : null;
-
-      console.log('Loading bookings for branch ID:', effectiveBranchId);
+      console.log('Loading bookings for branch ID:', branchToUse);
 
       // First try a very basic query to see if we can get any data at all
       const { data: basicData, error: basicError } = await supabase
@@ -110,7 +141,7 @@ export function useBookings<T = Booking>(branchId: string | null = null) {
     } finally {
       setLoading(false);
     }
-  }, [branchId, userBranch]);
+  }, [selectedBranch, userBranch]);
 
   useEffect(() => {
     loadBookings();
@@ -138,10 +169,20 @@ export function useBookings<T = Booking>(branchId: string | null = null) {
                           (data.insurance_charge || 0) +
                           (data.packaging_charge || 0);
       
+      // Get organization_id from user metadata or organizationContext
+      const organizationId = user?.user_metadata?.organization_id || 
+                            user?.organization_id || 
+                            organizationContext?.id;
+
+      if (!organizationId) {
+        throw new Error('Organization ID is required to create a booking');
+      }
+
       // Clean up the data before sending to database
       const cleanedData = {
         ...data,
         branch_id: data.branch_id || userBranch?.id,
+        organization_id: organizationId,
         total_amount: totalAmount,
         status: 'booked' as const,
         loading_status: 'pending',
@@ -170,6 +211,7 @@ export function useBookings<T = Booking>(branchId: string | null = null) {
         .from('bookings')
         .insert({
           branch_id: finalData.branch_id,
+          organization_id: finalData.organization_id,
           lr_number: finalData.lr_number,
           lr_type: finalData.lr_type,
           from_branch: finalData.from_branch,
@@ -265,6 +307,15 @@ export function useBookings<T = Booking>(branchId: string | null = null) {
       ];
       if (!validStatuses.includes(status)) {
         throw new Error(`Invalid status: ${status}. Valid statuses are: ${validStatuses.join(', ')}`);
+      }
+
+      // Get current booking to validate transition
+      const currentBooking = bookings.find(b => b.id === id);
+      if (currentBooking) {
+        const transitionValidation = validateStatusTransition(currentBooking.status, status);
+        if (!transitionValidation.valid) {
+          throw new Error(transitionValidation.message + `. Allowed transitions: ${transitionValidation.allowedTransitions?.join(', ') || 'none'}`);
+        }
       }
       
       // Update booking in Supabase

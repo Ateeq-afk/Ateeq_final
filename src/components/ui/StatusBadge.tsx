@@ -1,29 +1,23 @@
 import React from 'react'
+import { Badge } from './badge'
 import type { Booking } from '../../types'
 
 export default function StatusBadge({ status }: { status: Booking['status'] }) {
-  const colors: Record<Booking['status'], string> = {
-    booked: 'bg-yellow-100 text-yellow-800',
-    in_transit: 'bg-blue-100 text-blue-800',
-    unloaded: 'bg-purple-100 text-purple-800',
-    out_for_delivery: 'bg-orange-100 text-orange-800',
-    delivered: 'bg-green-100 text-green-800',
-    cancelled: 'bg-red-100 text-red-800',
-    pod_received: 'bg-gray-100 text-gray-800',
+  const statusConfig: Record<Booking['status'], { variant: 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning' | 'info' | 'neutral'; label: string }> = {
+    booked: { variant: 'warning', label: 'Booked' },
+    in_transit: { variant: 'info', label: 'In Transit' },
+    unloaded: { variant: 'secondary', label: 'Unloaded' },
+    out_for_delivery: { variant: 'warning', label: 'Out for Delivery' },
+    delivered: { variant: 'success', label: 'Delivered' },
+    cancelled: { variant: 'destructive', label: 'Cancelled' },
+    pod_received: { variant: 'neutral', label: 'POD Received' },
   }
 
-  // Capitalize each word (e.g. "in_transit" → "In Transit")
-  const label = status
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, char => char.toUpperCase())
-
+  const config = statusConfig[status]
+  
   return (
-    <span
-      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-        colors[status]
-      }`}
-    >
-      {label}
-    </span>
+    <Badge variant={config.variant}>
+      {config.label}
+    </Badge>
   )
 }

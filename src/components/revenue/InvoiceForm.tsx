@@ -94,11 +94,14 @@ export default function InvoiceForm({ invoice, onSubmit, onCancel }: Props) {
       customerId: '',
       notes: 'Thank you for your business!',
       terms: 'Payment is due within 30 days.',
+      applyRounding: false,
       items: [
         {
           description: '',
           quantity: 1,
           rate: 0,
+          discountPercent: 0,
+          taxRate: 18, // Default GST rate
         },
       ],
     },

@@ -11,7 +11,6 @@ import {
   Download,
   Tag,
   RefreshCw,
-  Filter,
   ChevronLeft,
   ChevronRight,
   Grid,
@@ -19,8 +18,6 @@ import {
   ArrowUpDown,
   Copy,
   Eye,
-  FileText,
-  Settings,
   CheckCircle2,
   XCircle,
 } from 'lucide-react';
@@ -130,7 +127,7 @@ export default function ArticleList() {
     deleteArticle,
     refresh,
   } = useArticles();
-  const { showSuccess, showError, showWarning, showInfo } = useNotificationSystem();
+  const { showSuccess, showError, showInfo } = useNotificationSystem();
 
   // Initial load
   useEffect(() => {
@@ -265,44 +262,32 @@ export default function ArticleList() {
     const article = articles.find(a => a.id === id);
     if (!article) return;
 
-    showWarning(
-      'Confirm Deletion',
-      `Are you sure you want to delete "${article.name}"? This action cannot be undone.`,
-      {
-        confirmText: 'Delete',
-        onConfirm: async () => {
-          try {
-            await deleteArticle(id);
-            showSuccess('Article Deleted', `"${article.name}" has been removed`);
-            setSelectedIds(prev => prev.filter(sid => sid !== id));
-          } catch (error) {
-            showError('Delete Failed', 'Could not delete article. Please try again.');
-          }
-        },
+    // Show confirmation dialog using browser confirm
+    if (window.confirm(`Are you sure you want to delete "${article.name}"? This action cannot be undone.`)) {
+      try {
+        await deleteArticle(id);
+        showSuccess('Article Deleted', `"${article.name}" has been removed`);
+        setSelectedIds(prev => prev.filter(sid => sid !== id));
+      } catch (error) {
+        showError('Delete Failed', 'Could not delete article. Please try again.');
       }
-    );
-  }, [articles, deleteArticle, showSuccess, showError, showWarning]);
+    }
+  }, [articles, deleteArticle, showSuccess, showError]);
 
   const handleBulkDelete = useCallback(async () => {
     if (selectedIds.length === 0) return;
 
-    showWarning(
-      'Confirm Bulk Deletion',
-      `Are you sure you want to delete ${selectedIds.length} articles? This action cannot be undone.`,
-      {
-        confirmText: 'Delete All',
-        onConfirm: async () => {
-          try {
-            await Promise.all(selectedIds.map(id => deleteArticle(id)));
-            showSuccess('Articles Deleted', `${selectedIds.length} articles have been removed`);
-            setSelectedIds([]);
-          } catch (error) {
-            showError('Bulk Delete Failed', 'Some articles could not be deleted.');
-          }
-        },
+    // Show confirmation dialog using browser confirm
+    if (window.confirm(`Are you sure you want to delete ${selectedIds.length} articles? This action cannot be undone.`)) {
+      try {
+        await Promise.all(selectedIds.map(id => deleteArticle(id)));
+        showSuccess('Articles Deleted', `${selectedIds.length} articles have been removed`);
+        setSelectedIds([]);
+      } catch (error) {
+        showError('Bulk Delete Failed', 'Some articles could not be deleted.');
       }
-    );
-  }, [selectedIds, deleteArticle, showSuccess, showError, showWarning]);
+    }
+  }, [selectedIds, deleteArticle, showSuccess, showError]);
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);

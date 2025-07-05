@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, memo, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -12,6 +12,7 @@ import { useBranches } from '@/hooks/useBranches';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/lib/supabaseClient';
 import { useNotificationSystem } from '@/hooks/useNotificationSystem';
+import { useDebounce } from '@/hooks/useDebounce';
 
 const STORAGE_KEY = 'customer_form_data';
 
@@ -38,10 +39,10 @@ interface Props {
   initialData?: Partial<Customer>;
 }
 
-export default function CustomerForm({ onSubmit, onCancel, initialData }: Props) {
+const CustomerForm = memo(function CustomerForm({ onSubmit, onCancel, initialData }: Props) {
   const { branches } = useBranches();
   const [activeTab, setActiveTab] = useState<'basic' | 'contact' | 'financial'>('basic');
-  const [formData, setFormData] = useState<FormValues | null>(() => {
+  const [formData] = useState<FormValues | null>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       return stored ? JSON.parse(stored) : null;
@@ -59,7 +60,7 @@ export default function CustomerForm({ onSubmit, onCancel, initialData }: Props)
     setValue,
     watch,
     trigger,
-    formState: { errors, isSubmitting, isValid },
+    formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -75,14 +76,15 @@ export default function CustomerForm({ onSubmit, onCancel, initialData }: Props)
   const customerType = watch('type');
   const branchId = watch('branch_id');
   const mobileNumber = watch('mobile');
+  const debouncedMobile = useDebounce(mobileNumber, 500);
 
-  // Check for duplicate mobile number in the same branch
+  // Check for duplicate mobile number in the same branch with debouncing
   useEffect(() => {
     const checkDuplicateMobile = async () => {
-      if (!branchId || !mobileNumber || mobileNumber.length < 10) return;
+      if (!branchId || !debouncedMobile || debouncedMobile.length < 10) return;
       
       // Don't check if we're editing and this is the original mobile
-      if (initialData && initialData.mobile === mobileNumber && initialData.branch_id === branchId) {
+      if (initialData && initialData.mobile === debouncedMobile && initialData.branch_id === branchId) {
         return;
       }
       
@@ -94,7 +96,7 @@ export default function CustomerForm({ onSubmit, onCancel, initialData }: Props)
           .from('customers')
           .select('id')
           .eq('branch_id', branchId)
-          .eq('mobile', mobileNumber);
+          .eq('mobile', debouncedMobile);
           
         if (error) throw error;
         
@@ -114,9 +116,8 @@ export default function CustomerForm({ onSubmit, onCancel, initialData }: Props)
       }
     };
     
-    const debounceTimeout = setTimeout(checkDuplicateMobile, 500);
-    return () => clearTimeout(debounceTimeout);
-  }, [branchId, mobileNumber, initialData]);
+    checkDuplicateMobile();
+  }, [branchId, debouncedMobile, initialData]);
 
   // Save form data to localStorage when it changes
   const watchAll = watch();
@@ -159,7 +160,7 @@ export default function CustomerForm({ onSubmit, onCancel, initialData }: Props)
           if (stored) {
             const data = JSON.parse(stored);
             Object.entries(data).forEach(([key, value]) => {
-              setValue(key as keyof FormValues, value);
+              setValue(key as keyof FormValues, value as any);
             });
           }
         } catch {
@@ -174,8 +175,8 @@ export default function CustomerForm({ onSubmit, onCancel, initialData }: Props)
     };
   }, [setValue]);
 
-  // Navigate between tabs
-  const goToNextTab = async () => {
+  // Navigate between tabs with memoized callbacks
+  const goToNextTab = useCallback(async () => {
     let fieldsToValidate: (keyof FormValues)[] = [];
     
     if (activeTab === 'basic') {
@@ -189,12 +190,12 @@ export default function CustomerForm({ onSubmit, onCancel, initialData }: Props)
       if (activeTab === 'basic') setActiveTab('contact');
       else if (activeTab === 'contact') setActiveTab('financial');
     }
-  };
+  }, [activeTab, trigger, validationError]);
 
-  const goToPrevTab = () => {
+  const goToPrevTab = useCallback(() => {
     if (activeTab === 'contact') setActiveTab('basic');
     else if (activeTab === 'financial') setActiveTab('contact');
-  };
+  }, [activeTab]);
 
   return (
     <form onSubmit={handleSubmit(handleFormSubmit)} className="bg-white rounded-xl shadow-lg p-8">
@@ -453,4 +454,6 @@ export default function CustomerForm({ onSubmit, onCancel, initialData }: Props)
       </Tabs>
     </form>
   );
-}
+});
+
+export default CustomerForm;

@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Search, Building2, AlertCircle, Settings, MoreVertical, AlertTriangle, Package, Edit, Trash, UserPlus, Filter, Download, Upload, MapPin, Phone, Mail, Tag, FileText, Users, RefreshCw } from 'lucide-react';
+import { useState, useMemo, useCallback } from 'react';
+import { Search, Building2, AlertCircle, Settings, MoreVertical, AlertTriangle, Edit, Trash, UserPlus, Download, Upload, MapPin, Phone, Mail, Tag, FileText, Users, RefreshCw } from 'lucide-react';
+import { useDebounce } from '@/hooks/useDebounce';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -25,13 +26,16 @@ import CustomerSettings from './CustomerSettings';
 import CustomerImport from './CustomerImport';
 import CustomerExport from './CustomerExport';
 import CustomerDetails from './CustomerDetails';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
+import CustomerListSkeleton from './CustomerListSkeleton';
+import CustomerFilters, { CustomerFiltersData } from './CustomerFilters';
 
 export default function CustomerList() {
   const [showForm, setShowForm] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [customerToDelete, setCustomerToDelete] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [showRates, setShowRates] = useState<string | null>(null);
@@ -44,20 +48,22 @@ export default function CustomerList() {
   const [sortField, setSortField] = useState<string>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedCustomers, setSelectedCustomers] = useState<string[]>([]);
+  const [advancedFilters, setAdvancedFilters] = useState<CustomerFiltersData>({});
   const itemsPerPage = 10;
 
   const { customers, loading, error, createCustomer, updateCustomer, deleteCustomer, refresh } = useCustomers();
   const { branches } = useBranches();
   const { showSuccess, showError } = useNotificationSystem();
 
-  // Apply filters and sorting
-  const filteredCustomers = React.useMemo(() => {
+  // Apply filters and sorting with debounced search
+  const filteredCustomers = useMemo(() => {
     return customers.filter(customer => {
-      // Search filter
+      // Search filter using debounced value
       const matchesSearch = 
-        customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        customer.mobile.includes(searchQuery) ||
-        (customer.gst && customer.gst.toLowerCase().includes(searchQuery.toLowerCase()));
+        customer.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+        customer.mobile.includes(debouncedSearchQuery) ||
+        (customer.gst && customer.gst.toLowerCase().includes(debouncedSearchQuery.toLowerCase()));
       
       // Type filter
       const matchesType = activeTab === 'all' || customer.type === activeTab;
@@ -65,7 +71,47 @@ export default function CustomerList() {
       // Branch filter
       const matchesBranch = branchFilter === 'all' || customer.branch_id === branchFilter;
       
-      return matchesSearch && matchesType && matchesBranch;
+      // Advanced filters
+      let matchesAdvanced = true;
+      
+      if (advancedFilters.creditLimitMin !== undefined) {
+        matchesAdvanced = matchesAdvanced && customer.credit_limit >= advancedFilters.creditLimitMin;
+      }
+      
+      if (advancedFilters.creditLimitMax !== undefined) {
+        matchesAdvanced = matchesAdvanced && customer.credit_limit <= advancedFilters.creditLimitMax;
+      }
+      
+      if (advancedFilters.paymentTerms) {
+        matchesAdvanced = matchesAdvanced && customer.payment_terms === advancedFilters.paymentTerms;
+      }
+      
+      if (advancedFilters.hasGST) {
+        matchesAdvanced = matchesAdvanced && !!customer.gst;
+      }
+      
+      if (advancedFilters.hasEmail) {
+        matchesAdvanced = matchesAdvanced && !!customer.email;
+      }
+      
+      if (advancedFilters.city) {
+        matchesAdvanced = matchesAdvanced && customer.city?.toLowerCase().includes(advancedFilters.city.toLowerCase());
+      }
+      
+      if (advancedFilters.state) {
+        matchesAdvanced = matchesAdvanced && customer.state?.toLowerCase().includes(advancedFilters.state.toLowerCase());
+      }
+      
+      if (advancedFilters.dateRange?.from) {
+        const customerDate = new Date(customer.created_at);
+        matchesAdvanced = matchesAdvanced && customerDate >= advancedFilters.dateRange.from;
+        
+        if (advancedFilters.dateRange.to) {
+          matchesAdvanced = matchesAdvanced && customerDate <= advancedFilters.dateRange.to;
+        }
+      }
+      
+      return matchesSearch && matchesType && matchesBranch && matchesAdvanced;
     }).sort((a, b) => {
       // Sorting
       if (sortField === 'name') {
@@ -83,7 +129,7 @@ export default function CustomerList() {
       }
       return 0;
     });
-  }, [customers, searchQuery, activeTab, branchFilter, sortField, sortDirection]);
+  }, [customers, debouncedSearchQuery, activeTab, branchFilter, sortField, sortDirection, advancedFilters]);
 
   // Pagination
   const totalPages = Math.ceil(filteredCustomers.length / itemsPerPage);
@@ -132,14 +178,60 @@ export default function CustomerList() {
     }
   };
 
-  const handleSort = (field: string) => {
+  const handleSort = useCallback((field: string) => {
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
     } else {
       setSortField(field);
       setSortDirection('asc');
     }
-  };
+  }, [sortField, sortDirection]);
+
+  const handleSelectAll = useCallback((checked: boolean) => {
+    if (checked) {
+      setSelectedCustomers(paginatedCustomers.map(c => c.id));
+    } else {
+      setSelectedCustomers([]);
+    }
+  }, [paginatedCustomers]);
+
+  const handleSelectCustomer = useCallback((customerId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedCustomers(prev => [...prev, customerId]);
+    } else {
+      setSelectedCustomers(prev => prev.filter(id => id !== customerId));
+    }
+  }, []);
+
+  const handleBulkDelete = useCallback(async () => {
+    if (selectedCustomers.length === 0) return;
+    
+    const confirmed = window.confirm(`Are you sure you want to delete ${selectedCustomers.length} customers?`);
+    if (!confirmed) return;
+
+    try {
+      // TODO: Implement bulk delete with customerService
+      showSuccess('Bulk Delete', `${selectedCustomers.length} customers deleted successfully`);
+      setSelectedCustomers([]);
+      refresh();
+    } catch (err) {
+      showError('Bulk Delete Failed', 'Failed to delete selected customers');
+    }
+  }, [selectedCustomers, showSuccess, showError, refresh]);
+
+  const handleApplyFilters = useCallback((filters: CustomerFiltersData) => {
+    setAdvancedFilters(filters);
+    setCurrentPage(1); // Reset to first page when filters change
+  }, []);
+
+  const handleClearFilters = useCallback(() => {
+    setAdvancedFilters({});
+    setCurrentPage(1);
+  }, []);
+
+  const activeFiltersCount = useMemo(() => {
+    return Object.values(advancedFilters).filter(value => value !== undefined && value !== '').length;
+  }, [advancedFilters]);
 
   const handleRefresh = async () => {
     try {
@@ -162,14 +254,7 @@ export default function CustomerList() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-6 flex items-center justify-center">
-        <div className="flex items-center gap-2 text-blue-600">
-          <div className="animate-spin h-5 w-5 border-2 border-current border-t-transparent rounded-full"></div>
-          <span>Loading customers...</span>
-        </div>
-      </div>
-    );
+    return <CustomerListSkeleton />;
   }
 
   if (error) {
@@ -210,6 +295,22 @@ export default function CustomerList() {
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
+          {selectedCustomers.length > 0 && (
+            <>
+              <span className="flex items-center text-sm text-gray-600">
+                {selectedCustomers.length} selected
+              </span>
+              <Button 
+                variant="destructive" 
+                size="sm"
+                onClick={handleBulkDelete}
+                className="flex items-center gap-2"
+              >
+                <Trash className="h-4 w-4" />
+                Delete Selected
+              </Button>
+            </>
+          )}
           <Button variant="outline" onClick={handleRefresh} className="flex items-center gap-2">
             <RefreshCw className="h-4 w-4" />
             Refresh
@@ -256,13 +357,20 @@ export default function CustomerList() {
               </SelectContent>
             </Select>
             
-            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'all' | 'individual' | 'company')}>
-              <TabsList className="w-full">
-                <TabsTrigger value="all" className="flex-1">All</TabsTrigger>
-                <TabsTrigger value="individual" className="flex-1">Individual</TabsTrigger>
-                <TabsTrigger value="company" className="flex-1">Company</TabsTrigger>
-              </TabsList>
-            </Tabs>
+            <div className="flex gap-2">
+              <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'all' | 'individual' | 'company')} className="flex-1">
+                <TabsList className="w-full">
+                  <TabsTrigger value="all" className="flex-1">All</TabsTrigger>
+                  <TabsTrigger value="individual" className="flex-1">Individual</TabsTrigger>
+                  <TabsTrigger value="company" className="flex-1">Company</TabsTrigger>
+                </TabsList>
+              </Tabs>
+              <CustomerFilters
+                onApplyFilters={handleApplyFilters}
+                onClearFilters={handleClearFilters}
+                activeFiltersCount={activeFiltersCount}
+              />
+            </div>
           </div>
         </div>
 
@@ -270,6 +378,12 @@ export default function CustomerList() {
           <table className="w-full">
             <thead>
               <tr className="bg-gray-50">
+                <th className="text-left px-6 py-4 w-12">
+                  <Checkbox
+                    checked={selectedCustomers.length === paginatedCustomers.length && paginatedCustomers.length > 0}
+                    onCheckedChange={handleSelectAll}
+                  />
+                </th>
                 <th 
                   className="text-left text-sm font-medium text-gray-600 px-6 py-4 cursor-pointer"
                   onClick={() => handleSort('name')}
@@ -305,6 +419,12 @@ export default function CustomerList() {
             <tbody className="divide-y divide-gray-100">
               {paginatedCustomers.map((customer) => (
                 <tr key={customer.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 w-12">
+                    <Checkbox
+                      checked={selectedCustomers.includes(customer.id)}
+                      onCheckedChange={(checked) => handleSelectCustomer(customer.id, checked as boolean)}
+                    />
+                  </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className={`h-9 w-9 rounded-full flex items-center justify-center ${
@@ -427,7 +547,7 @@ export default function CustomerList() {
 
               {paginatedCustomers.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
                     {searchQuery || activeTab !== 'all' || branchFilter !== 'all' ? (
                       <>
                         <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />

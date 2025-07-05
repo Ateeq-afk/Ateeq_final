@@ -2,21 +2,19 @@ import { useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { useNotificationSystem } from '@/hooks/useNotificationSystem';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBranchSelection } from '@/contexts/BranchSelectionContext';
 import { useBookings } from '@/hooks/useBookings';
-import type { OGPL } from '@/types';
 
 // Simple UUID validation used across hooks
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const isValidUUID = (uuid: string | null): boolean => !!uuid && UUID_REGEX.test(uuid);
 
-export function useUnloading(
-  organizationId: string | null = null,
-  branchId?: string
-) {
+export function useUnloading() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const { showSuccess, showError } = useNotificationSystem();
   const { getCurrentUserBranch } = useAuth();
+  const { selectedBranch } = useBranchSelection();
   const { updateBookingStatus } = useBookings();
   const userBranch = getCurrentUserBranch();
 
@@ -26,7 +24,7 @@ export function useUnloading(
       setLoading(true);
       setError(null);
 
-      const effectiveBranchId = branchId || userBranch?.id;
+      const effectiveBranchId = selectedBranch || userBranch?.id;
 
       if (!effectiveBranchId) {
         console.warn('No branch ID available, fetching all in_transit OGPLs');
@@ -106,7 +104,7 @@ export function useUnloading(
     } finally {
       setLoading(false);
     }
-  }, [branchId, userBranch]);
+  }, [selectedBranch, userBranch]);
 
   // Unload an OGPL
   const unloadOGPL = async (
@@ -330,7 +328,7 @@ export function useUnloading(
       setLoading(true);
       setError(null);
 
-      const effectiveBranchId = branchId || userBranch?.id;
+      const effectiveBranchId = selectedBranch || userBranch?.id;
 
       console.log('Getting completed unloadings, branchId:', effectiveBranchId);
       
@@ -379,7 +377,7 @@ export function useUnloading(
     } finally {
       setLoading(false);
     }
-  }, [branchId, userBranch]);
+  }, [selectedBranch, userBranch]);
 
   // Get unloading statistics
   const getUnloadingStats = useCallback(async () => {
@@ -387,7 +385,7 @@ export function useUnloading(
       setLoading(true);
       setError(null);
 
-      const effectiveBranchId = branchId || userBranch?.id;
+      const effectiveBranchId = selectedBranch || userBranch?.id;
       
       if (!effectiveBranchId) {
         console.warn('No branch ID available for unloading stats');
@@ -460,7 +458,7 @@ export function useUnloading(
     } finally {
       setLoading(false);
     }
-  }, [branchId, userBranch]);
+  }, [selectedBranch, userBranch]);
 
   return {
     loading,

@@ -394,25 +394,28 @@ function DashboardStats() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.1 }}
-        className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200"
+        className="card-premium"
       >
-        <div className="flex flex-col md:flex-row justify-between gap-4 mb-4">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 bg-blue-100 rounded-lg flex items-center justify-center">
-              <BarChart3 className="h-5 w-5 text-blue-600" />
-            </div>
+        <div className="flex flex-col md:flex-row justify-between gap-4 mb-6">
+          <div className="flex items-center gap-4">
+            <motion.div 
+              whileHover={{ scale: 1.05, rotate: 5 }}
+              className="h-14 w-14 gradient-brand rounded-2xl flex items-center justify-center shadow-lg"
+            >
+              <BarChart3 className="h-7 w-7 text-white" />
+            </motion.div>
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">K2K Logistics Overview</h2>
-              <p className="text-gray-600 mt-1">Analytics and performance metrics</p>
+              <h2 className="text-2xl font-heading font-bold text-foreground">K2K Logistics Overview</h2>
+              <p className="text-muted-foreground mt-1">Analytics and performance metrics</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Button onClick={handleRefresh} variant="outline" className="flex items-center gap-2">
-              <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+            <Button onClick={handleRefresh} variant="secondary" className="btn-secondary group">
+              <RefreshCw className={`h-4 w-4 mr-2 transition-transform group-hover:rotate-180 ${refreshing ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
-            <Button onClick={handleExport} variant="outline" className="flex items-center gap-2">
-              <Download className="h-4 w-4" />
+            <Button onClick={handleExport} className="btn-gradient group">
+              <Download className="h-4 w-4 mr-2 group-hover:translate-y-0.5 transition-transform" />
               Export
             </Button>
           </div>
@@ -420,9 +423,9 @@ function DashboardStats() {
         
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
-            <Label>Date Range</Label>
+            <Label className="text-muted-foreground mb-2 block">Date Range</Label>
             <Select value={dateRange} onValueChange={setDateRange}>
-              <SelectTrigger>
+              <SelectTrigger className="input-premium">
                 <SelectValue placeholder="Select date range" />
               </SelectTrigger>
               <SelectContent>
@@ -439,24 +442,24 @@ function DashboardStats() {
           {dateRange === 'custom' && (
             <>
               <div>
-                <Label>Start Date</Label>
+                <Label className="text-muted-foreground mb-2 block">Start Date</Label>
                 <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                   <Input
                     type="date"
-                    className="pl-10 bg-white border-gray-200 text-gray-900"
+                    className="input-premium pl-10"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
                   />
                 </div>
               </div>
               <div>
-                <Label>End Date</Label>
+                <Label className="text-muted-foreground mb-2 block">End Date</Label>
                 <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                   <Input
                     type="date"
-                    className="pl-10 bg-white border-gray-200 text-gray-900"
+                    className="input-premium pl-10"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
                   />
@@ -466,11 +469,11 @@ function DashboardStats() {
           )}
 
           <div className={dateRange === 'custom' ? 'md:col-span-1' : 'md:col-span-3'}>
-            <Label>Search</Label>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <Label className="text-muted-foreground mb-2 block">Search</Label>
+            <div className="relative group">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground group-focus-within:text-brand-600 transition-colors" />
               <Input
-                className="pl-10 bg-white border-gray-200 text-gray-900"
+                className="input-premium pl-10"
                 placeholder="Search by LR, customer..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -480,12 +483,24 @@ function DashboardStats() {
         </div>
 
         {refreshing || bookingsLoading ? (
-          <div className="bg-white p-12 rounded-2xl shadow-sm border border-gray-200 flex items-center justify-center mt-6">
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="card-premium p-12 flex items-center justify-center mt-6"
+          >
             <div className="flex flex-col items-center gap-4">
-              <div className="animate-spin h-10 w-10 border-4 border-blue-600 border-t-transparent rounded-full"></div>
-              <p className="text-gray-600 font-medium">Loading dashboard data...</p>
+              <motion.div 
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                className="h-16 w-16 rounded-full gradient-brand p-0.5"
+              >
+                <div className="h-full w-full rounded-full bg-background flex items-center justify-center">
+                  <Loader2 className="h-8 w-8 text-brand-600 dark:text-brand-400" />
+                </div>
+              </motion.div>
+              <p className="text-muted-foreground font-medium animate-pulse">Loading dashboard data...</p>
             </div>
-          </div>
+          </motion.div>
         ) : (
           <>
             {/* Key Metrics */}
@@ -574,25 +589,33 @@ function DashboardStats() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: 0.6 }}
-                className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200"
+                className="card-premium group"
               >
                 <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Daily Activity</h3>
-                    <p className="text-sm text-gray-500 mt-1">Bookings and deliveries over time</p>
+                  <div className="flex items-center gap-3">
+                    <motion.div 
+                      whileHover={{ scale: 1.1, rotate: -10 }}
+                      className="h-10 w-10 gradient-brand rounded-xl flex items-center justify-center shadow-md"
+                    >
+                      <BarChart3 className="h-5 w-5 text-white" />
+                    </motion.div>
+                    <div>
+                      <h3 className="text-lg font-heading font-semibold text-foreground">Daily Activity</h3>
+                      <p className="text-sm text-muted-foreground">Bookings and deliveries over time</p>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1">
-                      <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                      <span className="text-xs text-gray-600">Bookings</span>
+                  <div className="flex items-center gap-3 text-xs">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-3 h-3 rounded-full bg-green-500 shadow-sm"></div>
+                      <span className="text-muted-foreground">Bookings</span>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                      <span className="text-xs text-gray-600">Delivered</span>
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-3 h-3 rounded-full bg-blue-500 shadow-sm"></div>
+                      <span className="text-muted-foreground">Delivered</span>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <div className="w-3 h-3 rounded-full bg-purple-500"></div>
-                      <span className="text-xs text-gray-600">Revenue</span>
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-3 h-3 rounded-full bg-purple-500 shadow-sm"></div>
+                      <span className="text-muted-foreground">Revenue</span>
                     </div>
                   </div>
                 </div>
@@ -612,14 +635,21 @@ function DashboardStats() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: 0.7 }}
-                className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200"
+                className="card-premium group"
               >
                 <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Booking Status</h3>
-                    <p className="text-sm text-gray-500 mt-1">Distribution by status</p>
+                  <div className="flex items-center gap-3">
+                    <motion.div 
+                      whileHover={{ scale: 1.1, rotate: 10 }}
+                      className="h-10 w-10 gradient-brand rounded-xl flex items-center justify-center shadow-md"
+                    >
+                      <Filter className="h-5 w-5 text-white" />
+                    </motion.div>
+                    <div>
+                      <h3 className="text-lg font-heading font-semibold text-foreground">Booking Status</h3>
+                      <p className="text-sm text-muted-foreground">Distribution by status</p>
+                    </div>
                   </div>
-                  <Filter className="h-5 w-5 text-gray-400" />
                 </div>
                 <div className="h-[300px]">
                   {statusDistribution.some(item => item.value > 0) ? (
@@ -638,82 +668,105 @@ function DashboardStats() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: 0.8 }}
-              className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 mt-6"
+              className="card-premium mt-6"
             >
               <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Recent Bookings</h3>
-                  <p className="text-sm text-gray-500 mt-1">Latest booking activity</p>
+                <div className="flex items-center gap-3">
+                  <motion.div 
+                    whileHover={{ scale: 1.1, rotate: -10 }}
+                    className="h-10 w-10 gradient-brand rounded-xl flex items-center justify-center shadow-md"
+                  >
+                    <FileText className="h-5 w-5 text-white" />
+                  </motion.div>
+                  <div>
+                    <h3 className="text-lg font-heading font-semibold text-foreground">Recent Bookings</h3>
+                    <p className="text-sm text-muted-foreground">Latest booking activity</p>
+                  </div>
                 </div>
                 <Button 
-                  variant="outline" 
+                  variant="ghost" 
                   size="sm" 
-                  className="flex items-center gap-1"
+                  className="btn-ghost group"
                   onClick={() => navigate('/dashboard/bookings')}
                 >
                   View All
-                  <ArrowRight className="h-4 w-4" />
+                  <ArrowRight className="h-4 w-4 ml-1 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </div>
               
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="bg-gray-50 rounded-lg">
-                      <th className="text-left text-sm font-medium text-gray-600 px-4 py-3 rounded-l-lg">LR Number</th>
-                      <th className="text-left text-sm font-medium text-gray-600 px-4 py-3">Date</th>
-                      <th className="text-left text-sm font-medium text-gray-600 px-4 py-3">From/To</th>
-                      <th className="text-left text-sm font-medium text-gray-600 px-4 py-3">Customer</th>
-                      <th className="text-left text-sm font-medium text-gray-600 px-4 py-3">Status</th>
-                      <th className="text-right text-sm font-medium text-gray-600 px-4 py-3 rounded-r-lg">Amount</th>
+                    <tr className="bg-muted/50 rounded-lg">
+                      <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3 rounded-l-lg">LR Number</th>
+                      <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">Date</th>
+                      <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">From/To</th>
+                      <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">Customer</th>
+                      <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">Status</th>
+                      <th className="text-right text-sm font-medium text-muted-foreground px-4 py-3 rounded-r-lg">Amount</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {filteredBookings.slice(0, 5).map((booking) => (
-                      <tr key={booking.id} className="hover:bg-gray-50 transition-colors">
+                  <tbody className="divide-y divide-border/50">
+                    {filteredBookings.slice(0, 5).map((booking, index) => (
+                      <motion.tr 
+                        key={booking.id} 
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                        className="hover:bg-accent/50 transition-all duration-200 group cursor-pointer"
+                        onClick={() => navigate(`/dashboard/bookings/${booking.id}`)}
+                      >
                         <td className="px-4 py-3">
-                          <span className="font-medium text-blue-600">{booking.lr_number}</span>
+                          <span className="font-medium text-brand-600 dark:text-brand-400 group-hover:text-brand-700 dark:group-hover:text-brand-300">{booking.lr_number}</span>
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-600">
+                        <td className="px-4 py-3 text-sm text-muted-foreground">
                           {new Date(booking.created_at).toLocaleDateString()}
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-600">
+                        <td className="px-4 py-3 text-sm">
                           {booking.from_branch === currentBranch?.id 
-                            ? <span className="flex items-center gap-1"><ArrowUpRight className="h-3 w-3 text-green-600" /> {booking.to_branch_details?.name}</span>
-                            : <span className="flex items-center gap-1"><ArrowDownRight className="h-3 w-3 text-blue-600" /> {booking.from_branch_details?.name}</span>
+                            ? <span className="flex items-center gap-1.5"><ArrowUpRight className="h-3.5 w-3.5 text-green-600 dark:text-green-400" /> <span className="text-muted-foreground">{booking.to_branch_details?.name}</span></span>
+                            : <span className="flex items-center gap-1.5"><ArrowDownRight className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" /> <span className="text-muted-foreground">{booking.from_branch_details?.name}</span></span>
                           }
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-600">
+                        <td className="px-4 py-3 text-sm text-muted-foreground">
                           {booking.from_branch === currentBranch?.id 
                             ? booking.sender?.name
                             : booking.receiver?.name
                           }
                         </td>
                         <td className="px-4 py-3">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium transition-all ${
                             booking.status === 'delivered'
-                              ? 'bg-green-100 text-green-800'
+                              ? 'bg-green-500/10 text-green-700 dark:text-green-400 border border-green-500/20'
                               : booking.status === 'in_transit'
-                              ? 'bg-blue-100 text-blue-800'
+                              ? 'bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/20'
                               : booking.status === 'cancelled'
-                              ? 'bg-red-100 text-red-800'
-                              : 'bg-yellow-100 text-yellow-800'
+                              ? 'bg-red-500/10 text-red-700 dark:text-red-400 border border-red-500/20'
+                              : 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border border-yellow-500/20'
                           }`}>
-                            {booking.status.replace('_', ' ').charAt(0).toUpperCase() + booking.status.slice(1)}
+                            {booking.status.replace('_', ' ').charAt(0).toUpperCase() + booking.status.slice(1).replace('_', ' ')}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <span className="font-medium">₹{booking.total_amount}</span>
+                          <span className="font-semibold text-foreground">₹{booking.total_amount.toLocaleString()}</span>
                         </td>
-                      </tr>
+                      </motion.tr>
                     ))}
                     
                     {filteredBookings.length === 0 && (
                       <tr>
-                        <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
-                          <Package className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                          <h3 className="text-lg font-medium text-gray-900">No bookings found</h3>
-                          <p className="text-gray-500 mt-1">No bookings available for the selected period</p>
+                        <td colSpan={6} className="px-4 py-12 text-center">
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="flex flex-col items-center"
+                          >
+                            <div className="h-16 w-16 rounded-full bg-muted/50 flex items-center justify-center mb-4">
+                              <Package className="h-8 w-8 text-muted-foreground" />
+                            </div>
+                            <h3 className="text-lg font-heading font-medium text-foreground">No bookings found</h3>
+                            <p className="text-muted-foreground mt-1">No bookings available for the selected period</p>
+                          </motion.div>
                         </td>
                       </tr>
                     )}
@@ -745,70 +798,120 @@ interface StatCardProps {
 function StatCard({ icon: Icon, title, value, color, details, trend }: StatCardProps) {
   const colors = {
     blue: {
-      bg: 'bg-blue-50',
-      text: 'text-blue-600',
-      border: 'border-blue-100',
-      detailBg: 'bg-blue-100/50'
+      gradient: 'from-blue-500 via-blue-600 to-blue-700',
+      bg: 'bg-blue-500/10',
+      text: 'text-blue-700',
+      border: 'border-blue-500/20',
+      detailBg: 'bg-blue-500/5',
+      darkText: 'dark:text-blue-400',
+      darkBg: 'dark:bg-blue-500/20',
+      shadow: 'hover:shadow-blue-500/20'
     },
     green: {
-      bg: 'bg-green-50',
-      text: 'text-green-600',
-      border: 'border-green-100',
-      detailBg: 'bg-green-100/50'
+      gradient: 'from-green-500 via-green-600 to-green-700',
+      bg: 'bg-green-500/10',
+      text: 'text-green-700',
+      border: 'border-green-500/20',
+      detailBg: 'bg-green-500/5',
+      darkText: 'dark:text-green-400',
+      darkBg: 'dark:bg-green-500/20',
+      shadow: 'hover:shadow-green-500/20'
     },
     purple: {
-      bg: 'bg-purple-50',
-      text: 'text-purple-600',
-      border: 'border-purple-100',
-      detailBg: 'bg-purple-100/50'
+      gradient: 'from-purple-500 via-purple-600 to-purple-700',
+      bg: 'bg-purple-500/10',
+      text: 'text-purple-700',
+      border: 'border-purple-500/20',
+      detailBg: 'bg-purple-500/5',
+      darkText: 'dark:text-purple-400',
+      darkBg: 'dark:bg-purple-500/20',
+      shadow: 'hover:shadow-purple-500/20'
     },
     amber: {
-      bg: 'bg-amber-50',
-      text: 'text-amber-600',
-      border: 'border-amber-100',
-      detailBg: 'bg-amber-100/50'
+      gradient: 'from-amber-500 via-amber-600 to-amber-700',
+      bg: 'bg-amber-500/10',
+      text: 'text-amber-700',
+      border: 'border-amber-500/20',
+      detailBg: 'bg-amber-500/5',
+      darkText: 'dark:text-amber-400',
+      darkBg: 'dark:bg-amber-500/20',
+      shadow: 'hover:shadow-amber-500/20'
     },
     red: {
-      bg: 'bg-red-50',
-      text: 'text-red-600',
-      border: 'border-red-100',
-      detailBg: 'bg-red-100/50'
+      gradient: 'from-red-500 via-red-600 to-red-700',
+      bg: 'bg-red-500/10',
+      text: 'text-red-700',
+      border: 'border-red-500/20',
+      detailBg: 'bg-red-500/5',
+      darkText: 'dark:text-red-400',
+      darkBg: 'dark:bg-red-500/20',
+      shadow: 'hover:shadow-red-500/20'
     },
     indigo: {
-      bg: 'bg-indigo-50',
-      text: 'text-indigo-600',
-      border: 'border-indigo-100',
-      detailBg: 'bg-indigo-100/50'
+      gradient: 'from-indigo-500 via-indigo-600 to-indigo-700',
+      bg: 'bg-indigo-500/10',
+      text: 'text-indigo-700',
+      border: 'border-indigo-500/20',
+      detailBg: 'bg-indigo-500/5',
+      darkText: 'dark:text-indigo-400',
+      darkBg: 'dark:bg-indigo-500/20',
+      shadow: 'hover:shadow-indigo-500/20'
     }
   };
 
   return (
-    <div className={`bg-white p-6 rounded-2xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow h-full`}>
-      <div className="flex items-center justify-between mb-2">
-        <div className={`p-3 rounded-xl ${colors[color].bg}`}>
-          <Icon className={`h-6 w-6 ${colors[color].text}`} />
+    <motion.div 
+      whileHover={{ y: -4 }}
+      className={`card-premium group ${colors[color].shadow} relative overflow-hidden h-full`}
+    >
+      {/* Background gradient */}
+      <div className={`absolute inset-0 bg-gradient-to-br ${colors[color].gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-500`} />
+      
+      <div className="relative z-10">
+        <div className="flex items-center justify-between mb-4">
+          <motion.div 
+            whileHover={{ scale: 1.1, rotate: 10 }}
+            className={`p-3 rounded-2xl bg-gradient-to-br ${colors[color].gradient} shadow-lg`}
+          >
+            <Icon className="h-6 w-6 text-white" />
+          </motion.div>
+          {trend && (
+            <motion.div 
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className={`flex items-center gap-1 ${trend.isUp ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+            >
+              {trend.isUp ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownRight className="h-4 w-4" />}
+              <span className="text-sm font-medium">{trend.value}</span>
+            </motion.div>
+          )}
         </div>
-        {trend && (
-          <div className={`flex items-center gap-1 ${trend.isUp ? 'text-green-600' : 'text-red-600'}`}>
-            {trend.isUp ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownRight className="h-4 w-4" />}
-            <span className="text-sm font-medium">{trend.value}</span>
+        
+        <div className="mb-4">
+          <h3 className="text-3xl font-heading font-bold text-foreground mb-1 group-hover:scale-105 transition-transform origin-left">{value}</h3>
+          <p className="text-muted-foreground text-sm">{title}</p>
+        </div>
+
+        {details && (
+          <div className="grid grid-cols-2 gap-2">
+            {details.map(({ label, value, prefix, suffix }, index) => (
+              <motion.div 
+                key={label} 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.05 }}
+                className={`${colors[color].detailBg} rounded-xl p-3 border ${colors[color].border}`}
+              >
+                <p className="text-xs text-muted-foreground mb-0.5">{label}</p>
+                <p className={`text-sm font-semibold ${colors[color].text} ${colors[color].darkText}`}>
+                  {prefix}{value.toLocaleString()}{suffix}
+                </p>
+              </motion.div>
+            ))}
           </div>
         )}
       </div>
-      <h3 className="text-2xl font-bold text-gray-900">{value}</h3>
-      <p className="text-gray-600 text-sm">{title}</p>
-
-      {details && (
-        <div className="mt-4 grid grid-cols-2 gap-2">
-          {details.map(({ label, value, prefix, suffix }) => (
-            <div key={label} className={`${colors[color].detailBg} rounded-lg p-2`}>
-              <p className="text-xs text-gray-600">{label}</p>
-              <p className="text-sm font-medium text-gray-900">{prefix}{value}{suffix}</p>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+    </motion.div>
   );
 }
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Truck, Package, MapPin, Calendar, CheckCircle2, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -45,7 +45,7 @@ export default function TrackingPage() {
   };
   
   // Auto-search if LR number is provided in URL
-  React.useEffect(() => {
+  useEffect(() => {
     if (lrNumber && !trackingData) {
       handleSearch(new Event('submit') as any);
     }

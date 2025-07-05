@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, 
@@ -18,10 +18,12 @@ import {
   Copy,
   Edit,
   MoreVertical,
-  Receipt
+  Receipt,
+  FileCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useBookings } from '@/hooks/useBookings';
+import { usePOD } from '@/hooks/usePOD';
 import { useNotificationSystem } from '@/hooks/useNotificationSystem';
 import { generateLRHtml } from '@/utils/printUtils';
 import { QRCodeSVG } from 'qrcode.react';
@@ -37,15 +39,18 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
-import { motion } from 'framer-motion';
+import ProofOfDelivery from './ProofOfDelivery';
 import type { Booking } from '@/types';
 
 export default function BookingDetails() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { bookings, loading, error, updateBookingStatus } = useBookings();
+  const { getPODByBookingId } = usePOD();
   const [booking, setBooking] = useState<Booking | null>(null);
   const [statusUpdating, setStatusUpdating] = useState(false);
+  const [showPODForm, setShowPODForm] = useState(false);
+  const [existingPOD, setExistingPOD] = useState(null);
   const { showSuccess, showError } = useNotificationSystem();
   const [printMode, setPrintMode] = useState(false);
 
@@ -54,9 +59,15 @@ export default function BookingDetails() {
       const foundBooking = bookings.find(b => b.id === id);
       if (foundBooking) {
         setBooking(foundBooking);
+        // Check if POD exists for delivered bookings
+        if (foundBooking.status === 'delivered' && foundBooking.pod_status === 'completed') {
+          getPODByBookingId(foundBooking.id).then(pod => {
+            setExistingPOD(pod);
+          });
+        }
       }
     }
-  }, [bookings, id]);
+  }, [bookings, id, getPODByBookingId]);
 
   const handleBack = () => {
     navigate(-1);
@@ -352,19 +363,56 @@ export default function BookingDetails() {
   const handleStatusUpdate = async (newStatus: Booking['status']) => {
     if (!booking) return;
     
-    try {
-      setStatusUpdating(true);
-      await updateBookingStatus(booking.id, newStatus);
-      
-      // Update local state
-      setBooking(prev => prev ? { ...prev, status: newStatus } : null);
-      
-      showSuccess('Status Updated', `Booking status updated to ${newStatus}`);
-    } catch (err) {
-      console.error('Failed to update status:', err);
-      showError('Update Failed', err instanceof Error ? err.message : 'Failed to update status');
-    } finally {
-      setStatusUpdating(false);
+    // Check if trying to mark as delivered and POD is required
+    if (newStatus === 'delivered' && booking.pod_required !== false) {
+      // Check if POD is already completed
+      if (booking.pod_status === 'completed') {
+        // POD already completed, allow status update
+        try {
+          setStatusUpdating(true);
+          await updateBookingStatus(booking.id, newStatus);
+          setBooking(prev => prev ? { ...prev, status: newStatus } : null);
+          showSuccess('Status Updated', `Booking marked as delivered`);
+        } catch (err) {
+          console.error('Failed to update status:', err);
+          showError('Update Failed', err instanceof Error ? err.message : 'Failed to update status');
+        } finally {
+          setStatusUpdating(false);
+        }
+      } else {
+        // POD not completed, show POD form
+        setShowPODForm(true);
+        return;
+      }
+    } else {
+      // For other status updates, proceed normally
+      try {
+        setStatusUpdating(true);
+        await updateBookingStatus(booking.id, newStatus);
+        setBooking(prev => prev ? { ...prev, status: newStatus } : null);
+        showSuccess('Status Updated', `Booking status updated to ${newStatus}`);
+      } catch (err) {
+        console.error('Failed to update status:', err);
+        showError('Update Failed', err instanceof Error ? err.message : 'Failed to update status');
+      } finally {
+        setStatusUpdating(false);
+      }
+    }
+  };
+  
+  const handlePODComplete = async () => {
+    // After POD is completed, refresh booking and close form
+    setShowPODForm(false);
+    if (booking) {
+      // Refresh booking data
+      const updatedBooking = bookings.find(b => b.id === booking.id);
+      if (updatedBooking) {
+        setBooking(updatedBooking);
+        // Check if POD was completed successfully
+        if (updatedBooking.pod_status === 'completed') {
+          showSuccess('Delivery Completed', 'Proof of delivery recorded and booking marked as delivered');
+        }
+      }
     }
   };
 
@@ -537,6 +585,20 @@ export default function BookingDetails() {
                 </span>
               </div>
               
+              {/* POD Status Badge */}
+              {booking.status === 'delivered' && (
+                <div className={`px-3 py-1.5 rounded-lg flex items-center gap-2 ${
+                  booking.pod_status === 'completed' 
+                    ? 'bg-green-100 text-green-800' 
+                    : 'bg-yellow-100 text-yellow-800'
+                }`}>
+                  <FileCheck className="h-4 w-4" />
+                  <span className="font-medium text-sm">
+                    POD {booking.pod_status === 'completed' ? 'Completed' : 'Pending'}
+                  </span>
+                </div>
+              )}
+              
               <div className="flex flex-wrap gap-2 print:hidden">
                 {booking.status !== 'delivered' && booking.status !== 'cancelled' && (
                   <div className="flex flex-wrap gap-2">
@@ -583,8 +645,8 @@ export default function BookingDetails() {
                         disabled={statusUpdating}
                         className="bg-green-600 hover:bg-green-700"
                       >
-                        <CheckCircle2 className="h-4 w-4 mr-2" />
-                        Mark Delivered
+                        <FileCheck className="h-4 w-4 mr-2" />
+                        Complete Delivery with POD
                       </Button>
                     )}
                     
@@ -1042,6 +1104,32 @@ export default function BookingDetails() {
                         </Button>
                       </div>
                     )}
+                    
+                    {/* POD Document */}
+                    {booking.pod_status === 'completed' && (
+                      <div className="p-4 border border-green-200 bg-green-50 rounded-lg flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <FileCheck className="h-5 w-5 text-green-600" />
+                          <div>
+                            <p className="font-medium text-gray-900">Proof of Delivery</p>
+                            <p className="text-sm text-gray-600">
+                              Delivered on {booking.delivery_date ? new Date(booking.delivery_date).toLocaleDateString() : 'N/A'}
+                            </p>
+                          </div>
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => {
+                            // In a real app, this would download/view the POD document
+                            showSuccess('POD Document', 'POD details available in tracking tab');
+                          }}
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          View POD
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </TabsContent>
@@ -1139,6 +1227,19 @@ export default function BookingDetails() {
           </div>
         </div>
       </div>
+      
+      {/* POD Form Modal */}
+      {showPODForm && booking && (
+        <ProofOfDelivery
+          bookingId={booking.id}
+          onClose={() => setShowPODForm(false)}
+          onSubmit={async () => {
+            // The POD component will handle the submission
+            // We just need to close and refresh
+            handlePODComplete();
+          }}
+        />
+      )}
     </div>
   );
 }

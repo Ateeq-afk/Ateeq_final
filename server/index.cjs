@@ -3,6 +3,7 @@ const bodyParser = require('body-parser');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const ogplService = require('./ogplService.cjs');
+const warehouseService = require('./warehouseService.cjs');
 
 const billingService = require('./billingService.cjs');
 const app = express();
@@ -265,6 +266,39 @@ app.post('/warehouses', auth, (req, res) => {
   }
 });
 
+app.get('/warehouses/:id', auth, (req, res) => {
+  const warehouse = warehouseService.warehouses.find(w => w.id == req.params.id);
+  if (!warehouse) {
+    return res.status(404).json({ error: 'Warehouse not found' });
+  }
+  res.json(warehouse);
+});
+
+app.put('/warehouses/:id', auth, (req, res) => {
+  const warehouse = warehouseService.warehouses.find(w => w.id == req.params.id);
+  if (!warehouse) {
+    return res.status(404).json({ error: 'Warehouse not found' });
+  }
+  
+  if (req.body.name) warehouse.name = req.body.name;
+  if (req.body.address) warehouse.address = req.body.address;
+  if (req.body.city) warehouse.city = req.body.city;
+  if (req.body.status) warehouse.status = req.body.status;
+  if (req.body.branch_id) warehouse.branchId = req.body.branch_id;
+  
+  res.json(warehouse);
+});
+
+app.delete('/warehouses/:id', auth, (req, res) => {
+  const index = warehouseService.warehouses.findIndex(w => w.id == req.params.id);
+  if (index === -1) {
+    return res.status(404).json({ error: 'Warehouse not found' });
+  }
+  
+  warehouseService.warehouses.splice(index, 1);
+  res.status(204).send();
+});
+
 app.get('/warehouse-locations', auth, (req, res) => {
   res.json(warehouseService.locations);
 });
@@ -281,6 +315,38 @@ app.post('/warehouse-locations', auth, (req, res) => {
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
+});
+
+app.get('/warehouse-locations/:id', auth, (req, res) => {
+  const location = warehouseService.locations.find(l => l.id == req.params.id);
+  if (!location) {
+    return res.status(404).json({ error: 'Location not found' });
+  }
+  res.json(location);
+});
+
+app.put('/warehouse-locations/:id', auth, (req, res) => {
+  const location = warehouseService.locations.find(l => l.id == req.params.id);
+  if (!location) {
+    return res.status(404).json({ error: 'Location not found' });
+  }
+  
+  if (req.body.name) location.name = req.body.name;
+  if (req.body.type) location.type = req.body.type;
+  if (req.body.capacity !== undefined) location.capacity = req.body.capacity;
+  if (req.body.warehouse_id) location.warehouseId = req.body.warehouse_id;
+  
+  res.json(location);
+});
+
+app.delete('/warehouse-locations/:id', auth, (req, res) => {
+  const index = warehouseService.locations.findIndex(l => l.id == req.params.id);
+  if (index === -1) {
+    return res.status(404).json({ error: 'Location not found' });
+  }
+  
+  warehouseService.locations.splice(index, 1);
+  res.status(204).send();
 });
 
 app.get('/inventory', auth, (req, res) => {
@@ -378,6 +444,139 @@ app.get('/edge/reports/bookings', auth, (req, res) => {
     return acc;
   }, {});
   res.json(summary);
+});
+
+// Sample articles data
+const articles = [
+  {
+    id: '1',
+    branch_id: '1',
+    name: 'Cotton Fabric',
+    description: 'High-quality cotton fabric for textile manufacturing',
+    base_rate: 450.00,
+    hsn_code: '5208',
+    tax_rate: 12,
+    unit_of_measure: 'meter',
+    min_quantity: 50,
+    is_fragile: false,
+    requires_special_handling: false,
+    notes: 'Store in dry place',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    branch_name: 'Main Branch'
+  },
+  {
+    id: '2',
+    branch_id: '1',
+    name: 'Silk Saree Bundle',
+    description: 'Traditional silk sarees in assorted colors',
+    base_rate: 2500.00,
+    hsn_code: '5007',
+    tax_rate: 5,
+    unit_of_measure: 'bundle',
+    min_quantity: 10,
+    is_fragile: true,
+    requires_special_handling: true,
+    notes: 'Handle with care, avoid moisture',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    branch_name: 'Main Branch'
+  },
+  {
+    id: '3',
+    branch_id: '2',
+    name: 'Electronics Components',
+    description: 'Various electronic components and parts',
+    base_rate: 800.00,
+    hsn_code: '8517',
+    tax_rate: 18,
+    unit_of_measure: 'kg',
+    min_quantity: 5,
+    is_fragile: true,
+    requires_special_handling: false,
+    notes: 'Anti-static packaging required',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    branch_name: 'Second Branch'
+  }
+];
+
+// Articles API endpoints
+app.get('/api/articles', auth, (req, res) => {
+  res.json(articles);
+});
+
+app.get('/api/articles/:id', auth, (req, res) => {
+  const article = articles.find(a => a.id === req.params.id);
+  if (!article) {
+    return res.status(404).json({ error: 'Article not found' });
+  }
+  res.json(article);
+});
+
+app.post('/api/articles', auth, (req, res) => {
+  const newArticle = {
+    id: String(articles.length + 1),
+    branch_id: req.body.branch_id || '1',
+    name: req.body.name,
+    description: req.body.description || '',
+    base_rate: req.body.base_rate,
+    hsn_code: req.body.hsn_code || '',
+    tax_rate: req.body.tax_rate || 0,
+    unit_of_measure: req.body.unit_of_measure || '',
+    min_quantity: req.body.min_quantity || 1,
+    is_fragile: req.body.is_fragile || false,
+    requires_special_handling: req.body.requires_special_handling || false,
+    notes: req.body.notes || '',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    branch_name: 'Main Branch'
+  };
+  articles.push(newArticle);
+  res.status(201).json(newArticle);
+});
+
+app.put('/api/articles/:id', auth, (req, res) => {
+  const articleIndex = articles.findIndex(a => a.id === req.params.id);
+  if (articleIndex === -1) {
+    return res.status(404).json({ error: 'Article not found' });
+  }
+  
+  const updatedArticle = {
+    ...articles[articleIndex],
+    ...req.body,
+    updated_at: new Date().toISOString()
+  };
+  articles[articleIndex] = updatedArticle;
+  res.json(updatedArticle);
+});
+
+app.delete('/api/articles/:id', auth, (req, res) => {
+  const articleIndex = articles.findIndex(a => a.id === req.params.id);
+  if (articleIndex === -1) {
+    return res.status(404).json({ error: 'Article not found' });
+  }
+  
+  articles.splice(articleIndex, 1);
+  res.status(204).send();
+});
+
+// Customer rates (mock data)
+app.get('/api/articles/:id/rates', auth, (req, res) => {
+  // Mock customer rates data
+  const mockRates = [
+    {
+      customer_id: '1',
+      article_id: req.params.id,
+      rate: 400.00,
+      customer: {
+        id: '1',
+        name: 'ABC Textiles',
+        mobile: '9876543210'
+      }
+    }
+  ];
+  res.json(mockRates);
 });
 
 app.listen(3000, () => {

@@ -8,7 +8,7 @@ import { useNotificationSystem } from '@/hooks/useNotificationSystem';
 const LazyBook = () => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-  const { createBooking } = useBookings();
+  const { createBooking } = useBookings(null); // Pass null to use current user's branch
   const { showSuccess, showError } = useNotificationSystem();
 
   useEffect(() => {

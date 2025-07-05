@@ -68,8 +68,6 @@ export function useOrganizations() {
   }, [retryCount, selectedOrganizationId]);
 
   useEffect(() => {
-    let mounted = true;
-
     // Initial load
     loadOrganizations();
 

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import { useEffect } from 'react'
 import { Building2 } from 'lucide-react'
 import { Navigate } from 'react-router-dom'
 import BranchStaffManagement from '@/components/branches/BranchStaffManagement'

@@ -11,6 +11,7 @@ export default function ThemeToggle() {
       variant="outline" 
       size="icon" 
       onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+      aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
       className="rounded-full w-10 h-10 bg-background border-muted-foreground/20"
     >
       <motion.div

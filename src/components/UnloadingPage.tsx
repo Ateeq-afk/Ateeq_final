@@ -10,10 +10,6 @@ import {
   MapPin,
   User,
   Clock,
-  Table as Tabs,
-  List as TabsList,
-  Refrigerator as TabsTrigger,
-  Component as TabsContent,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,6 +20,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+} from '@/components/ui/tabs';
 import { useUnloading } from '@/hooks/useUnloading';
 import { useOrganizations } from '@/hooks/useOrganizations';
 import { useAuth } from '@/contexts/AuthContext';
@@ -52,7 +54,7 @@ export default function UnloadingPage() {
   const effectiveBranchId = selectedBranch || userBranch?.id;
 
   const { getIncomingOGPLs, unloadOGPL, loading, error } =
-    useUnloading(organizationId, effectiveBranchId);
+    useUnloading(effectiveBranchId);
 
   useEffect(() => {
     if (organizationId) {

@@ -1,28 +1,91 @@
-import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import Dashboard from './components/Dashboard';
-import TrackingPage from './pages/TrackingPage';
-import LandingPage from './pages/LandingPage';
-import SignInPage from './pages/SignInPage';
-import SignUpPage from './pages/SignUpPage';
-import CreateOrganizationPage from './pages/CreateOrganizationPage';
-import SuperAdminBranchPage from './pages/SuperAdminBranchPage';
+import { lazy, Suspense } from 'react';
+import ErrorBoundary from './components/ErrorBoundary';
+import RouteErrorBoundary from './components/RouteErrorBoundary';
+import { SearchProvider } from './contexts/SearchContext';
+
+// Lazy load components for code splitting
+const Dashboard = lazy(() => import('./components/Dashboard'));
+const TrackingPage = lazy(() => import('./pages/TrackingPage'));
+const LandingPage = lazy(() => import('./pages/LandingPage'));
+const SignInPage = lazy(() => import('./pages/SignInPage'));
+const SignUpPage = lazy(() => import('./pages/SignUpPage'));
+const OrganizationSignIn = lazy(() => import('./pages/auth/OrganizationSignIn').then(m => ({ default: m.OrganizationSignIn })));
+const CreateOrganizationPage = lazy(() => import('./pages/CreateOrganizationPage'));
+const SuperAdminBranchPage = lazy(() => import('./pages/SuperAdminBranchPage'));
+
+// Loading fallback component
+const PageLoader = () => (
+  <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center">
+    <div className="flex items-center gap-2 text-blue-600" role="status" aria-live="polite">
+      <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" aria-hidden="true"></div>
+      <span>Loading...</span>
+    </div>
+  </div>
+);
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/signin" element={<SignInPage />} />
-        <Route path="/signup" element={<SignUpPage />} />
-        <Route path="/new-organization" element={<CreateOrganizationPage />} />
-        <Route path="/dashboard/*" element={<Dashboard />} />
-        <Route path="/superadmin/branches" element={<SuperAdminBranchPage />} />
-        <Route path="/track" element={<TrackingPage />} />
-        <Route path="/track/:lrNumber" element={<TrackingPage />} />
-        <Route path="*" element={<LandingPage />} />
-      </Routes>
-    </BrowserRouter>
+    <ErrorBoundary showDetails={true}>
+      <BrowserRouter>
+        <SearchProvider>
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+            <Route path="/" element={
+              <RouteErrorBoundary>
+                <LandingPage />
+              </RouteErrorBoundary>
+            } />
+            <Route path="/signin" element={
+              <RouteErrorBoundary>
+                <SignInPage />
+              </RouteErrorBoundary>
+            } />
+            <Route path="/signin-org" element={
+              <RouteErrorBoundary>
+                <OrganizationSignIn />
+              </RouteErrorBoundary>
+            } />
+            <Route path="/signup" element={
+              <RouteErrorBoundary>
+                <SignUpPage />
+              </RouteErrorBoundary>
+            } />
+            <Route path="/new-organization" element={
+              <RouteErrorBoundary>
+                <CreateOrganizationPage />
+              </RouteErrorBoundary>
+            } />
+            <Route path="/dashboard/*" element={
+              <RouteErrorBoundary>
+                <Dashboard />
+              </RouteErrorBoundary>
+            } />
+            <Route path="/superadmin/branches" element={
+              <RouteErrorBoundary>
+                <SuperAdminBranchPage />
+              </RouteErrorBoundary>
+            } />
+            <Route path="/track" element={
+              <RouteErrorBoundary>
+                <TrackingPage />
+              </RouteErrorBoundary>
+            } />
+            <Route path="/track/:lrNumber" element={
+              <RouteErrorBoundary>
+                <TrackingPage />
+              </RouteErrorBoundary>
+            } />
+            <Route path="*" element={
+              <RouteErrorBoundary>
+                <LandingPage />
+              </RouteErrorBoundary>
+            } />
+          </Routes>
+        </Suspense>
+      </SearchProvider>
+      </BrowserRouter>
+    </ErrorBoundary>
   );
 }
 

@@ -1,11 +1,23 @@
 import { useMemo } from 'react';
-import type { Booking, Filters, SortField, SortDirection } from '../types';
+import type { Booking } from '../types';
+
+// Local type definitions for this hook
+interface LocalFilters {
+  search: string;
+  status: string;
+  paymentType: string;
+  branch: string;
+  dateRange: string;
+}
+
+type LocalSortField = 'lr_number' | 'created_at' | 'total_amount';
+type LocalSortDirection = 'asc' | 'desc';
 
 export function useFilteredSortedBookings(
   bookings: Booking[],
-  filters: Filters,
-  sortField: SortField,
-  sortDirection: SortDirection
+  filters: LocalFilters,
+  sortField: LocalSortField,
+  sortDirection: LocalSortDirection
 ) {
   return useMemo(() => {
     const { search, status, paymentType, branch, dateRange } = filters;

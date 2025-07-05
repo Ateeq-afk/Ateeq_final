@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { useBranchSelection } from '@/contexts/BranchSelectionContext';
 
 // UUID validation regex
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -62,32 +63,33 @@ function sanitizeVehicleData(data: Record<string, any>): VehicleInsert {
   return sanitized as VehicleInsert;
 }
 
-export function useVehicles(branchId: string | null = null) {
+export function useVehicles() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const { selectedBranch } = useBranchSelection();
 
   const loadVehicles = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      // If branchId is provided but invalid, return empty array
-      if (branchId && !isValidUUID(branchId)) {
-        console.log('Invalid branch ID, returning empty array:', branchId);
+      // If selectedBranch is provided but invalid, return empty array
+      if (selectedBranch && !isValidUUID(selectedBranch)) {
+        console.log('Invalid branch ID, returning empty array:', selectedBranch);
         setVehicles([]);
         return;
       }
 
-      console.log('Loading vehicles, branchId:', branchId);
+      console.log('Loading vehicles, branchId:', selectedBranch);
       
       let query = supabase
         .from('vehicles')
         .select('*')
         .order('vehicle_number', { ascending: true });
       
-      if (branchId) {
-        query = query.eq('branch_id', branchId);
+      if (selectedBranch) {
+        query = query.eq('branch_id', selectedBranch);
       }
       
       const { data, error: fetchError } = await query;
@@ -101,7 +103,7 @@ export function useVehicles(branchId: string | null = null) {
     } finally {
       setLoading(false);
     }
-  }, [branchId]);
+  }, [selectedBranch]);
 
   useEffect(() => {
     loadVehicles();

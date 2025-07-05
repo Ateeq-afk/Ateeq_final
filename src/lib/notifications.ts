@@ -113,7 +113,7 @@ export function useNotifications() {
 
 // Create a notification
 export async function createNotification(
-  userId: string,
+  _userId: string,
   type: NotificationType,
   title: string,
   message: string,
@@ -144,7 +144,7 @@ export async function createNotification(
 }
 
 // Get user notifications
-export async function getUserNotifications(userId: string): Promise<Notification[]> {
+export async function getUserNotifications(_userId: string): Promise<Notification[]> {
   // In a real implementation, this would fetch notifications from the database
   // For demo purposes, we'll return mock notifications
   return [

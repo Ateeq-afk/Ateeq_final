@@ -8,10 +8,6 @@ import {
   FileSpreadsheet,
   FileJson,
   FileType,
-  Filter,
-  Settings,
-  Eye,
-  EyeOff,
   Package,
   Calendar,
   DollarSign,
@@ -21,8 +17,6 @@ import {
   Sparkles,
   Zap,
   Shield,
-  AlertCircle,
-  ArrowUpDown,
   Check,
 } from 'lucide-react';
 import Papa from 'papaparse';
@@ -59,10 +53,7 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import {
-  Tooltip,
-  TooltipContent,
   TooltipProvider,
-  TooltipTrigger,
 } from '@/components/ui/tooltip';
 import type { Article } from '@/types';
 import { useNotificationSystem } from '@/hooks/useNotificationSystem';

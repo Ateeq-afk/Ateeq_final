@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Truck, Mail, Lock, Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react';
+import { Truck, Mail, Lock, Eye, EyeOff, ArrowRight, Loader2, Shield, CheckCircle2, Globe, Users, Package, TrendingUp, Github, Chrome } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -23,7 +23,7 @@ export default function SignInPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
-  const { theme } = useTheme();
+  useTheme();
 
   const {
     register,
@@ -59,29 +59,50 @@ export default function SignInPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row">
+    <div className="min-h-screen flex flex-col lg:flex-row relative overflow-hidden">
+      {/* Animated Background Pattern */}
+      <div className="absolute inset-0 -z-10">
+        <div className="absolute top-0 -left-4 w-72 h-72 bg-brand-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob dark:opacity-30"></div>
+        <div className="absolute top-0 -right-4 w-72 h-72 bg-blue-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000 dark:opacity-30"></div>
+        <div className="absolute -bottom-8 left-20 w-72 h-72 bg-purple-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000 dark:opacity-30"></div>
+      </div>
+      
       {/* Left Side - Form */}
-      <div className="w-full md:w-1/2 flex items-center justify-center p-8 md:p-16">
+      <div className="w-full lg:w-[45%] flex items-center justify-center p-6 sm:p-8 lg:p-16 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl">
         <motion.div 
           className="w-full max-w-md"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
         >
-          <div className="flex items-center gap-3 mb-8">
-            <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-brand-600 to-brand-800 dark:from-brand-500 dark:to-brand-700 flex items-center justify-center text-white shadow-md">
-              <Truck className="h-6 w-6" />
-            </div>
+          <div className="flex items-center gap-3 mb-10">
+            <motion.div 
+              className="h-14 w-14 rounded-2xl bg-gradient-to-br from-brand-600 via-brand-500 to-blue-600 dark:from-brand-500 dark:to-blue-700 flex items-center justify-center text-white shadow-lg shadow-brand-500/30"
+              whileHover={{ scale: 1.05, rotate: 5 }}
+              transition={{ type: "spring", stiffness: 400 }}
+            >
+              <Truck className="h-7 w-7" />
+            </motion.div>
             <div className="flex flex-col">
-              <span className="text-2xl font-bold bg-gradient-to-r from-brand-600 to-brand-800 dark:from-brand-400 dark:to-brand-600 text-transparent bg-clip-text">
+              <span className="text-3xl font-bold bg-gradient-to-r from-brand-600 via-brand-500 to-blue-600 dark:from-brand-400 dark:to-blue-500 text-transparent bg-clip-text">
                 DesiCargo
               </span>
-              <span className="text-sm text-gray-500 dark:text-gray-400">K2K Logistics</span>
+              <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">Enterprise Logistics Platform</span>
             </div>
           </div>
           
-          <h1 className="text-3xl font-bold mb-2 text-gray-900 dark:text-white">Welcome back</h1>
-          <p className="text-gray-600 dark:text-gray-400 mb-8">Sign in to your account to continue</p>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2, duration: 0.5 }}
+          >
+            <h1 className="text-4xl font-bold mb-3 text-gray-900 dark:text-white tracking-tight">
+              Welcome back
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400 mb-10 text-lg">
+              Sign in to access your logistics dashboard
+            </p>
+          </motion.div>
           
           <AnimatePresence>
             {error && (
@@ -97,150 +118,263 @@ export default function SignInPage() {
           </AnimatePresence>
           
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-gray-700 dark:text-gray-300">Email</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <motion.div 
+              className="space-y-2"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.3, duration: 0.5 }}
+            >
+              <Label htmlFor="email" className="text-gray-700 dark:text-gray-300 font-medium text-sm">Email address</Label>
+              <div className="relative group">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 transition-colors group-focus-within:text-brand-600" />
                 <Input 
                   id="email" 
                   type="email" 
-                  placeholder="Enter your email"
-                  className="pl-10 py-2 h-12"
+                  placeholder="you@company.com"
+                  className="pl-12 pr-4 py-3 h-12 bg-gray-50/50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-800 transition-all duration-200 rounded-xl"
                   {...register('email')}
                 />
               </div>
               {errors.email && (
-                <p className="text-sm text-red-500 mt-1">{errors.email.message}</p>
+                <motion.p 
+                  className="text-sm text-red-500 mt-1 flex items-center gap-1"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  <span className="inline-block w-1 h-1 bg-red-500 rounded-full"></span>
+                  {errors.email.message}
+                </motion.p>
               )}
-            </div>
+            </motion.div>
             
-            <div className="space-y-2">
+            <motion.div 
+              className="space-y-2"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.4, duration: 0.5 }}
+            >
               <div className="flex items-center justify-between">
-                <Label htmlFor="password" className="text-gray-700 dark:text-gray-300">Password</Label>
-                <Link to="/forgot-password" className="text-sm text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300">
+                <Label htmlFor="password" className="text-gray-700 dark:text-gray-300 font-medium text-sm">Password</Label>
+                <Link to="/forgot-password" className="text-sm text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 font-medium transition-colors">
                   Forgot password?
                 </Link>
               </div>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <div className="relative group">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 transition-colors group-focus-within:text-brand-600" />
                 <Input 
                   id="password" 
                   type={showPassword ? "text" : "password"} 
-                  placeholder="Enter your password"
-                  className="pl-10 pr-10 py-2 h-12"
+                  placeholder="••••••••"
+                  className="pl-12 pr-12 py-3 h-12 bg-gray-50/50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-800 transition-all duration-200 rounded-xl"
                   {...register('password')}
                 />
                 <button 
                   type="button"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                   onClick={() => setShowPassword(!showPassword)}
                 >
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
               {errors.password && (
-                <p className="text-sm text-red-500 mt-1">{errors.password.message}</p>
+                <motion.p 
+                  className="text-sm text-red-500 mt-1 flex items-center gap-1"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  <span className="inline-block w-1 h-1 bg-red-500 rounded-full"></span>
+                  {errors.password.message}
+                </motion.p>
               )}
-            </div>
+            </motion.div>
             
-            <Button 
-              type="submit" 
-              className="w-full h-12 bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-700 hover:to-brand-600 text-white shadow-md"
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Signing in...
-                </>
-              ) : (
-                <>
-                  Sign In
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </>
-              )}
-            </Button>
-          </form>
-          
-          <div className="mt-8 text-center">
-            <p className="text-gray-600 dark:text-gray-400">
-              Don't have an account?{' '}
-              <Link to="/signup" className="text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 font-medium">
-                Sign up
-              </Link>
-            </p>
-          </div>
-        </motion.div>
-      </div>
-      
-      {/* Right Side - Image */}
-      <div className="hidden md:block md:w-1/2 bg-gradient-to-br from-brand-600 to-blue-600 dark:from-brand-800 dark:to-blue-900 relative overflow-hidden">
-        <div className="absolute inset-0 bg-black opacity-20"></div>
-        <div className="absolute inset-0 flex items-center justify-center p-12">
-          <div className="max-w-lg">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3, duration: 0.5 }}
-              className="glass-card p-8"
+              transition={{ delay: 0.5, duration: 0.5 }}
             >
-              <h2 className="text-2xl font-bold text-white mb-4">Streamline Your Logistics Operations</h2>
-              <p className="text-blue-100 mb-6">
-                DesiCargo provides a comprehensive solution for managing your entire logistics workflow from booking to delivery.
-              </p>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center">
-                    <CheckCircle className="h-4 w-4 text-white" />
-                  </div>
-                  <span className="text-white">Real-time Tracking</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center">
-                    <CheckCircle className="h-4 w-4 text-white" />
-                  </div>
-                  <span className="text-white">Fleet Management</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center">
-                    <CheckCircle className="h-4 w-4 text-white" />
-                  </div>
-                  <span className="text-white">Digital POD</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center">
-                    <CheckCircle className="h-4 w-4 text-white" />
-                  </div>
-                  <span className="text-white">Analytics Dashboard</span>
-                </div>
-              </div>
+              <Button 
+                type="submit" 
+                className="w-full h-12 bg-gradient-to-r from-brand-600 via-brand-500 to-blue-600 hover:from-brand-700 hover:via-brand-600 hover:to-blue-700 text-white shadow-lg shadow-brand-500/25 hover:shadow-xl hover:shadow-brand-500/30 transition-all duration-300 font-medium text-base rounded-xl"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Signing in...
+                  </>
+                ) : (
+                  <>
+                    Sign In
+                    <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
+                  </>
+                )}
+              </Button>
             </motion.div>
+          </form>
+          
+          {/* Social Login Divider */}
+          <div className="relative my-8">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-200 dark:border-gray-700"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-4 bg-white dark:bg-gray-900 text-gray-500">Or continue with</span>
+            </div>
           </div>
+          
+          {/* Social Login Buttons */}
+          <motion.div 
+            className="grid grid-cols-2 gap-3"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.6, duration: 0.5 }}
+          >
+            <Button 
+              type="button" 
+              variant="outline" 
+              className="h-11 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors rounded-xl"
+            >
+              <Chrome className="mr-2 h-4 w-4" />
+              Google
+            </Button>
+            <Button 
+              type="button" 
+              variant="outline" 
+              className="h-11 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors rounded-xl"
+            >
+              <Github className="mr-2 h-4 w-4" />
+              GitHub
+            </Button>
+          </motion.div>
+          
+          <div className="mt-8 text-center">
+            <p className="text-gray-600 dark:text-gray-400">
+              Don&apos;t have an account?{' '}
+              <Link to="/signup" className="text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 font-semibold transition-colors">
+                Start free trial
+              </Link>
+            </p>
+          </div>
+          
+          {/* Trust Indicators */}
+          <motion.div 
+            className="mt-8 pt-8 border-t border-gray-200 dark:border-gray-700"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.7, duration: 0.5 }}
+          >
+            <div className="flex items-center justify-center gap-6 text-sm text-gray-500 dark:text-gray-400">
+              <div className="flex items-center gap-1">
+                <Shield className="h-4 w-4" />
+                <span>Enterprise-grade security</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <CheckCircle2 className="h-4 w-4 text-green-500" />
+                <span>SOC 2 Compliant</span>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      </div>
+      
+      {/* Right Side - Hero */}
+      <div className="hidden lg:block lg:w-[55%] bg-gradient-to-br from-brand-600 via-blue-600 to-purple-700 dark:from-brand-800 dark:via-blue-900 dark:to-purple-900 relative overflow-hidden">
+        {/* Animated Background Elements */}
+        <div className="absolute inset-0">
+          <div className="absolute top-20 left-20 w-96 h-96 bg-white/10 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute bottom-20 right-20 w-96 h-96 bg-blue-400/10 rounded-full blur-3xl animate-pulse animation-delay-2000"></div>
         </div>
-        <div className="absolute bottom-8 left-8 text-white/80 text-sm">
-          © 2025 DesiCargo. All rights reserved.
+        
+        {/* Content */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center p-12 z-10">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.5, duration: 0.7, type: "spring" }}
+            className="text-center max-w-2xl"
+          >
+            <h2 className="text-5xl font-bold text-white mb-6 leading-tight">
+              Transform Your
+              <span className="block bg-gradient-to-r from-blue-200 to-purple-200 text-transparent bg-clip-text">
+                Logistics Operations
+              </span>
+            </h2>
+            <p className="text-xl text-blue-100 mb-12 leading-relaxed">
+              Join 10,000+ businesses streamlining their supply chain with our enterprise-grade logistics platform.
+            </p>
+          </motion.div>
+          
+          {/* Feature Cards */}
+          <motion.div 
+            className="grid grid-cols-2 gap-6 max-w-2xl w-full"
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.8, duration: 0.6 }}
+          >
+            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20">
+              <div className="h-12 w-12 rounded-xl bg-white/20 flex items-center justify-center mb-4">
+                <Globe className="h-6 w-6 text-white" />
+              </div>
+              <h3 className="text-white font-semibold text-lg mb-2">Global Network</h3>
+              <p className="text-blue-100 text-sm">Connected logistics across 50+ cities</p>
+            </div>
+            
+            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20">
+              <div className="h-12 w-12 rounded-xl bg-white/20 flex items-center justify-center mb-4">
+                <Package className="h-6 w-6 text-white" />
+              </div>
+              <h3 className="text-white font-semibold text-lg mb-2">Smart Tracking</h3>
+              <p className="text-blue-100 text-sm">Real-time updates at every step</p>
+            </div>
+            
+            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20">
+              <div className="h-12 w-12 rounded-xl bg-white/20 flex items-center justify-center mb-4">
+                <Users className="h-6 w-6 text-white" />
+              </div>
+              <h3 className="text-white font-semibold text-lg mb-2">Team Collaboration</h3>
+              <p className="text-blue-100 text-sm">Unified platform for all stakeholders</p>
+            </div>
+            
+            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20">
+              <div className="h-12 w-12 rounded-xl bg-white/20 flex items-center justify-center mb-4">
+                <TrendingUp className="h-6 w-6 text-white" />
+              </div>
+              <h3 className="text-white font-semibold text-lg mb-2">Analytics & Insights</h3>
+              <p className="text-blue-100 text-sm">Data-driven logistics optimization</p>
+            </div>
+          </motion.div>
+          
+          {/* Stats */}
+          <motion.div 
+            className="flex items-center justify-center gap-12 mt-12"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.2, duration: 0.6 }}
+          >
+            <div className="text-center">
+              <div className="text-3xl font-bold text-white">99.9%</div>
+              <div className="text-sm text-blue-200">Uptime SLA</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-white">24/7</div>
+              <div className="text-sm text-blue-200">Support</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-white">5M+</div>
+              <div className="text-sm text-blue-200">Shipments</div>
+            </div>
+          </motion.div>
+        </div>
+        
+        <div className="absolute bottom-8 left-8 right-8 flex items-center justify-between text-white/60 text-sm">
+          <span>© 2025 DesiCargo. All rights reserved.</span>
+          <div className="flex items-center gap-4">
+            <Link to="/privacy" className="hover:text-white transition-colors">Privacy</Link>
+            <Link to="/terms" className="hover:text-white transition-colors">Terms</Link>
+          </div>
         </div>
       </div>
     </div>
-  );
-}
-
-function CheckCircle(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-      <polyline points="22 4 12 14.01 9 11.01" />
-    </svg>
   );
 }

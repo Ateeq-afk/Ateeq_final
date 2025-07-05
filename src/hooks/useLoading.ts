@@ -2,13 +2,15 @@ import { useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { useNotificationSystem } from '@/hooks/useNotificationSystem';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBranchSelection } from '@/contexts/BranchSelectionContext';
 import { useBookings } from '@/hooks/useBookings';
 
-export function useLoading(branchId?: string) {
+export function useLoading() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const { showSuccess, showError } = useNotificationSystem();
   const { getCurrentUserBranch } = useAuth();
+  const { selectedBranch } = useBranchSelection();
   const { updateBookingStatus } = useBookings();
   const userBranch = getCurrentUserBranch();
 
@@ -18,7 +20,7 @@ export function useLoading(branchId?: string) {
       setLoading(true);
       setError(null);
       
-      const effectiveBranchId = branchId || userBranch?.id;
+      const effectiveBranchId = selectedBranch || userBranch?.id;
       
       if (!effectiveBranchId) {
         console.warn('No branch ID available for loading pending bookings');
@@ -67,7 +69,7 @@ export function useLoading(branchId?: string) {
       setLoading(true);
       setError(null);
       
-      const effectiveBranchId = branchId || userBranch?.id;
+      const effectiveBranchId = selectedBranch || userBranch?.id;
       
       if (!effectiveBranchId) {
         console.warn('No branch ID available for loading active OGPLs');
@@ -274,7 +276,7 @@ export function useLoading(branchId?: string) {
       setLoading(true);
       setError(null);
       
-      const effectiveBranchId = branchId || userBranch?.id;
+      const effectiveBranchId = selectedBranch || userBranch?.id;
       
       if (!effectiveBranchId) {
         console.warn('No branch ID available for loading history');

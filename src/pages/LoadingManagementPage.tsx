@@ -1,4 +1,3 @@
-import React from 'react';
 import LoadingDashboard from '@/components/loading/LoadingDashboard';
 import { BranchSelectionProvider } from '@/contexts/BranchSelectionContext';
 

@@ -1,6 +1,5 @@
-import React from 'react';
 import { motion } from 'framer-motion';
-import { Package, Calendar, User, MapPin, Truck, ArrowRight } from 'lucide-react';
+import { Package, Calendar, User, MapPin, Truck } from 'lucide-react';
 
 export default function BookingFormSkeleton() {
   return (

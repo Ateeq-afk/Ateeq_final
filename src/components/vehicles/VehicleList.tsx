@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Vehicle } from '@/hooks/useVehicles';
 import { 
   Truck, 
   Plus, 
@@ -46,7 +47,7 @@ import { Badge } from '@/components/ui/badge';
 
 export default function VehicleList() {
   const [showForm, setShowForm] = useState(false);
-  const [editingVehicle, setEditingVehicle] = useState(null);
+  const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [vehicleToDelete, setVehicleToDelete] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);

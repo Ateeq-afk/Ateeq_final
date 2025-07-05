@@ -4,9 +4,7 @@ import {
   Package, 
   BarChart3, 
   Users,
-  LayoutDashboard,
   Home,
-  LogOut,
   FileText,
   IndianRupee,
   Building2,
@@ -14,18 +12,20 @@ import {
   Download,
   ChevronRight,
   Settings,
-  Menu,
   ChevronDown,
-  Clock,
-  CheckCircle2
+  CheckCircle2,
+  Layers2,
+  Printer,
+  MapPin,
+  // MessageSquare
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useBookings } from '@/hooks/useBookings';
-import { useState as useHookState } from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface NavItemProps {
   icon: React.ElementType;
@@ -45,10 +45,13 @@ interface NavGroupProps {
 interface SidebarProps {
   onNavigate: (page: string) => void;
   currentPage: string;
+  onOpenChat?: () => void;
 }
 
-function Sidebar({ onNavigate, currentPage }: SidebarProps) {
+function Sidebar({ onNavigate, currentPage, onOpenChat }: SidebarProps) {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isAdmin = user?.user_metadata?.role === 'admin' || user?.role === 'admin';
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({
     overview: false,
     operations: false,
@@ -58,7 +61,6 @@ function Sidebar({ onNavigate, currentPage }: SidebarProps) {
   });
   const [showRecentBookings, setShowRecentBookings] = useState(false);
   const { bookings, updateBookingStatus } = useBookings();
-  const { theme } = useTheme();
 
   // Get the 5 most recent bookings
   const recentBookings = bookings.slice(0, 5);
@@ -75,7 +77,7 @@ function Sidebar({ onNavigate, currentPage }: SidebarProps) {
     }));
   };
 
-  const handlePrintLR = (booking) => {
+  const handlePrintLR = (booking: any) => {
     // Create a printable version of the LR
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
@@ -87,7 +89,7 @@ function Sidebar({ onNavigate, currentPage }: SidebarProps) {
           <title>Lorry Receipt - ${booking.lr_number}</title>
           <style>
             body {
-              font-family: 'Lato', Arial, sans-serif;
+              font-family: 'Inter', Arial, sans-serif;
               margin: 0;
               padding: 20px;
             }
@@ -266,36 +268,86 @@ function Sidebar({ onNavigate, currentPage }: SidebarProps) {
   };
 
   return (
-    <aside className="flex flex-col h-full bg-white dark:bg-gray-900 dark:border-gray-800">
+    <aside className="flex flex-col h-full relative overflow-hidden">
       {/* Logo */}
-      <div className="h-16 flex items-center gap-3 px-6 border-b border-gray-100 dark:border-gray-800">
-        <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-brand-600 to-brand-800 dark:from-brand-500 dark:to-brand-700 flex items-center justify-center text-white shadow-md">
-          <Truck className="h-5 w-5" />
-        </div>
-        <div className="flex flex-col">
-          <span className="text-lg font-bold bg-gradient-to-r from-brand-600 to-brand-800 dark:from-brand-400 dark:to-brand-600 text-transparent bg-clip-text">
+      <div className="h-20 flex items-center gap-3 px-6 border-b border-border/50 relative overflow-hidden">
+        <motion.div
+          initial={{ scale: 0, rotate: -180 }}
+          animate={{ scale: 1, rotate: 0 }}
+          transition={{ 
+            type: "spring",
+            stiffness: 200,
+            damping: 20,
+            delay: 0.2
+          }}
+          className="h-12 w-12 rounded-2xl gradient-brand flex items-center justify-center text-white shadow-lg relative group hover-scale"
+        >
+          <div className="absolute inset-0 rounded-2xl gradient-brand opacity-0 group-hover:opacity-100 blur-lg transition-opacity duration-300" />
+          <Truck className="h-6 w-6 relative z-10" />
+        </motion.div>
+        <motion.div 
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.4 }}
+          className="flex flex-col"
+        >
+          <span className="text-xl font-heading font-bold text-gradient">
             DesiCargo
           </span>
-          <span className="text-xs text-gray-500 dark:text-gray-400">K2K Logistics</span>
-        </div>
+          <span className="text-xs text-muted-foreground">Premium Logistics</span>
+        </motion.div>
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-brand-500/5 to-transparent dark:via-brand-400/5" />
       </div>
       
-      <nav className="flex-1 p-4 space-y-6 overflow-y-auto scrollbar-hidden">
+      <nav className="flex-1 p-4 space-y-4 overflow-y-auto overflow-x-hidden" aria-label="Main navigation" style={{ maxHeight: 'calc(100vh - 5rem)', scrollbarWidth: 'thin' }}>
         {/* Quick Actions */}
-        <div className="px-3 py-2 bg-gradient-to-r from-brand-50 to-blue-50 dark:from-brand-900/20 dark:to-blue-900/20 rounded-xl border border-brand-100 dark:border-brand-800/30 shadow-sm">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="relative overflow-hidden rounded-xl gradient-brand-subtle p-[1px]"
+        >
+          <div className="relative bg-background/90 dark:bg-background/70 rounded-xl p-3">
+            <div className="absolute inset-0 gradient-brand opacity-10" />
+            <motion.div 
+              whileHover={{ scale: 1.02 }} 
+              whileTap={{ scale: 0.98 }}
+              className="relative z-10"
+            >
+              <button
+                onClick={() => handleNavigate('new-booking')}
+                className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg bg-foreground text-background hover:opacity-90 transition-all duration-200 group"
+              >
+                <div className="h-8 w-8 rounded-lg bg-background/20 flex items-center justify-center group-hover:bg-background/30 transition-colors">
+                  <Package className="h-4 w-4" />
+                </div>
+                <span className="font-medium">New Booking</span>
+                <ChevronRight className="h-4 w-4 ml-auto opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
+              </button>
+            </motion.div>
+          </div>
+        </motion.div>
+
+        {/* Chat Button - Temporarily disabled */}
+        {/* {onOpenChat && (
           <motion.div 
-            whileHover={{ scale: 1.02 }} 
-            whileTap={{ scale: 0.98 }}
-            className="transition-all duration-200"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.55 }}
+            className="px-4 mb-4"
           >
-            <NavItem 
-              icon={Package} 
-              text="New Booking" 
-              active={currentPage === 'new-booking'}
-              onClick={() => handleNavigate('new-booking')}
-            />
+            <button
+              onClick={onOpenChat}
+              className="flex items-center gap-3 w-full px-4 py-3 rounded-lg bg-gradient-to-r from-blue-500/10 to-purple-500/10 hover:from-blue-500/20 hover:to-purple-500/20 transition-all duration-200 group"
+            >
+              <div className="h-8 w-8 rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white group-hover:scale-110 transition-transform">
+                <MessageSquare className="h-4 w-4" />
+              </div>
+              <span className="font-medium text-foreground">Team Chat</span>
+              <ChevronRight className="h-4 w-4 ml-auto opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
+            </button>
           </motion.div>
-        </div>
+        )} */}
 
         {/* Overview */}
         <NavGroup 
@@ -328,122 +380,124 @@ function Sidebar({ onNavigate, currentPage }: SidebarProps) {
               badge={bookings.length > 0 ? bookings.filter(b => b.status === 'booked').length : 0}
             />
             
-            {/* Recent Bookings Dropdown */}
-            <div className="ml-12 mt-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="flex items-center text-xs dark:text-gray-400 dark:hover:text-gray-300"
-                onClick={() => setShowRecentBookings(!showRecentBookings)}
-              >
-                <ChevronDown
-                  className={`h-3 w-3 mr-1 transition-transform ${showRecentBookings ? 'rotate-180' : ''}`}
-                />
-                Recent Bookings
-              </Button>
-              
-              <AnimatePresence>
-                {showRecentBookings && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="overflow-hidden mt-2 space-y-1"
-                  >
-                    {recentBookings.length > 0 ? (
-                      recentBookings.map((booking) => (
-                        <div 
-                          key={booking.id} 
-                          className="pl-2 pr-1 py-1.5 rounded-lg text-xs hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center justify-between"
-                        >
-                          <div className="flex items-center gap-1.5 overflow-hidden">
-                            <div className={`h-2 w-2 rounded-full flex-shrink-0 ${
-                              booking.status === 'delivered' ? 'bg-green-500' :
-                              booking.status === 'out_for_delivery' ? 'bg-orange-500' :
-                              booking.status === 'in_transit' ? 'bg-blue-500' :
-                              booking.status === 'unloaded' ? 'bg-purple-500' :
-                              booking.status === 'cancelled' ? 'bg-red-500' :
-                              'bg-yellow-500'
-                            }`}></div>
-                            <div className="truncate">
-                              <span className="font-medium dark:text-gray-300">{booking.lr_number}</span>
-                              <span className="text-gray-400 dark:text-gray-500 ml-1">({booking.article?.name || 'N/A'})</span>
+            {/* Recent Bookings Dropdown - Hidden for now */}
+            {false && (
+              <div className="ml-12 mt-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="flex items-center text-xs dark:text-gray-400 dark:hover:text-gray-300"
+                  onClick={() => setShowRecentBookings(!showRecentBookings)}
+                >
+                  <ChevronDown
+                    className={`h-3 w-3 mr-1 transition-transform ${showRecentBookings ? 'rotate-180' : ''}`}
+                  />
+                  Recent Bookings
+                </Button>
+                
+                <AnimatePresence>
+                  {showRecentBookings && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden mt-2 space-y-1"
+                    >
+                      {recentBookings.length > 0 ? (
+                        recentBookings.map((booking) => (
+                          <div 
+                            key={booking.id} 
+                            className="pl-2 pr-1 py-1.5 rounded-lg text-xs hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center justify-between"
+                          >
+                            <div className="flex items-center gap-1.5 overflow-hidden">
+                              <div className={`h-2 w-2 rounded-full flex-shrink-0 ${
+                                booking.status === 'delivered' ? 'bg-green-500' :
+                                booking.status === 'out_for_delivery' ? 'bg-orange-500' :
+                                booking.status === 'in_transit' ? 'bg-blue-500' :
+                                booking.status === 'unloaded' ? 'bg-purple-500' :
+                                booking.status === 'cancelled' ? 'bg-red-500' :
+                                'bg-yellow-500'
+                              }`}></div>
+                              <div className="truncate">
+                                <span className="font-medium dark:text-gray-300">{booking.lr_number}</span>
+                                <span className="text-gray-400 dark:text-gray-500 ml-1">({booking.article?.name || 'N/A'})</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center">
+                              {booking.status === 'unloaded' && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 text-gray-400 hover:text-orange-600 dark:hover:text-orange-500"
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    await updateBookingStatus(booking.id, 'out_for_delivery');
+                                  }}
+                                >
+                                  <Truck className="h-3 w-3" />
+                                </Button>
+                              )}
+                              {booking.status === 'out_for_delivery' && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 text-gray-400 hover:text-green-600 dark:hover:text-green-500"
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    await updateBookingStatus(booking.id, 'delivered');
+                                  }}
+                                >
+                                  <CheckCircle2 className="h-3 w-3" />
+                                </Button>
+                              )}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-gray-400 hover:text-brand-600 dark:hover:text-brand-500"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePrintLR(booking);
+                                }}
+                              >
+                                <Printer className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-gray-400 hover:text-brand-600 dark:hover:text-brand-500"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/dashboard/bookings/${booking.id}`);
+                                }}
+                              >
+                                <ChevronRight className="h-3 w-3" />
+                              </Button>
                             </div>
                           </div>
-                          <div className="flex items-center">
-                            {booking.status === 'unloaded' && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6 text-gray-400 hover:text-orange-600 dark:hover:text-orange-500"
-                                onClick={async (e) => {
-                                  e.stopPropagation();
-                                  await updateBookingStatus(booking.id, 'out_for_delivery');
-                                }}
-                              >
-                                <Truck className="h-3 w-3" />
-                              </Button>
-                            )}
-                            {booking.status === 'out_for_delivery' && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6 text-gray-400 hover:text-green-600 dark:hover:text-green-500"
-                                onClick={async (e) => {
-                                  e.stopPropagation();
-                                  await updateBookingStatus(booking.id, 'delivered');
-                                }}
-                              >
-                                <CheckCircle2 className="h-3 w-3" />
-                              </Button>
-                            )}
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 text-gray-400 hover:text-brand-600 dark:hover:text-brand-500"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handlePrintLR(booking);
-                              }}
-                            >
-                              <Printer className="h-3 w-3" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 text-gray-400 hover:text-brand-600 dark:hover:text-brand-500"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(`/dashboard/bookings/${booking.id}`);
-                              }}
-                            >
-                              <ChevronRight className="h-3 w-3" />
-                            </Button>
-                          </div>
+                        ))
+                      ) : (
+                        <div className="pl-2 py-1.5 text-xs text-gray-400 dark:text-gray-500">
+                          No recent bookings
                         </div>
-                      ))
-                    ) : (
-                      <div className="pl-2 py-1.5 text-xs text-gray-400 dark:text-gray-500">
-                        No recent bookings
+                      )}
+                      
+                      <div className="pt-1 pl-2">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="text-xs text-brand-600 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300 p-0 h-auto"
+                          onClick={() => handleNavigate('bookings')}
+                        >
+                          View all bookings
+                          <ChevronRight className="h-3 w-3 ml-1" />
+                        </Button>
                       </div>
-                    )}
-                    
-                    <div className="pt-1 pl-2">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="text-xs text-brand-600 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300 p-0 h-auto"
-                        onClick={() => handleNavigate('bookings')}
-                      >
-                        View all bookings
-                        <ChevronRight className="h-3 w-3 ml-1" />
-                      </Button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
           </div>
           
           <NavItem 
@@ -457,6 +511,12 @@ function Sidebar({ onNavigate, currentPage }: SidebarProps) {
             text="Unloading" 
             active={currentPage === 'unloading'}
             onClick={() => handleNavigate('unloading')}
+          />
+          <NavItem 
+            icon={MapPin} 
+            text="Article Tracking" 
+            active={currentPage === 'tracking'}
+            onClick={() => handleNavigate('tracking')}
           />
           <NavItem 
             icon={Layers2} 
@@ -497,6 +557,14 @@ function Sidebar({ onNavigate, currentPage }: SidebarProps) {
             active={currentPage === 'branches'}
             onClick={() => handleNavigate('branches')}
           />
+          {isAdmin && (
+            <NavItem
+              icon={Building2}
+              text="Organizations"
+              active={currentPage === 'organizations'}
+              onClick={() => handleNavigate('organizations')}
+            />
+          )}
         </NavGroup>
 
         {/* Finance */}
@@ -523,7 +591,7 @@ function Sidebar({ onNavigate, currentPage }: SidebarProps) {
         {/* Settings */}
         <NavGroup 
           title="SETTINGS" 
-          defaultOpen={false}
+          defaultOpen={true}
           onToggle={() => toggleCollapse('settings')}
           isCollapsed={collapsed.settings}
         >
@@ -534,6 +602,7 @@ function Sidebar({ onNavigate, currentPage }: SidebarProps) {
             onClick={() => handleNavigate('settings')}
           />
         </NavGroup>
+
       </nav>
     </aside>
   );
@@ -541,17 +610,28 @@ function Sidebar({ onNavigate, currentPage }: SidebarProps) {
 
 function NavGroup({ title, children, defaultOpen = true, onToggle, isCollapsed }: NavGroupProps & { onToggle: () => void, isCollapsed: boolean }) {
   return (
-    <div className="space-y-1">
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.1 }}
+      className="space-y-2"
+    >
       <div 
-        className="px-3 flex items-center justify-between cursor-pointer group"
+        className="px-3 flex items-center justify-between cursor-pointer group py-1"
         onClick={onToggle}
+        aria-expanded={!isCollapsed}
+        role="button"
+        aria-label={`Toggle ${title} section`}
       >
-        <span className="text-xs font-semibold text-gray-500 tracking-wider group-hover:text-brand-600 transition-colors dark:text-gray-400 dark:group-hover:text-brand-400">
+        <span className="text-[11px] font-semibold text-muted-foreground/70 tracking-[0.08em] uppercase group-hover:text-foreground/70 transition-colors duration-200">
           {title}
         </span>
-        <ChevronDown 
-          className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${isCollapsed ? '-rotate-90' : ''} dark:text-gray-500`} 
-        />
+        <motion.div
+          animate={{ rotate: isCollapsed ? -90 : 0 }}
+          transition={{ type: "spring", stiffness: 200, damping: 20 }}
+        >
+          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground/50" />
+        </motion.div>
       </div>
       <AnimatePresence initial={false}>
         {!isCollapsed && (
@@ -559,14 +639,17 @@ function NavGroup({ title, children, defaultOpen = true, onToggle, isCollapsed }
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="overflow-hidden"
+            transition={{ 
+              duration: 0.3,
+              ease: [0.25, 0.46, 0.45, 0.94]
+            }}
+            className="overflow-hidden space-y-0.5"
           >
             {children}
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </motion.div>
   );
 }
 
@@ -575,76 +658,50 @@ function NavItem({ icon: Icon, text, active = false, onClick, badge, children }:
     <motion.button
       onClick={onClick}
       className={cn(
-        "flex items-center justify-between w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+        "group relative flex items-center justify-between w-full px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-300",
         active 
-          ? "bg-gradient-to-r from-brand-50 to-brand-100 text-brand-700 shadow-sm border border-brand-200/50 dark:from-brand-900/30 dark:to-brand-800/30 dark:text-brand-400 dark:border-brand-700/30" 
-          : "text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+          ? "bg-gradient-to-r from-brand-500/10 via-brand-400/10 to-brand-600/10 text-foreground shadow-sm" 
+          : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
       )}
-      whileHover={{ x: 4 }}
+      whileHover={{ x: active ? 0 : 4 }}
       whileTap={{ scale: 0.98 }}
     >
-      <div className="flex items-center gap-3">
-        <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${
-          active ? 'bg-brand-100 text-brand-600 dark:bg-brand-900/50 dark:text-brand-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'
-        }`}>
+      {active && (
+        <motion.div
+          layoutId="activeNav"
+          className="absolute inset-0 bg-gradient-to-r from-brand-500/10 via-brand-400/10 to-brand-600/10 rounded-xl"
+          transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        />
+      )}
+      <div className="relative z-10 flex items-center gap-3">
+        <div className={cn(
+          "h-9 w-9 rounded-xl flex items-center justify-center transition-all duration-300",
+          active 
+            ? "bg-foreground/10 text-foreground shadow-sm" 
+            : "bg-accent/50 text-muted-foreground group-hover:bg-accent group-hover:text-foreground"
+        )}>
           <Icon className="h-4 w-4" />
         </div>
-        {text}
+        <span className="font-medium">{text}</span>
       </div>
-      {badge && (
-        <span className={cn(
-          "px-2 py-0.5 text-xs rounded-full",
-          active
-            ? "bg-brand-200 text-brand-700 dark:bg-brand-800 dark:text-brand-300"
-            : "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300"
-        )}>
-          {badge}
-        </span>
-      )}
-      {children}
+      <div className="relative z-10 flex items-center gap-2">
+        {badge && badge > 0 && (
+          <motion.span
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            className={cn(
+              "px-2 py-0.5 text-xs rounded-full font-medium",
+              active
+                ? "bg-foreground/10 text-foreground"
+                : "bg-brand-500/10 text-brand-700 dark:bg-brand-400/10 dark:text-brand-300"
+            )}
+          >
+            {badge}
+          </motion.span>
+        )}
+        {children}
+      </div>
     </motion.button>
-  );
-}
-
-function Layers2(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="m2 14 10 7 10-7" />
-      <path d="m2 9 10 7 10-7" />
-      <path d="m2 4 10 7 10-7" />
-    </svg>
-  );
-}
-
-function Printer(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <polyline points="6 9 6 2 18 2 18 9" />
-      <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
-      <rect width="12" height="8" x="6" y="14" />
-    </svg>
   );
 }
 
