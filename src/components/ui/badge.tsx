@@ -15,10 +15,10 @@ const badgeVariants = cva(
         destructive:
           "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80 dark:bg-red-700 dark:hover:bg-red-600",
         outline: "text-foreground dark:text-gray-200 dark:border-gray-600",
-        success: "border-transparent bg-success-100 text-success-800 hover:bg-success-200/80 dark:bg-success-900/30 dark:text-success-400 dark:hover:bg-success-900/40",
-        warning: "border-transparent bg-warning-100 text-warning-800 hover:bg-warning-200/80 dark:bg-warning-900/30 dark:text-warning-400 dark:hover:bg-warning-900/40",
-        info: "border-transparent bg-brand-100 text-brand-800 hover:bg-brand-200/80 dark:bg-brand-900/30 dark:text-brand-400 dark:hover:bg-brand-900/40",
-        neutral: "border-transparent bg-gray-100 text-gray-800 hover:bg-gray-200/80 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700",
+        success: "border-transparent bg-green-100 text-green-900 hover:bg-green-200/80 dark:bg-green-900/40 dark:text-green-200 dark:hover:bg-green-900/50",
+        warning: "border-transparent bg-yellow-100 text-yellow-900 hover:bg-yellow-200/80 dark:bg-yellow-900/40 dark:text-yellow-200 dark:hover:bg-yellow-900/50",
+        info: "border-transparent bg-blue-100 text-blue-900 hover:bg-blue-200/80 dark:bg-blue-900/40 dark:text-blue-200 dark:hover:bg-blue-900/50",
+        neutral: "border-transparent bg-gray-100 text-gray-900 hover:bg-gray-200/80 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600",
       },
     },
     defaultVariants: {

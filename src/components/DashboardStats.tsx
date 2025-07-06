@@ -487,12 +487,15 @@ function DashboardStats() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="card-premium p-12 flex items-center justify-center mt-6"
+            role="status"
+            aria-live="polite"
           >
             <div className="flex flex-col items-center gap-4">
               <motion.div 
                 animate={{ rotate: 360 }}
                 transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                 className="h-16 w-16 rounded-full gradient-brand p-0.5"
+                aria-hidden="true"
               >
                 <div className="h-full w-full rounded-full bg-background flex items-center justify-center">
                   <Loader2 className="h-8 w-8 text-brand-600 dark:text-brand-400" />

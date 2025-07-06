@@ -80,7 +80,6 @@ export function useOrganizations() {
     window.addEventListener('storage', handleStorageChange);
 
     return () => {
-      mounted = false;
       window.removeEventListener('storage', handleStorageChange);
     };
   }, [loadOrganizations]);

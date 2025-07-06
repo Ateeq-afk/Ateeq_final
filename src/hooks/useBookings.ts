@@ -86,8 +86,8 @@ export function useBookings<T = Booking>() {
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (effectiveBranchId) {
-        simpleQuery = simpleQuery.or(`from_branch.eq.${effectiveBranchId},to_branch.eq.${effectiveBranchId}`);
+      if (branchToUse) {
+        simpleQuery = simpleQuery.or(`from_branch.eq.${branchToUse},to_branch.eq.${branchToUse}`);
       }
 
       const { data: simpleData, error: simpleError } = await simpleQuery;
@@ -114,8 +114,8 @@ export function useBookings<T = Booking>() {
           `)
           .order('created_at', { ascending: false });
 
-        if (effectiveBranchId) {
-          fullQuery = fullQuery.or(`from_branch.eq.${effectiveBranchId},to_branch.eq.${effectiveBranchId}`);
+        if (branchToUse) {
+          fullQuery = fullQuery.or(`from_branch.eq.${branchToUse},to_branch.eq.${branchToUse}`);
         }
 
         const { data: fullData, error: fullError } = await fullQuery;
@@ -170,12 +170,46 @@ export function useBookings<T = Booking>() {
                           (data.packaging_charge || 0);
       
       // Get organization_id from user metadata or organizationContext
-      const organizationId = user?.user_metadata?.organization_id || 
-                            user?.organization_id || 
-                            organizationContext?.id;
+      let organizationId = user?.user_metadata?.organization_id || 
+                          user?.organization_id || 
+                          organizationContext?.id;
+
+      // If no organization ID from user, try to get it from the selected branch
+      if (!organizationId && data.branch_id) {
+        try {
+          const { data: branchData, error: branchError } = await supabase
+            .from('branches')
+            .select('organization_id')
+            .eq('id', data.branch_id)
+            .single();
+          
+          if (!branchError && branchData) {
+            organizationId = branchData.organization_id;
+            console.log('Got organization_id from branch:', organizationId);
+          }
+        } catch (err) {
+          console.error('Failed to get organization from branch:', err);
+        }
+      }
 
       if (!organizationId) {
-        throw new Error('Organization ID is required to create a booking');
+        throw new Error('Organization ID is required to create a booking. Please ensure you have selected a valid branch.');
+      }
+
+      // Generate LR number if not provided (for system-generated LR)
+      let lrNumber = data.lr_number;
+      if (!lrNumber && data.lr_type === 'system') {
+        // Generate a system LR number
+        const timestamp = Date.now().toString();
+        const branchCode = data.branch_id?.slice(-4) || 'DFLT'; // Use last 4 chars of branch ID as code
+        lrNumber = `LR${branchCode}${timestamp}`;
+        console.log('Generated LR number:', lrNumber);
+      } else if (!lrNumber && data.lr_type === 'manual' && data.manual_lr_number) {
+        lrNumber = data.manual_lr_number;
+      }
+
+      if (!lrNumber) {
+        throw new Error('LR number is required. Please provide a manual LR number or use system generation.');
       }
 
       // Clean up the data before sending to database
@@ -183,6 +217,7 @@ export function useBookings<T = Booking>() {
         ...data,
         branch_id: data.branch_id || userBranch?.id,
         organization_id: organizationId,
+        lr_number: lrNumber,
         total_amount: totalAmount,
         status: 'booked' as const,
         loading_status: 'pending',

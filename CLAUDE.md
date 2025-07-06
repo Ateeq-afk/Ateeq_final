@@ -183,3 +183,7 @@ SUPABASE_URL=
 SUPABASE_SERVICE_ROLE_KEY=
 PORT=4000
 ```
+
+## Working Practices
+
+- I want you to work on both front end and backend - run the migrations for all tasks that I give you

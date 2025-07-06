@@ -31,7 +31,7 @@ import { useOrganizations } from '@/hooks/useOrganizations';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBranchSelection } from '@/contexts/BranchSelectionContext';
 import { useBranches } from '@/hooks/useBranches';
-import UnloadingForm from './unloading/UnloadingForm';
+import UnloadingTableForm from './unloading/UnloadingTableForm';
 import UnloadingHistory from './unloading/UnloadingHistory';
 
 export default function UnloadingPage() {
@@ -54,17 +54,24 @@ export default function UnloadingPage() {
   const effectiveBranchId = selectedBranch || userBranch?.id;
 
   const { getIncomingOGPLs, unloadOGPL, loading, error } =
-    useUnloading(effectiveBranchId);
+    useUnloading();
 
   useEffect(() => {
-    if (organizationId) {
+    console.log('UnloadingPage: organizationId or effectiveBranchId changed:', {
+      organizationId,
+      effectiveBranchId,
+      selectedBranch
+    });
+    if (organizationId && effectiveBranchId) {
       loadOGPLs();
     }
-  }, [organizationId]);
+  }, [organizationId, effectiveBranchId]);
 
   const loadOGPLs = async () => {
     try {
+      console.log('loadOGPLs called with:', { effectiveBranchId, selectedBranch });
       const data = await getIncomingOGPLs();
+      console.log('loadOGPLs result:', data);
       setOGPLs(data || []);
     } catch (err) {
       console.error('Failed to load OGPLs:', err);
@@ -212,7 +219,7 @@ export default function UnloadingPage() {
   if (showForm && selectedOGPL) {
     const ogpl = ogpls.find((o) => o.id === selectedOGPL);
     return (
-      <UnloadingForm
+      <UnloadingTableForm
         ogpl={ogpl}
         onSubmit={handleUnload}
         onClose={() => {

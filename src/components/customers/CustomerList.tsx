@@ -28,8 +28,10 @@ import CustomerExport from './CustomerExport';
 import CustomerDetails from './CustomerDetails';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
 import CustomerListSkeleton from './CustomerListSkeleton';
 import CustomerFilters, { CustomerFiltersData } from './CustomerFilters';
+import { ListEmptyState } from '@/components/ui/empty-state';
 
 export default function CustomerList() {
   const [showForm, setShowForm] = useState(false);
@@ -471,13 +473,9 @@ export default function CustomerList() {
                     )}
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      customer.type === 'individual'
-                        ? 'bg-blue-100 text-blue-800'
-                        : 'bg-purple-100 text-purple-800'
-                    }`}>
+                    <Badge variant={customer.type === 'individual' ? 'info' : 'neutral'}>
                       {customer.type}
-                    </span>
+                    </Badge>
                   </td>
                   <td className="px-6 py-4">
                     {customer.branch_name ? (
@@ -547,24 +545,17 @@ export default function CustomerList() {
 
               {paginatedCustomers.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
-                    {searchQuery || activeTab !== 'all' || branchFilter !== 'all' ? (
-                      <>
-                        <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900">No matching customers</h3>
-                        <p className="text-gray-600 mt-1">Try adjusting your search or filters</p>
-                      </>
-                    ) : (
-                      <>
-                        <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900">No customers found</h3>
-                        <p className="text-gray-600 mt-1">Add your first customer to get started</p>
-                        <Button onClick={() => setShowForm(true)} className="mt-4">
-                          <UserPlus className="h-4 w-4 mr-2" />
-                          Add Customer
-                        </Button>
-                      </>
-                    )}
+                  <td colSpan={7} className="p-0">
+                    <ListEmptyState
+                      type="customers"
+                      searchQuery={searchQuery || activeTab !== 'all' || branchFilter !== 'all' ? 'applied filters' : undefined}
+                      onCreateNew={() => setShowForm(true)}
+                      onClearSearch={() => {
+                        setSearchQuery('');
+                        setActiveTab('all');
+                        setBranchFilter('all');
+                      }}
+                    />
                   </td>
                 </tr>
               )}

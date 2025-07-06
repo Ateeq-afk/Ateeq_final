@@ -61,7 +61,7 @@ export function useLoading() {
     } finally {
       setLoading(false);
     }
-  }, [branchId, userBranch]);
+  }, [selectedBranch, userBranch]);
 
   // Get active OGPLs (outward gate passes)
   const getActiveOGPLs = useCallback(async () => {
@@ -112,7 +112,7 @@ export function useLoading() {
     } finally {
       setLoading(false);
     }
-  }, [branchId, userBranch]);
+  }, [selectedBranch, userBranch]);
 
   // Create a new OGPL
   const createOGPL = async (data: {
@@ -313,7 +313,7 @@ export function useLoading() {
     } finally {
       setLoading(false);
     }
-  }, [branchId, userBranch]);
+  }, [selectedBranch, userBranch]);
 
   return {
     loading,

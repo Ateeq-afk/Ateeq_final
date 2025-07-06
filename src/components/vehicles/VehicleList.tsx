@@ -430,13 +430,13 @@ export default function VehicleList() {
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        vehicle.status === 'active'
-                          ? 'bg-green-100 text-green-800'
-                          : vehicle.status === 'maintenance'
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : 'bg-red-100 text-red-800'
-                      }`}>
+                      <Badge variant={
+                        vehicle.status === 'active' 
+                          ? 'success' 
+                          : vehicle.status === 'maintenance' 
+                          ? 'warning' 
+                          : 'destructive'
+                      }>
                         {vehicle.status === 'active' ? (
                           <CheckCircle2 className="h-3 w-3 mr-1" />
                         ) : vehicle.status === 'maintenance' ? (
@@ -445,7 +445,7 @@ export default function VehicleList() {
                           <XCircle className="h-3 w-3 mr-1" />
                         )}
                         {vehicle.status}
-                      </span>
+                      </Badge>
                     </div>
                   </td>
                   <td className="px-6 py-4">

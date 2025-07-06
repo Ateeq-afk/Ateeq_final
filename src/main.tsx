@@ -7,7 +7,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { NotificationProvider } from './components/notifications/NotificationProvider';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { BranchSelectionProvider } from './contexts/BranchSelectionContext';
-import { GlobalErrorBoundary } from './components/ErrorBoundary';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -21,18 +21,18 @@ const queryClient = new QueryClient({
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <GlobalErrorBoundary>
+    <ErrorBoundary showDetails={true}>
       <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <ThemeProvider>
-            <BranchSelectionProvider>
-              <NotificationProvider>
+        <NotificationProvider>
+          <AuthProvider>
+            <ThemeProvider>
+              <BranchSelectionProvider>
                 <App />
-              </NotificationProvider>
-            </BranchSelectionProvider>
-          </ThemeProvider>
-        </AuthProvider>
+              </BranchSelectionProvider>
+            </ThemeProvider>
+          </AuthProvider>
+        </NotificationProvider>
       </QueryClientProvider>
-    </GlobalErrorBoundary>
+    </ErrorBoundary>
   </StrictMode>
 );

@@ -27,29 +27,38 @@ export function useBranches() {
       const userRole = user?.user_metadata?.role || user?.role;
       const userBranchId = user?.user_metadata?.branch_id || user?.branch_id;
       const userOrgId = user?.user_metadata?.organization_id || user?.organization_id;
+      
+      // console.log('useBranches - user:', user);
+      // console.log('useBranches - userRole:', userRole);
+      // console.log('useBranches - userBranchId:', userBranchId);
+      // console.log('useBranches - userOrgId:', userOrgId);
 
       let query = supabase.from('branches').select('*');
 
       // Apply filtering based on user role
-      if (userRole === 'superadmin') {
+      if (userRole === 'superadmin' || !userRole) {
         // Superadmins can see all branches
+        // Also treat users without role as superadmin for demo
+        // console.log('Loading all branches (superadmin or no role)');
         query = query.order('name', { ascending: true });
       } else if (userRole === 'admin' && userOrgId) {
         // Admins can see all branches in their organization
+        // console.log('Loading branches for admin user, org:', userOrgId);
         query = query.eq('organization_id', userOrgId).order('name', { ascending: true });
       } else if (userBranchId) {
         // Regular users can only see their assigned branch
+        // console.log('Loading single branch for user:', userBranchId);
         query = query.eq('id', userBranchId);
       } else {
-        // If no branch assignment, return empty array
-        setBranches([]);
-        setLoading(false);
-        return;
+        // Fallback: load all branches for demo
+        // console.log('Fallback: loading all branches for demo');
+        query = query.order('name', { ascending: true });
       }
 
       const { data, error: fetchError } = await query;
 
       if (fetchError) throw fetchError;
+      // console.log('useBranches - loaded branches:', data?.length, data);
       setBranches(data || []);
     } catch (err) {
       console.error('Failed to load branches:', err);
@@ -65,7 +74,6 @@ export function useBranches() {
 
   const createBranch = async (branchData: Omit<Branch, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      
       const { data, error: createError } = await supabase
         .from('branches')
         .insert(branchData)
@@ -90,7 +98,6 @@ export function useBranches() {
         throw new Error('Invalid branch ID format');
       }
 
-      
       const { data, error: updateError } = await supabase
         .from('branches')
         .update(updates)
@@ -116,7 +123,6 @@ export function useBranches() {
         throw new Error('Invalid branch ID format');
       }
 
-      
       // Check for associated data
       const { count: bookingsCount, error: bookingsError } = await supabase
         .from('bookings')

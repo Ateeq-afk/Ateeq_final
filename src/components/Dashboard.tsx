@@ -9,6 +9,7 @@ import Sidebar from './Sidebar';
 import Header from './Header';
 import MobileNav from './MobileNav';
 import DashboardStats from './DashboardStats';
+import { PageBreadcrumb } from './ui/breadcrumb';
 // import ChatInterface from './chat/ChatInterface';
 
 // Lazy load dashboard components for better code splitting
@@ -133,6 +134,7 @@ export default function Dashboard() {
       <main className="flex-1 overflow-y-auto relative" id="main-content">
         <div className="p-4 md:p-6 lg:p-8 pt-16 lg:pt-8">
           <Header />
+          <PageBreadcrumb />
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}

@@ -52,6 +52,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { ListEmptyState } from '@/components/ui/empty-state';
 
 import { useBranches } from '@/hooks/useBranches';
 import { useAuth } from '@/contexts/AuthContext';
@@ -375,13 +376,14 @@ export default function ArticleList() {
   // —— Loading State ——
   if (loading && articles.length === 0) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6" role="status" aria-live="polite">
         <Skeleton className="h-10 w-48" />
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {[...Array(6)].map((_, i) => (
             <Skeleton key={i} className="h-32" />
           ))}
         </div>
+        <span className="sr-only">Loading articles...</span>
       </div>
     );
   }
@@ -675,25 +677,13 @@ export default function ArticleList() {
               ))
             ) : (
               <div className="col-span-full">
-                <Card className="p-12">
-                  <div className="text-center">
-                    <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">
-                      No articles found
-                    </h3>
-                    <p className="text-gray-600 mb-4">
-                      {filters.search 
-                        ? 'Try adjusting your search criteria'
-                        : 'Get started by creating your first article'
-                      }
-                    </p>
-                    {!filters.search && (
-                      <Button onClick={() => setShowForm(true)}>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Create Article
-                      </Button>
-                    )}
-                  </div>
+                <Card className="p-0">
+                  <ListEmptyState
+                    type="articles"
+                    searchQuery={filters.search}
+                    onCreateNew={() => setShowForm(true)}
+                    onClearSearch={() => setFilters({ search: '' })}
+                  />
                 </Card>
               </div>
             )}
@@ -815,8 +805,13 @@ export default function ArticleList() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={6} className="text-center py-12 text-gray-500">
-                        No articles found
+                      <td colSpan={6} className="p-0">
+                        <ListEmptyState
+                          type="articles"
+                          searchQuery={filters.search}
+                          onCreateNew={() => setShowForm(true)}
+                          onClearSearch={() => setFilters({ search: '' })}
+                        />
                       </td>
                     </tr>
                   )}

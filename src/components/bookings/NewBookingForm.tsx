@@ -147,6 +147,9 @@ export default function NewBookingForm({ onSubmit, onClose }: NewBookingFormProp
   const { customers, loading: customersLoading } = useCustomers(userBranch?.id);
   const { generateLRNumber } = useLR(userBranch?.id);
   
+  // Debug branches loading
+  // console.log('NewBookingForm - Branches:', branches.length, 'Loading:', branchesLoading);
+  
   const {
     register,
     handleSubmit,
@@ -189,6 +192,16 @@ export default function NewBookingForm({ onSubmit, onClose }: NewBookingFormProp
   const watchArticleId = watch('article_id');
   const watchInsuranceCharge = watch('insurance_charge');
   const watchPackagingCharge = watch('packaging_charge');
+  
+  // Generate LR number for system type
+  useEffect(() => {
+    if (watchLrType === 'system' && !lrNumber) {
+      const timestamp = Date.now().toString();
+      const branchCode = userBranch?.id?.slice(-4) || 'DFLT';
+      const generatedLR = `LR${branchCode}${timestamp}`;
+      setLrNumber(generatedLR);
+    }
+  }, [watchLrType, userBranch?.id, lrNumber]);
   
   // Auto-calculate loading and unloading charges based on quantity and article
   useEffect(() => {
@@ -376,7 +389,7 @@ export default function NewBookingForm({ onSubmit, onClose }: NewBookingFormProp
       // Add LR number to data
       const bookingData = {
         ...cleanedData,
-        lr_number: data.lr_type === 'manual' ? data.manual_lr_number : undefined,
+        lr_number: data.lr_type === 'manual' ? data.manual_lr_number : lrNumber,
       };
       
       console.log("Submitting booking data:", bookingData);

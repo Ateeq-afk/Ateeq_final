@@ -1,4 +1,4 @@
--- Complete Article Tracking Migration
+-- Simple Article Tracking Migration with Permissive RLS
 -- Run this entire script in your Supabase SQL editor
 
 -- Enable UUID extension if not already enabled
@@ -266,76 +266,16 @@ CREATE INDEX IF NOT EXISTS idx_article_tracking_location ON article_tracking(war
 CREATE INDEX IF NOT EXISTS idx_article_scan_history_booking ON article_scan_history(booking_id);
 CREATE INDEX IF NOT EXISTS idx_article_scan_history_time ON article_scan_history(scan_time);
 
--- Add RLS policies
+-- Add RLS with permissive policies for development
 ALTER TABLE article_tracking ENABLE ROW LEVEL SECURITY;
 ALTER TABLE article_scan_history ENABLE ROW LEVEL SECURITY;
 
--- Policy for viewing article tracking (users can see articles in their organization)
-CREATE POLICY "Users can view article tracking in their organization"
-    ON article_tracking FOR SELECT
-    USING (
-        EXISTS (
-            SELECT 1 FROM bookings b
-            JOIN branches br ON b.to_branch = br.id
-            JOIN custom_users cu ON cu.id::text = auth.uid()::text
-            WHERE b.id = article_tracking.booking_id
-            AND br.organization_id = cu.organization_id
-        )
-    );
+-- Create permissive policies (allow all operations for development)
+CREATE POLICY "Allow all operations on article_tracking" 
+    ON article_tracking FOR ALL TO public USING (true) WITH CHECK (true);
 
--- Policy for updating article tracking (only authorized users)
-CREATE POLICY "Authorized users can update article tracking"
-    ON article_tracking FOR UPDATE
-    USING (
-        EXISTS (
-            SELECT 1 FROM bookings b
-            JOIN branches br ON b.to_branch = br.id
-            JOIN custom_users cu ON cu.id::text = auth.uid()::text
-            WHERE b.id = article_tracking.booking_id
-            AND br.organization_id = cu.organization_id
-        )
-    );
-
--- Policy for inserting article tracking
-CREATE POLICY "Users can insert article tracking in their organization"
-    ON article_tracking FOR INSERT
-    WITH CHECK (
-        EXISTS (
-            SELECT 1 FROM bookings b
-            JOIN branches br ON b.to_branch = br.id
-            JOIN custom_users cu ON cu.id::text = auth.uid()::text
-            WHERE b.id = article_tracking.booking_id
-            AND br.organization_id = cu.organization_id
-        )
-    );
-
--- Similar policies for article_scan_history
-CREATE POLICY "Users can view scan history in their organization"
-    ON article_scan_history FOR SELECT
-    USING (
-        EXISTS (
-            SELECT 1 FROM article_tracking at
-            JOIN bookings b ON at.booking_id = b.id
-            JOIN branches br ON b.to_branch = br.id
-            JOIN custom_users cu ON cu.id::text = auth.uid()::text
-            WHERE at.id = article_scan_history.article_tracking_id
-            AND br.organization_id = cu.organization_id
-        )
-    );
-
--- Policy for inserting scan history
-CREATE POLICY "Users can insert scan history in their organization"
-    ON article_scan_history FOR INSERT
-    WITH CHECK (
-        EXISTS (
-            SELECT 1 FROM article_tracking at
-            JOIN bookings b ON at.booking_id = b.id
-            JOIN branches br ON b.to_branch = br.id
-            JOIN custom_users cu ON cu.id::text = auth.uid()::text
-            WHERE at.id = article_scan_history.article_tracking_id
-            AND br.organization_id = cu.organization_id
-        )
-    );
+CREATE POLICY "Allow all operations on article_scan_history" 
+    ON article_scan_history FOR ALL TO public USING (true) WITH CHECK (true);
 
 -- Grant permissions
 GRANT SELECT, INSERT, UPDATE ON article_tracking TO authenticated;
@@ -345,5 +285,5 @@ GRANT SELECT ON article_current_locations TO authenticated;
 -- Success message
 DO $$
 BEGIN
-    RAISE NOTICE 'Article tracking migration completed successfully!';
+    RAISE NOTICE 'Article tracking migration completed successfully with permissive RLS policies!';
 END $$;

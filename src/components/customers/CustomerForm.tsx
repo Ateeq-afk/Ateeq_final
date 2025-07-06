@@ -10,6 +10,8 @@ import { Building2, User, Phone, FileText, Mail, MapPin, IndianRupee, Clock, Loa
 import type { Customer } from '@/types';
 import { useBranches } from '@/hooks/useBranches';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ValidatedInput, FormSection } from '@/components/ui/form-validation';
+import { FormField, FormSelect } from '@/components/ui/form-field';
 import { supabase } from '@/lib/supabaseClient';
 import { useNotificationSystem } from '@/hooks/useNotificationSystem';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -226,8 +228,11 @@ const CustomerForm = memo(function CustomerForm({ onSubmit, onCancel, initialDat
         </TabsList>
 
         <TabsContent value="basic" className="space-y-6">
-          <div>
-            <Label>Branch</Label>
+          <FormSelect
+            label="Branch"
+            error={errors.branch_id}
+            required
+          >
             <Select
               defaultValue={initialData?.branch_id || branches[0]?.id}
               onValueChange={(value) => setValue('branch_id', value)}
@@ -243,13 +248,13 @@ const CustomerForm = memo(function CustomerForm({ onSubmit, onCancel, initialDat
                 ))}
               </SelectContent>
             </Select>
-            {errors.branch_id && (
-              <p className="text-sm text-red-500 mt-1">{errors.branch_id.message}</p>
-            )}
-          </div>
+          </FormSelect>
 
-          <div>
-            <Label>Customer Type</Label>
+          <FormSelect
+            label="Customer Type"
+            error={errors.type}
+            required
+          >
             <Select
               defaultValue={initialData?.type || 'individual'}
               onValueChange={(value) => setValue('type', value as FormValues['type'])}
@@ -262,29 +267,19 @@ const CustomerForm = memo(function CustomerForm({ onSubmit, onCancel, initialDat
                 <SelectItem value="company">Company</SelectItem>
               </SelectContent>
             </Select>
-            {errors.type && (
-              <p className="text-sm text-red-500 mt-1">{errors.type.message}</p>
-            )}
-          </div>
+          </FormSelect>
 
-          <div>
-            <Label>Name</Label>
-            <div className="relative">
-              {customerType === 'individual' ? (
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-              ) : (
-                <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-              )}
-              <Input
-                {...register('name')}
-                placeholder="Enter customer name"
-                className="pl-10"
-              />
-            </div>
-            {errors.name && (
-              <p className="text-sm text-red-500 mt-1">{errors.name.message}</p>
-            )}
-          </div>
+          <FormField
+            label="Name"
+            error={errors.name}
+            required
+            icon={customerType === 'individual' ? <User className="h-5 w-5" /> : <Building2 className="h-5 w-5" />}
+          >
+            <Input
+              {...register('name')}
+              placeholder="Enter customer name"
+            />
+          </FormField>
 
           <div>
             <Label>Mobile</Label>

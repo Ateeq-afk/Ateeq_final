@@ -144,6 +144,34 @@ app.post('/api/branches', (req, res) => {
   res.status(201).json(branch);
 });
 
+app.put('/api/branches/:id', (req, res) => {
+  const branchId = parseInt(req.params.id);
+  const branchIndex = branches.findIndex(b => b.id === branchId);
+  if (branchIndex === -1) return res.status(404).json({ error: 'Branch not found' });
+  
+  const { name, city, state } = req.body;
+  if (name) branches[branchIndex].name = name;
+  if (city) branches[branchIndex].city = city;
+  if (state) branches[branchIndex].state = state;
+  
+  res.json(branches[branchIndex]);
+});
+
+app.delete('/api/branches/:id', (req, res) => {
+  const branchId = parseInt(req.params.id);
+  const branchIndex = branches.findIndex(b => b.id === branchId);
+  if (branchIndex === -1) return res.status(404).json({ error: 'Branch not found' });
+  
+  // Check for associated bookings
+  const hasBookings = bookings.some(b => b.branchId === branchId);
+  if (hasBookings) {
+    return res.status(400).json({ error: 'Cannot delete branch with existing bookings' });
+  }
+  
+  branches.splice(branchIndex, 1);
+  res.status(204).send();
+});
+
 function auth(req, res, next) {
   const authHeader = req.headers.authorization || '';
   const token = authHeader.split(' ')[1];

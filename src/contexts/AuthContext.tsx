@@ -92,6 +92,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const getCurrentUserBranch = () => {
     const branchId = user?.user_metadata?.branch_id || user?.branch_id
+    // console.log('getCurrentUserBranch - user:', user);
+    // console.log('getCurrentUserBranch - branchId:', branchId);
     if (branchId) {
       return { id: String(branchId) }
     }
