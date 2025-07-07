@@ -70,6 +70,9 @@ api.interceptors.response.use(
   }
 );
 
+// Export as named export for other services
+export { api };
+
 // Export as default for other services
 export default api;
 
