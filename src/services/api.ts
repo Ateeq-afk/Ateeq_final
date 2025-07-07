@@ -76,9 +76,6 @@ export { api };
 // Export as default for other services
 export default api;
 
-// Also export as named export for consistency
-export { api };
-
 export async function login(orgId: string, username: string, password: string) {
   const { data } = await axios.post('/api/login', { orgId, username, password })
   return data.token as string
