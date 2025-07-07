@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Truck, User, Mail, Lock, Eye, EyeOff, Building2, ArrowRight, Loader2, CheckCircle } from 'lucide-react';
+import { Truck, User, Mail, Lock, Eye, EyeOff, Building2, ArrowRight, Loader2, CheckCircle, Chrome } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { useBranches } from '@/hooks/useBranches';
+import { authService } from '@/services/auth';
 
 const formSchema = z.object({
   fullName: z.string().min(2, 'Full name is required'),
@@ -82,6 +83,20 @@ export default function SignUpPage() {
       console.error('Sign up failed', err);
       setError(err instanceof Error ? err.message : 'Failed to sign up');
     } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      await authService.googleLogin();
+      // Redirect will be handled by Supabase
+    } catch (err) {
+      console.error('Google login failed', err);
+      setError(err instanceof Error ? err.message : 'Failed to sign in with Google');
       setIsLoading(false);
     }
   };
@@ -348,6 +363,30 @@ export default function SignUpPage() {
               </Button>
             </form>
           )}
+          
+          {/* Social Login Divider */}
+          <div className="relative my-8">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-200 dark:border-gray-700"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-4 bg-white dark:bg-gray-900 text-gray-500">Or continue with</span>
+            </div>
+          </div>
+          
+          {/* Google Login Button */}
+          <div className="w-full">
+            <Button 
+              type="button" 
+              variant="outline" 
+              className="w-full h-12 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              onClick={handleGoogleLogin}
+              disabled={isLoading}
+            >
+              <Chrome className="mr-2 h-4 w-4" />
+              Continue with Google
+            </Button>
+          </div>
           
           <div className="mt-8 text-center">
             <p className="text-gray-600 dark:text-gray-400">

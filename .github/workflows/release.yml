@@ -1,0 +1,454 @@
+name: 🚀 Release Management
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Type of release'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+          - prerelease
+      prerelease:
+        description: 'Mark as prerelease'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  NODE_VERSION: '18'
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # Create Release
+  create-release:
+    name: 📝 Create Release
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+
+    outputs:
+      new_tag: ${{ steps.version.outputs.new_tag }}
+      release_notes: ${{ steps.changelog.outputs.changelog }}
+
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: 📊 Calculate New Version
+        id: version
+        run: |
+          # Get current version from package.json
+          current_version=$(jq -r '.version' package.json)
+          echo "Current version: $current_version"
+          
+          # Calculate new version based on release type
+          release_type="${{ github.event.inputs.release_type }}"
+          
+          IFS='.' read -r major minor patch <<< "$current_version"
+          
+          case $release_type in
+            major)
+              new_version="$((major + 1)).0.0"
+              ;;
+            minor)
+              new_version="$major.$((minor + 1)).0"
+              ;;
+            patch)
+              new_version="$major.$minor.$((patch + 1))"
+              ;;
+            prerelease)
+              # Check if current version already has prerelease suffix
+              if [[ $current_version == *"-"* ]]; then
+                # Increment prerelease number
+                base_version=$(echo $current_version | cut -d'-' -f1)
+                pre_number=$(echo $current_version | cut -d'-' -f2 | grep -o '[0-9]*$' || echo "0")
+                new_version="$base_version-$((pre_number + 1))"
+              else
+                new_version="$current_version-1"
+              fi
+              ;;
+          esac
+          
+          new_tag="v$new_version"
+          echo "New version: $new_version"
+          echo "New tag: $new_tag"
+          
+          echo "new_version=$new_version" >> $GITHUB_OUTPUT
+          echo "new_tag=$new_tag" >> $GITHUB_OUTPUT
+
+      - name: 📝 Generate Changelog
+        id: changelog
+        run: |
+          # Get previous tag
+          previous_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          
+          if [ -n "$previous_tag" ]; then
+            echo "Generating changelog from $previous_tag to HEAD"
+            
+            # Generate changelog
+            changelog=$(git log $previous_tag..HEAD --pretty=format:"- %s (%h)" --no-merges)
+          else
+            echo "No previous tag found, generating full changelog"
+            changelog=$(git log --pretty=format:"- %s (%h)" --no-merges)
+          fi
+          
+          # Save changelog to file for multiline output
+          echo "$changelog" > changelog.txt
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          cat changelog.txt >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: 🏷️ Update Version Files
+        run: |
+          new_version="${{ steps.version.outputs.new_version }}"
+          
+          # Update package.json versions
+          jq ".version = \"$new_version\"" package.json > package.json.tmp && mv package.json.tmp package.json
+          jq ".version = \"$new_version\"" backend/package.json > backend/package.json.tmp && mv backend/package.json.tmp backend/package.json
+          
+          # Update any other version references
+          if [ -f "src/version.ts" ]; then
+            sed -i "s/version: '[^']*'/version: '$new_version'/" src/version.ts
+          fi
+
+      - name: 📝 Commit Version Updates
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          git add package.json backend/package.json
+          git commit -m "chore: bump version to ${{ steps.version.outputs.new_version }}" || exit 0
+          git push
+
+      - name: 🏷️ Create Git Tag
+        run: |
+          git tag ${{ steps.version.outputs.new_tag }}
+          git push origin ${{ steps.version.outputs.new_tag }}
+
+  # Build Release Assets
+  build-release:
+    name: 🏗️ Build Release Assets
+    runs-on: ubuntu-latest
+    needs: create-release
+    if: always() && (github.event_name == 'push' || needs.create-release.result == 'success')
+
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 📦 Install Dependencies
+        run: |
+          npm ci
+          cd backend && npm ci
+
+      - name: 🏗️ Build Frontend
+        run: |
+          npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
+      - name: 🏗️ Build Backend
+        run: |
+          cd backend
+          npm run build
+
+      - name: 📦 Create Release Archive
+        run: |
+          # Create release directory
+          mkdir -p release-assets
+          
+          # Package frontend build
+          tar -czf release-assets/frontend-dist.tar.gz dist/
+          
+          # Package backend build
+          tar -czf release-assets/backend-dist.tar.gz -C backend dist/ package.json
+          
+          # Create deployment package
+          tar -czf release-assets/deployment-package.tar.gz \
+            docker-compose.yml \
+            backend/Dockerfile \
+            Dockerfile \
+            nginx-production.conf \
+            .github/workflows/
+
+      - name: 📊 Upload Release Assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-assets
+          path: release-assets/
+          retention-days: 90
+
+  # Create GitHub Release
+  github-release:
+    name: 📋 Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [create-release, build-release]
+    if: always() && (github.event_name == 'push' || needs.create-release.result == 'success')
+
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 📥 Download Release Assets
+        uses: actions/download-artifact@v4
+        with:
+          name: release-assets
+          path: release-assets/
+
+      - name: 🏷️ Get Tag Information
+        id: tag_info
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            tag=${GITHUB_REF#refs/tags/}
+            echo "tag=$tag" >> $GITHUB_OUTPUT
+            
+            # Generate changelog for tag
+            previous_tag=$(git describe --tags --abbrev=0 $tag^ 2>/dev/null || echo "")
+            if [ -n "$previous_tag" ]; then
+              changelog=$(git log $previous_tag..$tag --pretty=format:"- %s (%h)" --no-merges)
+            else
+              changelog=$(git log --pretty=format:"- %s (%h)" --no-merges --max-count=20)
+            fi
+            
+            echo "changelog<<EOF" >> $GITHUB_OUTPUT
+            echo "$changelog" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${{ needs.create-release.outputs.new_tag }}" >> $GITHUB_OUTPUT
+            echo "changelog<<EOF" >> $GITHUB_OUTPUT
+            echo "${{ needs.create-release.outputs.release_notes }}" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          fi
+
+      - name: 📋 Create GitHub Release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ steps.tag_info.outputs.tag }}
+          name: Release ${{ steps.tag_info.outputs.tag }}
+          body: |
+            ## 🚀 What's New
+            
+            ${{ steps.tag_info.outputs.changelog }}
+            
+            ## 📦 Assets
+            
+            - `frontend-dist.tar.gz` - Production-ready frontend build
+            - `backend-dist.tar.gz` - Production-ready backend build  
+            - `deployment-package.tar.gz` - Complete deployment configuration
+            
+            ## 🔧 Deployment
+            
+            1. Download the deployment package
+            2. Extract to your server
+            3. Configure environment variables
+            4. Run `docker-compose up -d`
+            
+            ## 📊 Database Migrations
+            
+            Remember to run database migrations after deployment:
+            ```bash
+            npm run migrate:production
+            ```
+            
+            ## 🔍 Verification
+            
+            After deployment, verify the system is working:
+            - Health check: `curl https://api.yourdomain.com/health`
+            - Frontend: Visit `https://app.yourdomain.com`
+            
+            ---
+            
+            **Full Changelog**: https://github.com/${{ github.repository }}/compare/${{ steps.tag_info.outputs.previous_tag }}...${{ steps.tag_info.outputs.tag }}
+          artifacts: "release-assets/*"
+          prerelease: ${{ github.event.inputs.prerelease == 'true' }}
+          generateReleaseNotes: false
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  # Deploy Release
+  deploy-release:
+    name: 🚀 Deploy Release
+    runs-on: ubuntu-latest
+    needs: [github-release]
+    if: success() && !contains(github.ref, 'prerelease')
+
+    environment:
+      name: production
+      url: https://app.desicargo.com
+
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🚀 Trigger Production Deployment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'deploy.yml',
+              ref: context.ref,
+              inputs: {
+                environment: 'production',
+                skip_tests: 'false'
+              }
+            });
+
+  # Post-Release Tasks
+  post-release:
+    name: 🔄 Post-Release Tasks
+    runs-on: ubuntu-latest
+    needs: [github-release]
+    if: always() && needs.github-release.result == 'success'
+
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 📊 Update Release Metrics
+        run: |
+          # Send release event to monitoring systems
+          curl -X POST "https://api.sentry.io/api/0/organizations/${{ secrets.SENTRY_ORG }}/releases/" \
+            -H "Authorization: Bearer ${{ secrets.SENTRY_AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "version": "'${{ github.ref_name }}'",
+              "ref": "'${{ github.ref }}'",
+              "url": "https://github.com/'${{ github.repository }}'/releases/tag/'${{ github.ref_name }}'",
+              "projects": ["desicargo-backend", "desicargo-frontend"]
+            }' || echo "Failed to notify Sentry"
+
+      - name: 📧 Notify Release
+        uses: 8398a7/action-slack@v3
+        with:
+          status: 'success'
+          channel: '#releases'
+          text: |
+            🚀 New Release Published
+            
+            **Version**: ${{ github.ref_name }}
+            **Repository**: ${{ github.repository }}
+            **Release URL**: https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}
+            
+            🎉 Release is now available for deployment!
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: 📝 Create Release Notes Issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `📋 Release Notes - ${{ github.ref_name }}`;
+            const body = `## Release Notes for ${{ github.ref_name }}
+            
+            This issue tracks the release notes and documentation updates for version ${{ github.ref_name }}.
+            
+            ### Tasks
+            - [ ] Update user documentation
+            - [ ] Update API documentation
+            - [ ] Update deployment guides
+            - [ ] Announce to stakeholders
+            - [ ] Update changelog
+            
+            ### Release Information
+            - **Tag**: ${{ github.ref_name }}
+            - **Release Date**: ${new Date().toISOString().split('T')[0]}
+            - **Release URL**: https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}
+            
+            ### Deployment Status
+            - [ ] Staging deployment completed
+            - [ ] Production deployment completed
+            - [ ] Health checks passed
+            - [ ] Performance verified
+            
+            /cc @${{ github.repository_owner }}`;
+            
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['release', 'documentation', 'high-priority']
+            });
+
+  # Rollback Capability
+  rollback-release:
+    name: 🔙 Rollback Release
+    runs-on: ubuntu-latest
+    if: failure()
+
+    steps:
+      - name: 📧 Notify Rollback
+        uses: 8398a7/action-slack@v3
+        with:
+          status: 'failure'
+          channel: '#releases'
+          text: |
+            🚨 Release Failed - Rollback Required
+            
+            **Version**: ${{ github.ref_name }}
+            **Repository**: ${{ github.repository }}
+            **Failed Job**: ${{ github.job }}
+            
+            Manual intervention required for rollback!
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: 🔙 Create Rollback Issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `🚨 URGENT: Release Rollback Required - ${{ github.ref_name }}`;
+            const body = `## ⚠️ Release Failure Alert
+            
+            The release ${{ github.ref_name }} has failed and requires immediate rollback.
+            
+            ### Failure Details
+            - **Failed Job**: ${{ github.job }}
+            - **Workflow Run**: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            - **Time**: ${new Date().toISOString()}
+            
+            ### Immediate Actions Required
+            1. [ ] Investigate failure cause
+            2. [ ] Perform production rollback if deployed
+            3. [ ] Verify system stability
+            4. [ ] Notify stakeholders
+            
+            ### Rollback Checklist
+            - [ ] Database rollback completed
+            - [ ] Application rollback completed
+            - [ ] Health checks passed
+            - [ ] Users notified if necessary
+            
+            **This is a high-priority issue requiring immediate attention.**`;
+            
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['urgent', 'rollback', 'production', 'high-priority'],
+              assignees: [context.repo.owner]
+            });

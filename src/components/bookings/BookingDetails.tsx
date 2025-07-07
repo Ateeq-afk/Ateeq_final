@@ -25,7 +25,7 @@ import { Button } from '@/components/ui/button';
 import { useBookings } from '@/hooks/useBookings';
 import { usePOD } from '@/hooks/usePOD';
 import { useNotificationSystem } from '@/hooks/useNotificationSystem';
-import { generateLRHtml } from '@/utils/printUtils';
+import { generateLRHtml, printDeliveryDocs } from '@/utils/printUtils';
 import { QRCodeSVG } from 'qrcode.react';
 import { 
   DropdownMenu,
@@ -40,6 +40,7 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import ProofOfDelivery from './ProofOfDelivery';
+import DeliveryActionModal from './DeliveryActionModal';
 import type { Booking } from '@/types';
 
 export default function BookingDetails() {
@@ -53,6 +54,7 @@ export default function BookingDetails() {
   const [existingPOD, setExistingPOD] = useState(null);
   const { showSuccess, showError } = useNotificationSystem();
   const [printMode, setPrintMode] = useState(false);
+  const [showDeliveryModal, setShowDeliveryModal] = useState(false);
 
   useEffect(() => {
     if (bookings.length > 0 && id) {
@@ -416,6 +418,34 @@ export default function BookingDetails() {
     }
   };
 
+  // Delivery Modal Handlers
+  const handleStartDelivery = async () => {
+    if (!booking) return;
+    try {
+      setStatusUpdating(true);
+      await updateBookingStatus(booking.id, 'out_for_delivery');
+      setBooking(prev => prev ? { ...prev, status: 'out_for_delivery' } : null);
+      showSuccess('Delivery Started', 'Booking marked as out for delivery');
+    } catch (err) {
+      console.error('Failed to start delivery:', err);
+      showError('Update Failed', err instanceof Error ? err.message : 'Failed to start delivery');
+      throw err;
+    } finally {
+      setStatusUpdating(false);
+    }
+  };
+
+  const handleStartPOD = () => {
+    setShowPODForm(true);
+  };
+
+  const handlePrintDeliveryDocs = () => {
+    if (!booking) return;
+    // Use the new delivery documents print function
+    printDeliveryDocs(booking);
+    showSuccess('Printing Delivery Documents', 'Delivery challan and POD form are being printed');
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-6 flex items-center justify-center">
@@ -599,37 +629,15 @@ export default function BookingDetails() {
                 </div>
               )}
               
+              {/* Status changes are now only allowed through proper workflows */}
               <div className="flex flex-wrap gap-2 print:hidden">
                 {booking.status !== 'delivered' && booking.status !== 'cancelled' && (
                   <div className="flex flex-wrap gap-2">
-                    {booking.status === 'booked' && (
-                      <Button 
-                        size="sm" 
-                        onClick={() => handleStatusUpdate('in_transit')}
-                        disabled={statusUpdating}
-                        className="bg-blue-600 hover:bg-blue-700"
-                      >
-                        <Truck className="h-4 w-4 mr-2" />
-                        Mark In Transit
-                      </Button>
-                    )}
-                    
-                    {booking.status === 'in_transit' && (
-                      <Button
-                        size="sm"
-                        onClick={() => handleStatusUpdate('unloaded')}
-                        disabled={statusUpdating}
-                        className="bg-purple-600 hover:bg-purple-700"
-                      >
-                        <Package className="h-4 w-4 mr-2" />
-                        Mark Unloaded
-                      </Button>
-                    )}
-
+                    {/* Start Delivery Action - only for unloaded status */}
                     {booking.status === 'unloaded' && (
                       <Button
                         size="sm"
-                        onClick={() => handleStatusUpdate('out_for_delivery')}
+                        onClick={() => setShowDeliveryModal(true)}
                         disabled={statusUpdating}
                         className="bg-orange-600 hover:bg-orange-700"
                       >
@@ -637,7 +645,8 @@ export default function BookingDetails() {
                         Start Delivery
                       </Button>
                     )}
-
+                    
+                    {/* Only allow POD completion for out_for_delivery status */}
                     {booking.status === 'out_for_delivery' && (
                       <Button
                         size="sm"
@@ -650,6 +659,7 @@ export default function BookingDetails() {
                       </Button>
                     )}
                     
+                    {/* Only allow cancellation for non-delivered bookings */}
                     <Button 
                       size="sm" 
                       variant="outline" 
@@ -716,60 +726,101 @@ export default function BookingDetails() {
                 
                 {/* Article Details */}
                 <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="h-10 w-10 bg-blue-50 rounded-lg flex items-center justify-center">
-                      <Package className="h-5 w-5 text-blue-600" />
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 bg-blue-50 rounded-lg flex items-center justify-center">
+                        <Package className="h-5 w-5 text-blue-600" />
+                      </div>
+                      <h3 className="font-medium text-gray-900">Article Details</h3>
                     </div>
-                    <h3 className="font-medium text-gray-900">Article Details</h3>
+                    <span className="text-sm text-gray-500">
+                      {booking.booking_articles?.length || 0} Article{(booking.booking_articles?.length || 0) !== 1 ? 's' : ''}
+                    </span>
                   </div>
                   
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-sm text-gray-600">Article Type</p>
-                        <p className="font-medium text-gray-900">{booking.article?.name || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Quantity</p>
-                        <p className="font-medium text-gray-900">{booking.quantity} {booking.uom}</p>
-                      </div>
+                  {booking.booking_articles && booking.booking_articles.length > 0 ? (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Article
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Quantity
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Weight
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Rate
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Amount
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Status
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {booking.booking_articles.map((bookingArticle) => (
+                            <tr key={bookingArticle.id}>
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                <div>
+                                  <p className="text-sm font-medium text-gray-900">
+                                    {bookingArticle.article?.name || 'Unknown Article'}
+                                  </p>
+                                  {bookingArticle.description && (
+                                    <p className="text-xs text-gray-500">{bookingArticle.description}</p>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                                {bookingArticle.quantity} {bookingArticle.unit_of_measure}
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                                <div>
+                                  <p>Actual: {bookingArticle.actual_weight} kg</p>
+                                  <p className="text-xs text-gray-500">Charged: {bookingArticle.charged_weight || bookingArticle.actual_weight} kg</p>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                                ₹{bookingArticle.rate_per_unit}/{bookingArticle.rate_type === 'per_kg' ? 'kg' : bookingArticle.unit_of_measure}
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                <div>
+                                  <p className="text-sm font-medium text-gray-900">₹{bookingArticle.total_amount.toFixed(2)}</p>
+                                  <p className="text-xs text-gray-500">Freight: ₹{bookingArticle.freight_amount.toFixed(2)}</p>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                <div className="flex items-center gap-2">
+                                  {bookingArticle.is_fragile && (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800">
+                                      <AlertTriangle className="h-3 w-3 mr-1" />
+                                      Fragile
+                                    </span>
+                                  )}
+                                  {bookingArticle.insurance_required && (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                      <Shield className="h-3 w-3 mr-1" />
+                                      Insured
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-sm text-gray-600">Actual Weight</p>
-                        <p className="font-medium text-gray-900">{booking.actual_weight} kg</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Description</p>
-                        <p className="font-medium text-gray-900">{booking.description || 'Not specified'}</p>
-                      </div>
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      <Package className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                      <p>No articles found for this booking</p>
                     </div>
-                    
-                    {(booking.fragile || booking.insurance_required) && (
-                      <div className="grid grid-cols-2 gap-4">
-                        {booking.fragile && (
-                          <div className="flex items-center gap-2">
-                            <AlertTriangle className="h-4 w-4 text-orange-500" />
-                            <span className="text-sm font-medium text-orange-700">Fragile Item</span>
-                          </div>
-                        )}
-                        {booking.insurance_required && (
-                          <div className="flex items-center gap-2">
-                            <Shield className="h-4 w-4 text-green-500" />
-                            <span className="text-sm font-medium text-green-700">Insured</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    
-                    {booking.special_instructions && (
-                      <div className="mt-2 p-3 bg-yellow-50 rounded-lg border border-yellow-100">
-                        <p className="text-sm text-yellow-800 font-medium">Special Instructions</p>
-                        <p className="text-sm text-yellow-700 mt-1">{booking.special_instructions}</p>
-                      </div>
-                    )}
-                  </div>
+                  )}
                 </div>
                 
                 {/* Payment Details */}
@@ -812,33 +863,69 @@ export default function BookingDetails() {
                       </span>
                     </div>
                     
-                    <div className="flex items-center justify-between">
-                      <p className="text-gray-600">Freight Charges</p>
-                      <p className="font-medium">₹{(booking.quantity * booking.freight_per_qty).toFixed(2)}</p>
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <p className="text-gray-600">Loading Charges</p>
-                      <p className="font-medium">₹{booking.loading_charges.toFixed(2)}</p>
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <p className="text-gray-600">Unloading Charges</p>
-                      <p className="font-medium">₹{booking.unloading_charges.toFixed(2)}</p>
-                    </div>
-                    
-                    {booking.insurance_charge > 0 && (
-                      <div className="flex items-center justify-between">
-                        <p className="text-gray-600">Insurance Charges</p>
-                        <p className="font-medium">₹{booking.insurance_charge.toFixed(2)}</p>
-                      </div>
-                    )}
-                    
-                    {booking.packaging_charge > 0 && (
-                      <div className="flex items-center justify-between">
-                        <p className="text-gray-600">Packaging Charges</p>
-                        <p className="font-medium">₹{booking.packaging_charge.toFixed(2)}</p>
-                      </div>
+                    {booking.booking_articles && booking.booking_articles.length > 0 ? (
+                      <>
+                        <div className="flex items-center justify-between">
+                          <p className="text-gray-600">Freight Charges</p>
+                          <p className="font-medium">₹{booking.booking_articles.reduce((sum, article) => sum + article.freight_amount, 0).toFixed(2)}</p>
+                        </div>
+                        
+                        <div className="flex items-center justify-between">
+                          <p className="text-gray-600">Loading Charges</p>
+                          <p className="font-medium">₹{booking.booking_articles.reduce((sum, article) => sum + article.total_loading_charges, 0).toFixed(2)}</p>
+                        </div>
+                        
+                        <div className="flex items-center justify-between">
+                          <p className="text-gray-600">Unloading Charges</p>
+                          <p className="font-medium">₹{booking.booking_articles.reduce((sum, article) => sum + article.total_unloading_charges, 0).toFixed(2)}</p>
+                        </div>
+                        
+                        {booking.booking_articles.some(article => article.insurance_charge > 0) && (
+                          <div className="flex items-center justify-between">
+                            <p className="text-gray-600">Insurance Charges</p>
+                            <p className="font-medium">₹{booking.booking_articles.reduce((sum, article) => sum + article.insurance_charge, 0).toFixed(2)}</p>
+                          </div>
+                        )}
+                        
+                        {booking.booking_articles.some(article => article.packaging_charge > 0) && (
+                          <div className="flex items-center justify-between">
+                            <p className="text-gray-600">Packaging Charges</p>
+                            <p className="font-medium">₹{booking.booking_articles.reduce((sum, article) => sum + article.packaging_charge, 0).toFixed(2)}</p>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      // Fallback to old single-article format for backward compatibility
+                      <>
+                        <div className="flex items-center justify-between">
+                          <p className="text-gray-600">Freight Charges</p>
+                          <p className="font-medium">₹{((booking as any).quantity * (booking as any).freight_per_qty || 0).toFixed(2)}</p>
+                        </div>
+                        
+                        <div className="flex items-center justify-between">
+                          <p className="text-gray-600">Loading Charges</p>
+                          <p className="font-medium">₹{((booking as any).loading_charges || 0).toFixed(2)}</p>
+                        </div>
+                        
+                        <div className="flex items-center justify-between">
+                          <p className="text-gray-600">Unloading Charges</p>
+                          <p className="font-medium">₹{((booking as any).unloading_charges || 0).toFixed(2)}</p>
+                        </div>
+                        
+                        {(booking as any).insurance_charge > 0 && (
+                          <div className="flex items-center justify-between">
+                            <p className="text-gray-600">Insurance Charges</p>
+                            <p className="font-medium">₹{(booking as any).insurance_charge.toFixed(2)}</p>
+                          </div>
+                        )}
+                        
+                        {(booking as any).packaging_charge > 0 && (
+                          <div className="flex items-center justify-between">
+                            <p className="text-gray-600">Packaging Charges</p>
+                            <p className="font-medium">₹{(booking as any).packaging_charge.toFixed(2)}</p>
+                          </div>
+                        )}
+                      </>
                     )}
                     
                     <div className="flex items-center justify-between pt-2 border-t border-gray-200">
@@ -1238,6 +1325,18 @@ export default function BookingDetails() {
             // We just need to close and refresh
             handlePODComplete();
           }}
+        />
+      )}
+      
+      {/* Delivery Action Modal */}
+      {showDeliveryModal && booking && (
+        <DeliveryActionModal
+          isOpen={showDeliveryModal}
+          onClose={() => setShowDeliveryModal(false)}
+          booking={booking}
+          onStartDelivery={handleStartDelivery}
+          onStartPOD={handleStartPOD}
+          onPrintDeliveryDocs={handlePrintDeliveryDocs}
         />
       )}
     </div>

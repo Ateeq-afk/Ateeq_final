@@ -1,6 +1,8 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Toaster } from 'sonner';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import App from './App';
 import './index.css';
 import { AuthProvider } from './contexts/AuthContext';
@@ -27,7 +29,10 @@ createRoot(document.getElementById('root')!).render(
           <AuthProvider>
             <ThemeProvider>
               <BranchSelectionProvider>
-                <App />
+                <TooltipProvider>
+                  <App />
+                  <Toaster position="top-right" richColors />
+                </TooltipProvider>
               </BranchSelectionProvider>
             </ThemeProvider>
           </AuthProvider>

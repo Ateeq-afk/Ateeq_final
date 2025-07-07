@@ -47,6 +47,9 @@ import BookingSuccess from './BookingSuccess';
 import { motion } from 'framer-motion';
 import type { Booking } from '@/types';
 import { useNotificationSystem } from '@/hooks/useNotificationSystem';
+import { validateGSTNumber, validateEwayBill, validateMobileNumber, validateEmail, validatePincode } from '@/utils/validation';
+import BookingArticleManager from './BookingArticleManager';
+import type { BookingArticle } from '@/services/bookings';
 
 const bookingSchema = z.object({
   // Basic Information
@@ -62,25 +65,41 @@ const bookingSchema = z.object({
   sender_type: z.enum(['existing', 'new']),
   sender_id: z.string().optional(),
   sender_name: z.string().min(1, 'Sender name is required'),
-  sender_mobile: z.string().min(10, 'Valid mobile number required'),
-  sender_email: z.string().email().optional().or(z.literal('')),
+  sender_mobile: z.string().min(10, 'Valid mobile number required').refine(validateMobileNumber, {
+    message: 'Invalid mobile number (10 digits starting with 6-9)'
+  }),
+  sender_email: z.string().optional().refine((val) => !val || validateEmail(val), {
+    message: 'Invalid email address'
+  }),
   sender_address: z.string().min(1, 'Sender address is required'),
   sender_city: z.string().optional(),
   sender_state: z.string().optional(),
-  sender_pincode: z.string().optional(),
-  sender_gst: z.string().optional(),
+  sender_pincode: z.string().optional().refine((val) => !val || validatePincode(val), {
+    message: 'Invalid pincode (6 digits)'
+  }),
+  sender_gst: z.string().optional().refine((val) => !val || validateGSTNumber(val), {
+    message: 'Invalid GST number format (e.g., 22AAAAA0000A1Z5)'
+  }),
   
   // Receiver Information
   receiver_type: z.enum(['existing', 'new']),
   receiver_id: z.string().optional(),
   receiver_name: z.string().min(1, 'Receiver name is required'),
-  receiver_mobile: z.string().min(10, 'Valid mobile number required'),
-  receiver_email: z.string().email().optional().or(z.literal('')),
+  receiver_mobile: z.string().min(10, 'Valid mobile number required').refine(validateMobileNumber, {
+    message: 'Invalid mobile number (10 digits starting with 6-9)'
+  }),
+  receiver_email: z.string().optional().refine((val) => !val || validateEmail(val), {
+    message: 'Invalid email address'
+  }),
   receiver_address: z.string().min(1, 'Receiver address is required'),
   receiver_city: z.string().optional(),
   receiver_state: z.string().optional(),
-  receiver_pincode: z.string().optional(),
-  receiver_gst: z.string().optional(),
+  receiver_pincode: z.string().optional().refine((val) => !val || validatePincode(val), {
+    message: 'Invalid pincode (6 digits)'
+  }),
+  receiver_gst: z.string().optional().refine((val) => !val || validateGSTNumber(val), {
+    message: 'Invalid GST number format (e.g., 22AAAAA0000A1Z5)'
+  }),
   
   // Article Information
   article_id: z.string().min(1, 'Article is required'),
@@ -92,6 +111,7 @@ const bookingSchema = z.object({
   declared_value: z.number().optional(),
   
   // Pricing Information
+  freight_items: z.array(z.any()).optional(),
   freight_per_qty: z.number().min(0, 'Freight per quantity cannot be negative'),
   loading_charges: z.number().min(0, 'Loading charges cannot be negative'),
   unloading_charges: z.number().min(0, 'Unloading charges cannot be negative'),
@@ -103,14 +123,12 @@ const bookingSchema = z.object({
   private_mark_number: z.string().optional(),
   remarks: z.string().optional(),
   special_instructions: z.string().optional(),
-  reference_number: z.string().optional(),
   
   // Optional Services
   insurance_required: z.boolean().optional(),
   insurance_value: z.number().optional(),
   insurance_charge: z.number().optional(),
   fragile: z.boolean().optional(),
-  priority: z.enum(['Normal', 'High', 'Urgent']).optional(),
   delivery_type: z.enum(['Standard', 'Express', 'Same Day']).optional(),
   packaging_type: z.string().optional(),
   packaging_charge: z.number().optional(),
@@ -121,7 +139,18 @@ const bookingSchema = z.object({
   invoice_number: z.string().optional(),
   invoice_amount: z.number().optional(),
   invoice_date: z.string().optional(),
-  eway_bill_number: z.string().optional(),
+  eway_bill_number: z.string().optional().refine((val) => !val || validateEwayBill(val), {
+    message: 'E-way bill must be a 12-digit number'
+  }),
+}).refine((data) => {
+  // Ensure from_branch and to_branch are different
+  if (data.from_branch && data.to_branch && data.from_branch === data.to_branch) {
+    return false;
+  }
+  return true;
+}, {
+  message: 'Origin and destination branches cannot be the same',
+  path: ['to_branch']
 });
 
 type BookingFormData = z.infer<typeof bookingSchema>;
@@ -136,6 +165,7 @@ export default function SinglePageBookingForm({ onClose, onBookingCreated }: Sin
   const [createdBooking, setCreatedBooking] = useState<Booking | null>(null);
   const [lrNumber, setLrNumber] = useState<string>('');
   const [totalAmount, setTotalAmount] = useState<number>(0);
+  const [bookingArticles, setBookingArticles] = useState<BookingArticle[]>([]);
   
   const { branches } = useBranches();
   const { articles } = useArticles();
@@ -164,7 +194,6 @@ export default function SinglePageBookingForm({ onClose, onBookingCreated }: Sin
       unloading_charges: 0,
       insurance_required: false,
       fragile: false,
-      priority: 'Normal',
       delivery_type: 'Standard',
       has_invoice: false,
     }
@@ -181,31 +210,35 @@ export default function SinglePageBookingForm({ onClose, onBookingCreated }: Sin
   const watchUnloadingCharges = form.watch('unloading_charges');
   const watchInsuranceCharge = form.watch('insurance_charge');
   const watchPackagingCharge = form.watch('packaging_charge');
+  const watchPaymentType = form.watch('payment_type');
 
-  // Auto-generate LR number for system type
+  // Generate preview LR number for system type (for display only)
   useEffect(() => {
-    if (watchLrType === 'system' && !lrNumber) {
-      const timestamp = Date.now().toString();
+    if (watchLrType === 'system') {
       const branchCode = effectiveBranchId?.slice(-4) || 'DFLT';
-      const generatedLR = `LR${branchCode}${timestamp}`;
-      setLrNumber(generatedLR);
+      const previewLR = `LR${branchCode}XXXXXXXX`;
+      setLrNumber(previewLR);
+    } else {
+      setLrNumber('');
     }
-  }, [watchLrType, effectiveBranchId, lrNumber]);
+  }, [watchLrType, effectiveBranchId]);
 
-  // Calculate total amount
+  // Calculate total amount from booking articles
   useEffect(() => {
-    const quantity = watchQuantity || 0;
-    const freightPerQty = watchFreightPerQty || 0;
-    const loadingCharges = watchLoadingCharges || 0;
-    const unloadingCharges = watchUnloadingCharges || 0;
-    const insuranceCharge = watchInsuranceCharge || 0;
-    const packagingCharge = watchPackagingCharge || 0;
-
-    const total = (quantity * freightPerQty) + loadingCharges + unloadingCharges + insuranceCharge + packagingCharge;
+    const total = bookingArticles.reduce((sum, article) => {
+      const freight = article.rate_type === 'per_kg' 
+        ? article.charged_weight * article.rate_per_unit
+        : article.quantity * article.rate_per_unit;
+      const loading = article.quantity * article.loading_charge_per_unit;
+      const unloading = article.quantity * article.unloading_charge_per_unit;
+      const other = (article.insurance_charge || 0) + (article.packaging_charge || 0);
+      return sum + freight + loading + unloading + other;
+    }, 0);
     setTotalAmount(total);
-  }, [watchQuantity, watchFreightPerQty, watchLoadingCharges, watchUnloadingCharges, watchInsuranceCharge, watchPackagingCharge]);
+  }, [bookingArticles]);
 
-  const availableBranches = branches.filter(branch => branch.id !== form.watch('from_branch'));
+  const watchFromBranch = form.watch('from_branch');
+  const availableToBranches = branches.filter(branch => branch.id !== watchFromBranch);
 
   const handleSenderSelection = (customerId: string) => {
     const customer = customers.find(c => c.id === customerId);
@@ -241,13 +274,72 @@ export default function SinglePageBookingForm({ onClose, onBookingCreated }: Sin
     try {
       setSubmitting(true);
 
+      // Validate that we have at least one article
+      if (bookingArticles.length === 0) {
+        showError('No Articles', 'Please add at least one article to the booking');
+        return;
+      }
+
+      // Prepare articles with calculated fields
+      const articlesToSubmit = bookingArticles.map(article => {
+        const freight_amount = article.rate_type === 'per_kg' 
+          ? (article.charged_weight || article.actual_weight) * article.rate_per_unit
+          : article.quantity * article.rate_per_unit;
+        
+        const total_loading_charges = article.quantity * article.loading_charge_per_unit;
+        const total_unloading_charges = article.quantity * article.unloading_charge_per_unit;
+        
+        const total_amount = freight_amount + total_loading_charges + total_unloading_charges + 
+          (article.insurance_charge || 0) + (article.packaging_charge || 0);
+        
+        return {
+          article_id: article.article_id,
+          quantity: article.quantity,
+          unit_of_measure: article.unit_of_measure,
+          actual_weight: article.actual_weight,
+          charged_weight: article.charged_weight || article.actual_weight,
+          declared_value: article.declared_value || 0,
+          rate_per_unit: article.rate_per_unit,
+          rate_type: article.rate_type,
+          loading_charge_per_unit: article.loading_charge_per_unit,
+          unloading_charge_per_unit: article.unloading_charge_per_unit,
+          insurance_required: article.insurance_required,
+          insurance_value: article.insurance_value || 0,
+          insurance_charge: article.insurance_charge || 0,
+          packaging_charge: article.packaging_charge || 0,
+          description: article.description || '',
+          private_mark_number: article.private_mark_number || '',
+          is_fragile: article.is_fragile || false,
+          special_instructions: article.special_instructions || '',
+          warehouse_location: article.warehouse_location || '',
+          // Calculated fields
+          freight_amount,
+          total_loading_charges,
+          total_unloading_charges,
+          total_amount
+        };
+      });
+
       const bookingData = {
-        ...data,
-        lr_number: watchLrType === 'system' ? lrNumber : data.manual_lr_number!,
-        total_amount: totalAmount,
-        charged_weight: data.charged_weight || data.actual_weight,
+        lr_type: data.lr_type,
+        ...(data.lr_type === 'manual' && { manual_lr_number: data.manual_lr_number }),
+        branch_id: data.branch_id,
+        from_branch: data.from_branch,
+        to_branch: data.to_branch,
+        sender_id: data.sender_id,
+        receiver_id: data.receiver_id,
+        articles: articlesToSubmit,
+        payment_type: data.payment_type,
+        delivery_type: data.delivery_type,
+        priority: data.priority,
         expected_delivery_date: data.expected_delivery_date || undefined,
+        reference_number: data.reference_number,
+        remarks: data.remarks,
+        has_invoice: data.has_invoice,
+        invoice_number: data.invoice_number,
         invoice_date: data.invoice_date || undefined,
+        invoice_amount: data.invoice_amount,
+        eway_bill_number: data.eway_bill_number,
       };
 
       const booking = await createBooking(bookingData);
@@ -356,9 +448,10 @@ export default function SinglePageBookingForm({ onClose, onBookingCreated }: Sin
                   </div>
 
                   {watchLrType === 'system' && lrNumber && (
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                      <Label className="text-green-800">Generated LR Number</Label>
-                      <p className="text-green-900 font-mono font-bold">{lrNumber}</p>
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <Label className="text-blue-800">LR Number Preview</Label>
+                      <p className="text-blue-900 font-mono font-bold">{lrNumber}</p>
+                      <p className="text-xs text-blue-600 mt-1">Actual number will be generated when booking is created</p>
                     </div>
                   )}
 
@@ -381,7 +474,9 @@ export default function SinglePageBookingForm({ onClose, onBookingCreated }: Sin
                       value={form.watch('payment_type')}
                       onValueChange={(value: 'Quotation' | 'To Pay' | 'Paid') => form.setValue('payment_type', value)}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger 
+                        className={watchPaymentType === 'To Pay' ? 'bg-yellow-100 border-yellow-400' : ''}
+                      >
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -390,6 +485,12 @@ export default function SinglePageBookingForm({ onClose, onBookingCreated }: Sin
                         <SelectItem value="Paid">Paid</SelectItem>
                       </SelectContent>
                     </Select>
+                    {watchPaymentType === 'To Pay' && (
+                      <p className="text-sm text-yellow-700 mt-1 flex items-center gap-1">
+                        <AlertTriangle className="h-3 w-3" />
+                        Cash collection required on delivery
+                      </p>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -435,7 +536,7 @@ export default function SinglePageBookingForm({ onClose, onBookingCreated }: Sin
                         <SelectValue placeholder="Select to branch" />
                       </SelectTrigger>
                       <SelectContent>
-                        {availableBranches.map((branch) => (
+                        {availableToBranches.map((branch) => (
                           <SelectItem key={branch.id} value={branch.id}>
                             {branch.name} - {branch.city}
                           </SelectItem>
@@ -471,100 +572,9 @@ export default function SinglePageBookingForm({ onClose, onBookingCreated }: Sin
                       </SelectContent>
                     </Select>
                   </div>
-
-                  <div>
-                    <Label>Priority</Label>
-                    <Select
-                      value={form.watch('priority')}
-                      onValueChange={(value: 'Normal' | 'High' | 'Urgent') => form.setValue('priority', value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Normal">Normal</SelectItem>
-                        <SelectItem value="High">High</SelectItem>
-                        <SelectItem value="Urgent">Urgent</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
                 </CardContent>
               </Card>
 
-              {/* Pricing Information */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <IndianRupee className="h-5 w-5 text-yellow-600" />
-                    Pricing & Charges
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label>Freight per Quantity *</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      {...form.register('freight_per_qty', { valueAsNumber: true })}
-                      placeholder="0.00"
-                    />
-                    {form.formState.errors.freight_per_qty && (
-                      <p className="text-red-500 text-sm mt-1">{form.formState.errors.freight_per_qty.message}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <Label>Loading Charges</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      {...form.register('loading_charges', { valueAsNumber: true })}
-                      placeholder="0.00"
-                    />
-                  </div>
-
-                  <div>
-                    <Label>Unloading Charges</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      {...form.register('unloading_charges', { valueAsNumber: true })}
-                      placeholder="0.00"
-                    />
-                  </div>
-
-                  {watchInsuranceRequired && (
-                    <div>
-                      <Label>Insurance Charges</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        {...form.register('insurance_charge', { valueAsNumber: true })}
-                        placeholder="0.00"
-                      />
-                    </div>
-                  )}
-
-                  <div>
-                    <Label>Packaging Charges</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      {...form.register('packaging_charge', { valueAsNumber: true })}
-                      placeholder="0.00"
-                    />
-                  </div>
-
-                  <Separator />
-
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-blue-800 font-semibold">Total Amount</Label>
-                      <span className="text-2xl font-bold text-blue-900">₹{totalAmount.toFixed(2)}</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -645,6 +655,9 @@ export default function SinglePageBookingForm({ onClose, onBookingCreated }: Sin
                       {...form.register('sender_email')}
                       placeholder="email@example.com"
                     />
+                    {form.formState.errors.sender_email && (
+                      <p className="text-red-500 text-sm mt-1">{form.formState.errors.sender_email.message}</p>
+                    )}
                   </div>
 
                   <div>
@@ -682,6 +695,9 @@ export default function SinglePageBookingForm({ onClose, onBookingCreated }: Sin
                         {...form.register('sender_pincode')}
                         placeholder="6-digit pincode"
                       />
+                      {form.formState.errors.sender_pincode && (
+                        <p className="text-red-500 text-sm mt-1">{form.formState.errors.sender_pincode.message}</p>
+                      )}
                     </div>
                   </div>
 
@@ -691,6 +707,9 @@ export default function SinglePageBookingForm({ onClose, onBookingCreated }: Sin
                       {...form.register('sender_gst')}
                       placeholder="GST registration number"
                     />
+                    {form.formState.errors.sender_gst && (
+                      <p className="text-red-500 text-sm mt-1">{form.formState.errors.sender_gst.message}</p>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -771,6 +790,9 @@ export default function SinglePageBookingForm({ onClose, onBookingCreated }: Sin
                       {...form.register('receiver_email')}
                       placeholder="email@example.com"
                     />
+                    {form.formState.errors.receiver_email && (
+                      <p className="text-red-500 text-sm mt-1">{form.formState.errors.receiver_email.message}</p>
+                    )}
                   </div>
 
                   <div>
@@ -808,6 +830,9 @@ export default function SinglePageBookingForm({ onClose, onBookingCreated }: Sin
                         {...form.register('receiver_pincode')}
                         placeholder="6-digit pincode"
                       />
+                      {form.formState.errors.receiver_pincode && (
+                        <p className="text-red-500 text-sm mt-1">{form.formState.errors.receiver_pincode.message}</p>
+                      )}
                     </div>
                   </div>
 
@@ -817,264 +842,112 @@ export default function SinglePageBookingForm({ onClose, onBookingCreated }: Sin
                       {...form.register('receiver_gst')}
                       placeholder="GST registration number"
                     />
+                    {form.formState.errors.receiver_gst && (
+                      <p className="text-red-500 text-sm mt-1">{form.formState.errors.receiver_gst.message}</p>
+                    )}
                   </div>
                 </CardContent>
               </Card>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              
-              {/* Article Information */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Package className="h-5 w-5 text-red-600" />
-                    Article Details
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label>Article Type *</Label>
-                    <Select
-                      value={form.watch('article_id')}
-                      onValueChange={(value) => form.setValue('article_id', value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select article" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {articles.map((article) => (
-                          <SelectItem key={article.id} value={article.id}>
-                            {article.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {form.formState.errors.article_id && (
-                      <p className="text-red-500 text-sm mt-1">{form.formState.errors.article_id.message}</p>
-                    )}
-                  </div>
+            {/* Multi-Article Manager */}
+            <Card className="mt-8">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Package className="h-5 w-5 text-blue-600" />
+                  Articles & Freight Calculation
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <BookingArticleManager
+                  articles={bookingArticles}
+                  onArticlesChange={setBookingArticles}
+                  selectedCustomerId={form.watch('sender_id')}
+                />
+              </CardContent>
+            </Card>
 
-                  <div>
-                    <Label>Description</Label>
-                    <Textarea
-                      {...form.register('description')}
-                      placeholder="Item description"
-                      rows={2}
-                    />
-                  </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+            {/* Booking Remarks */}
+            <Card className="mt-8">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-gray-600" />
+                  Additional Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div>
+                  <Label>Remarks</Label>
+                  <Textarea
+                    {...form.register('remarks')}
+                    placeholder="Any additional notes or special instructions for this booking"
+                    rows={3}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Invoice Information */}
+            <Card className="mt-8">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Receipt className="h-5 w-5 text-indigo-600" />
+                  Invoice Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="has-invoice"
+                    checked={form.watch('has_invoice')}
+                    onCheckedChange={(checked) => form.setValue('has_invoice', !!checked)}
+                  />
+                  <Label htmlFor="has-invoice">Has Invoice</Label>
+                </div>
+
+                {watchHasInvoice && (
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div>
-                      <Label>Quantity *</Label>
+                      <Label>Invoice Number</Label>
                       <Input
-                        type="number"
-                        {...form.register('quantity', { valueAsNumber: true })}
-                        placeholder="1"
-                      />
-                      {form.formState.errors.quantity && (
-                        <p className="text-red-500 text-sm mt-1">{form.formState.errors.quantity.message}</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <Label>Unit *</Label>
-                      <Select
-                        value={form.watch('uom')}
-                        onValueChange={(value) => form.setValue('uom', value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Nos">Nos</SelectItem>
-                          <SelectItem value="Kg">Kg</SelectItem>
-                          <SelectItem value="Tons">Tons</SelectItem>
-                          <SelectItem value="Boxes">Boxes</SelectItem>
-                          <SelectItem value="Bags">Bags</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label>Actual Weight (kg) *</Label>
-                      <Input
-                        type="number"
-                        step="0.1"
-                        {...form.register('actual_weight', { valueAsNumber: true })}
-                        placeholder="1.0"
-                      />
-                      {form.formState.errors.actual_weight && (
-                        <p className="text-red-500 text-sm mt-1">{form.formState.errors.actual_weight.message}</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <Label>Charged Weight (kg)</Label>
-                      <Input
-                        type="number"
-                        step="0.1"
-                        {...form.register('charged_weight', { valueAsNumber: true })}
-                        placeholder="Auto-calculated"
+                        {...form.register('invoice_number')}
+                        placeholder="INV-001"
                       />
                     </div>
-                  </div>
 
-                  <div>
-                    <Label>Declared Value (₹)</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      {...form.register('declared_value', { valueAsNumber: true })}
-                      placeholder="Item value"
-                    />
-                  </div>
-
-                  <div>
-                    <Label>Packaging Type</Label>
-                    <Input
-                      {...form.register('packaging_type')}
-                      placeholder="Box, Bag, etc."
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Optional Services */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Shield className="h-5 w-5 text-green-600" />
-                    Optional Services
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="insurance"
-                      checked={form.watch('insurance_required')}
-                      onCheckedChange={(checked) => form.setValue('insurance_required', !!checked)}
-                    />
-                    <Label htmlFor="insurance">Insurance Required</Label>
-                  </div>
-
-                  {watchInsuranceRequired && (
                     <div>
-                      <Label>Insurance Value (₹)</Label>
+                      <Label>Invoice Amount (₹)</Label>
                       <Input
                         type="number"
                         step="0.01"
-                        {...form.register('insurance_value', { valueAsNumber: true })}
-                        placeholder="Insured amount"
+                        {...form.register('invoice_amount', { valueAsNumber: true })}
+                        placeholder="0.00"
                       />
                     </div>
-                  )}
 
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="fragile"
-                      checked={form.watch('fragile')}
-                      onCheckedChange={(checked) => form.setValue('fragile', !!checked)}
-                    />
-                    <Label htmlFor="fragile">Fragile Item</Label>
+                    <div>
+                      <Label>Invoice Date</Label>
+                      <Input
+                        type="date"
+                        {...form.register('invoice_date')}
+                      />
+                    </div>
+
+                    <div>
+                      <Label>E-Way Bill Number</Label>
+                      <Input
+                        {...form.register('eway_bill_number')}
+                        placeholder="E-way bill number"
+                      />
+                      {form.formState.errors.eway_bill_number && (
+                        <p className="text-red-500 text-sm mt-1">{form.formState.errors.eway_bill_number.message}</p>
+                      )}
+                    </div>
                   </div>
-
-                  <div>
-                    <Label>Private Mark Number</Label>
-                    <Input
-                      {...form.register('private_mark_number')}
-                      placeholder="Private marking"
-                    />
-                  </div>
-
-                  <div>
-                    <Label>Reference Number</Label>
-                    <Input
-                      {...form.register('reference_number')}
-                      placeholder="Your reference"
-                    />
-                  </div>
-
-                  <div>
-                    <Label>Special Instructions</Label>
-                    <Textarea
-                      {...form.register('special_instructions')}
-                      placeholder="Handling instructions"
-                      rows={3}
-                    />
-                  </div>
-
-                  <div>
-                    <Label>Remarks</Label>
-                    <Textarea
-                      {...form.register('remarks')}
-                      placeholder="Additional notes"
-                      rows={2}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Invoice Information */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Receipt className="h-5 w-5 text-indigo-600" />
-                    Invoice Information
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="has-invoice"
-                      checked={form.watch('has_invoice')}
-                      onCheckedChange={(checked) => form.setValue('has_invoice', !!checked)}
-                    />
-                    <Label htmlFor="has-invoice">Has Invoice</Label>
-                  </div>
-
-                  {watchHasInvoice && (
-                    <>
-                      <div>
-                        <Label>Invoice Number</Label>
-                        <Input
-                          {...form.register('invoice_number')}
-                          placeholder="INV-001"
-                        />
-                      </div>
-
-                      <div>
-                        <Label>Invoice Amount (₹)</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          {...form.register('invoice_amount', { valueAsNumber: true })}
-                          placeholder="0.00"
-                        />
-                      </div>
-
-                      <div>
-                        <Label>Invoice Date</Label>
-                        <Input
-                          type="date"
-                          {...form.register('invoice_date')}
-                        />
-                      </div>
-
-                      <div>
-                        <Label>E-Way Bill Number</Label>
-                        <Input
-                          {...form.register('eway_bill_number')}
-                          placeholder="E-way bill number"
-                        />
-                      </div>
-                    </>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
+                )}
+              </CardContent>
+            </Card>
 
             {/* Submit Section */}
             <div className="flex items-center justify-between pt-6 border-t border-gray-200">

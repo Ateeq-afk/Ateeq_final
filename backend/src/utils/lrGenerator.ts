@@ -1,26 +1,54 @@
-import { supabase } from '../index';
+import { supabase } from '../supabaseClient';
 
-export async function generateLRNumber(branchId: string): Promise<string> {
+interface LRGenerationOptions {
+  isQuotation?: boolean;
+}
+
+export async function generateLRNumber(branchId: string, options: LRGenerationOptions = {}): Promise<string> {
   try {
-    // Get the branch code
-    let branchCode = 'DC'; // Default code for DesiCargo
+    // Get branch and organization information
+    let branchPrefix = 'DC'; // Default prefix
+    let orgCode = 'DES'; // Default organization code
     
     if (branchId) {
       const { data: branch, error: branchError } = await supabase
         .from('branches')
-        .select('code')
+        .select(`
+          name,
+          code,
+          organization_id,
+          organizations (
+            name,
+            organization_codes (
+              code
+            )
+          )
+        `)
         .eq('id', branchId)
         .single();
       
-      if (!branchError && branch && branch.code) {
-        branchCode = branch.code.slice(0, 2).toUpperCase();
+      if (!branchError && branch) {
+        // Extract first 3 letters from branch name
+        if (branch.name) {
+          branchPrefix = branch.name.replace(/[^A-Za-z]/g, '').slice(0, 3).toUpperCase();
+        }
+        
+        // Get organization code
+        if (branch.organizations?.organization_codes?.[0]?.code) {
+          orgCode = branch.organizations.organization_codes[0].code.toUpperCase();
+        }
       }
     }
     
     // Get the current date
     const date = new Date();
-    const year = date.getFullYear().toString().slice(-2); // Last 2 digits of year
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear().toString(); // Full year for better clarity
+    
+    // Determine prefix based on type
+    const typePrefix = options.isQuotation ? 'QT' : branchPrefix;
+    const lrPrefix = options.isQuotation 
+      ? `${typePrefix}-${branchPrefix}-${year}`
+      : `${branchPrefix}-${orgCode}-${year}`;
     
     // Use a transaction-like approach with retry logic
     let attempts = 0;
@@ -29,11 +57,11 @@ export async function generateLRNumber(branchId: string): Promise<string> {
     while (attempts < maxAttempts) {
       attempts++;
       
-      // Get the latest LR number for this branch and month
+      // Get the latest LR number for this prefix
       const { data: latestLR, error: lrError } = await supabase
         .from('bookings')
         .select('lr_number')
-        .ilike('lr_number', `${branchCode}${year}${month}-%`)
+        .ilike('lr_number', `${lrPrefix}-%`)
         .order('lr_number', { ascending: false })
         .limit(1);
       
@@ -45,38 +73,44 @@ export async function generateLRNumber(branchId: string): Promise<string> {
       // Generate sequence number
       let sequence = 1;
       if (latestLR && latestLR.length > 0) {
-        const lastSequence = parseInt(latestLR[0].lr_number.split('-')[1]);
+        const parts = latestLR[0].lr_number.split('-');
+        const lastSequence = parseInt(parts[parts.length - 1]);
         if (!isNaN(lastSequence)) {
           sequence = lastSequence + 1;
         }
       }
       
-      const lrNumber = `${branchCode}${year}${month}-${sequence.toString().padStart(4, '0')}`;
+      const lrNumber = `${lrPrefix}-${sequence.toString().padStart(5, '0')}`;
       
-      // Try to verify this LR number doesn't exist (race condition check)
-      const { data: existing, error: checkError } = await supabase
-        .from('bookings')
-        .select('id')
-        .eq('lr_number', lrNumber)
-        .maybeSingle();
+      // Atomic uniqueness check using database function
+      const { data: reserveResult, error: reserveError } = await supabase
+        .rpc('reserve_lr_number', { 
+          lr_number: lrNumber,
+          branch_id: branchId 
+        });
       
-      if (checkError) {
-        console.error('Error checking LR existence:', checkError);
-        continue;
+      if (reserveError) {
+        // If it's a unique constraint violation, try next sequence
+        if (reserveError.code === '23505') {
+          console.warn(`LR number ${lrNumber} already exists, retrying...`);
+          continue;
+        }
+        console.error('Error reserving LR number:', reserveError);
+        throw new Error('Failed to reserve LR number');
       }
       
-      if (!existing) {
-        // LR number is unique, return it
+      if (reserveResult) {
+        // Successfully reserved the LR number
         return lrNumber;
       }
       
-      // If we reach here, there was a race condition, try again
+      // If reserve_result is false, LR already exists, try again
       console.warn(`LR number ${lrNumber} already exists, retrying...`);
     }
     
     // If we've exhausted all attempts, add a random suffix
     const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
-    return `${branchCode}${year}${month}-${randomSuffix}`;
+    return `${lrPrefix}-${randomSuffix}`;
     
   } catch (err) {
     console.error('Failed to generate LR number:', err);

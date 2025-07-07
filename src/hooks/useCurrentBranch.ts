@@ -2,24 +2,22 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import type { Branch } from '@/types/index';
-import { useAuth } from '@/contexts/AuthContext';
+import { useBranchSelection } from '@/contexts/BranchSelectionContext';
 
 export function useCurrentBranch() {
   const [branch, setBranch] = useState<Branch | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const { user } = useAuth();
-
-  const branchId = user?.user_metadata?.branch_id as string | undefined;
+  const { selectedBranch } = useBranchSelection();
 
   useEffect(() => {
-    if (branchId) {
-      loadBranch(branchId);
+    if (selectedBranch) {
+      loadBranch(selectedBranch);
     } else {
       setBranch(null);
       setLoading(false);
     }
-  }, [branchId]);
+  }, [selectedBranch]);
 
   async function loadBranch(branchId: string) {
     try {
@@ -43,9 +41,10 @@ export function useCurrentBranch() {
   }
 
   return {
+    currentBranch: branch,
     branch,
     loading,
     error,
-    refresh: () => branchId ? loadBranch(branchId) : Promise.resolve()
+    refresh: () => selectedBranch ? loadBranch(selectedBranch) : Promise.resolve()
   };
 }

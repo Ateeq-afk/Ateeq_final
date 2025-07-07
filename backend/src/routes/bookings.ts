@@ -1,9 +1,15 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import { bookingSchema, updateBookingStatusSchema } from '../schemas';
+import { bookingArticleSchema, calculateFreightAmount, validateArticleCombination } from '../schemas/bookingArticle';
 import { supabase } from '../supabaseClient';
 import { requireOrgBranch } from '../middleware/withOrgBranch';
 import { asyncHandler } from '../utils/apiResponse';
 import { generateLRNumber } from '../utils/lrGenerator';
+import { validateCompleteBooking } from '../utils/businessValidations';
+import { branchCache, invalidateCache } from '../middleware/cache';
+import { captureBusinessError } from '../middleware/sentry';
+import SentryManager from '../config/sentry';
 
 const router = Router();
 
@@ -21,7 +27,6 @@ function validateStatusTransition(currentStatus: string, newStatus: string) {
 
   const allowedTransitions = statusTransitions[currentStatus] || [];
   
-  // Allow staying in the same status (for updates without status change)
   if (currentStatus === newStatus) {
     return { valid: true, message: 'Status unchanged' };
   }
@@ -37,19 +42,32 @@ function validateStatusTransition(currentStatus: string, newStatus: string) {
   };
 }
 
-router.get('/', requireOrgBranch, asyncHandler(async (req: any, res: any) => {
+// Business validation functions are now in ../utils/businessValidations.ts
+
+// GET all bookings with articles
+router.get('/', requireOrgBranch, branchCache(900), asyncHandler(async (req: any, res: any) => {
   const { orgId, branchId, role } = req;
   
   let query = supabase
     .from('bookings')
-    .select('*')
+    .select(`
+      *,
+      booking_articles (
+        *,
+        article:articles(*)
+      ),
+      sender:customers!sender_id(*),
+      receiver:customers!receiver_id(*),
+      from_branch:branches!from_branch(*),
+      to_branch:branches!to_branch(*)
+    `)
     .eq('organization_id', orgId);
     
   if (role !== 'admin') {
     query = query.eq('branch_id', branchId);
   }
   
-  const { data, error } = await query;
+  const { data, error } = await query.order('created_at', { ascending: false });
   
   if (error) {
     return res.sendDatabaseError(error, 'Fetch bookings');
@@ -58,72 +76,118 @@ router.get('/', requireOrgBranch, asyncHandler(async (req: any, res: any) => {
   res.sendSuccess(data, `Retrieved ${data?.length || 0} bookings`);
 }));
 
-router.post('/', requireOrgBranch, asyncHandler(async (req: any, res: any) => {
+// POST create new booking with multiple articles
+router.post('/', requireOrgBranch, invalidateCache((req) => [
+  `api:branch:${req.headers['x-branch-id']}:*`,
+  `dashboard:*:${req.headers['x-branch-id']}:*`
+]), asyncHandler(async (req: any, res: any) => {
   const parse = bookingSchema.safeParse(req.body);
   if (!parse.success) {
     return res.sendValidationError(parse.error.errors);
   }
   
   const payload = { ...parse.data };
-  const { orgId, branchId, role } = req as any;
+  const { orgId, branchId, role, user } = req as any;
   payload['organization_id'] = orgId;
   
   // Determine which branch ID to use
   const effectiveBranchId = role !== 'admin' ? branchId : (payload.branch_id || branchId);
   payload['branch_id'] = effectiveBranchId;
   
-  // Handle LR number generation based on lr_type
-  if (payload.lr_type === 'manual') {
-    // For manual LR type, use the manual_lr_number field
-    if (payload.manual_lr_number) {
-      payload['lr_number'] = payload.manual_lr_number;
-    } else {
-      return res.sendValidationError([
-        { message: 'Manual LR number is required when lr_type is manual' }
-      ]);
+  // Extract articles from payload
+  const articles = payload.articles;
+  delete payload.articles; // Remove from main payload
+
+  try {
+    // Calculate total amount for validation
+    let totalAmount = 0;
+    articles.forEach((article: any) => {
+      const freightAmount = article.rate_type === 'per_kg' 
+        ? (article.charged_weight || article.actual_weight) * article.rate_per_unit
+        : article.quantity * article.rate_per_unit;
+      const loadingCharges = (article.loading_charge_per_unit || 0) * article.quantity;
+      const unloadingCharges = (article.unloading_charge_per_unit || 0) * article.quantity;
+      const otherCharges = (article.insurance_charge || 0) + (article.packaging_charge || 0);
+      totalAmount += freightAmount + loadingCharges + unloadingCharges + otherCharges;
+    });
+
+    // Comprehensive business validation
+    const validation = await validateCompleteBooking({
+      sender_id: payload.sender_id,
+      receiver_id: payload.receiver_id,
+      from_branch: payload.from_branch,
+      to_branch: payload.to_branch,
+      organization_id: orgId,
+      articles: articles,
+      total_amount: totalAmount
+    });
+
+    if (!validation.valid) {
+      return res.sendError(validation.message, 400, validation.details);
     }
-  } else {
-    // For system LR type, generate LR number server-side
-    try {
-      payload['lr_number'] = await generateLRNumber(effectiveBranchId);
-    } catch (lrError) {
-      console.error('LR generation error:', lrError);
-      return res.sendError('Failed to generate LR number', 500);
+
+    // Log warnings if any
+    if (validation.warnings && validation.warnings.length > 0) {
+      console.warn('Booking validation warnings:', validation.warnings);
     }
+
+    // Start transaction
+    const { data: booking, error: bookingError } = await supabase.rpc('create_booking_with_articles', {
+      booking_data: payload,
+      articles_data: articles,
+      user_id: user?.id || null
+    });
+
+    if (bookingError) {
+      throw bookingError;
+    }
+
+    // Return success with validation warnings
+    res.sendSuccess(booking, 'Booking created successfully', 201, {
+      warnings: validation.warnings,
+      validation_details: validation.details
+    });
+
+  } catch (error: any) {
+    // Capture business error with context for Sentry
+    if (error instanceof Error) {
+      captureBusinessError(error, {
+        operation: 'create_booking',
+        entity: 'booking',
+        user_id: user?.id,
+        branch_id: effectiveBranchId,
+        additional_data: {
+          articles_count: articles.length,
+          total_amount: totalAmount,
+          sender_id: payload.sender_id,
+          receiver_id: payload.receiver_id
+        }
+      });
+    }
+
+    console.error('Booking creation error:', error);
+    return res.sendError(error.message || 'Failed to create booking', 500);
   }
-  
-  // Clean up the manual_lr_number field as it's not needed in the database
-  delete payload.manual_lr_number;
-  
-  // Calculate total amount automatically
-  const totalAmount = (
-    (payload.quantity || 0) * (payload.freight_per_qty || 0) +
-    (payload.loading_charges || 0) +
-    (payload.unloading_charges || 0) +
-    (payload.insurance_charge || 0) +
-    (payload.packaging_charge || 0)
-  );
-  
-  payload['total_amount'] = totalAmount;
-  payload['status'] = 'booked'; // Default status
-  
-  
-  const { data, error } = await supabase.from('bookings').insert(payload).select();
-  if (error) {
-    return res.sendDatabaseError(error, 'Create booking');
-  }
-  
-  res.sendSuccess(data?.[0], 'Booking created successfully', 201);
 }));
 
-// GET single booking by ID
-router.get('/:id', requireOrgBranch, async (req, res) => {
+// GET single booking by ID with articles
+router.get('/:id', requireOrgBranch, asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { orgId, branchId, role } = req as any;
   
   let query = supabase
     .from('bookings')
-    .select('*')
+    .select(`
+      *,
+      booking_articles (
+        *,
+        article:articles(*)
+      ),
+      sender:customers!sender_id(*),
+      receiver:customers!receiver_id(*),
+      from_branch:branches!from_branch(*),
+      to_branch:branches!to_branch(*)
+    `)
     .eq('id', id)
     .eq('organization_id', orgId);
     
@@ -134,25 +198,37 @@ router.get('/:id', requireOrgBranch, async (req, res) => {
   const { data, error } = await query.single();
   if (error) {
     if (error.code === 'PGRST116') {
-      return res.status(404).json({ error: 'Booking not found' });
+      return res.sendError('Booking not found', 404);
     }
-    return res.status(500).json({ error: error.message });
+    return res.sendDatabaseError(error, 'Get booking');
   }
-  res.json(data);
-});
+  res.sendSuccess(data, 'Booking retrieved successfully');
+}));
 
-// UPDATE booking
-router.put('/:id', requireOrgBranch, async (req, res) => {
+// PUT update booking (limited fields only)
+router.put('/:id', requireOrgBranch, asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { orgId, branchId, role } = req as any;
   
-  const parse = bookingSchema.partial().safeParse(req.body);
-  if (!parse.success) return res.status(400).json({ error: parse.error.errors });
+  // Only allow updating limited fields for existing bookings
+  const updateSchema = z.object({
+    expected_delivery_date: z.string().optional(),
+    delivery_type: z.enum(['Standard', 'Express', 'Same Day']).optional(),
+    priority: z.enum(['Normal', 'High', 'Urgent']).optional(),
+    reference_number: z.string().optional(),
+    remarks: z.string().optional(),
+    invoice_number: z.string().optional(),
+    invoice_date: z.string().optional(),
+    invoice_amount: z.number().optional(),
+    eway_bill_number: z.string().optional()
+  });
+
+  const parse = updateSchema.safeParse(req.body);
+  if (!parse.success) {
+    return res.sendValidationError(parse.error.errors);
+  }
   
-  // Don't allow updating organization_id or branch_id
-  const updateData = { ...parse.data };
-  delete updateData.organization_id;
-  delete updateData.branch_id;
+  const updateData = { ...parse.data, updated_at: new Date().toISOString() };
   
   let query = supabase
     .from('bookings')
@@ -167,21 +243,25 @@ router.put('/:id', requireOrgBranch, async (req, res) => {
   const { data, error } = await query.select().single();
   if (error) {
     if (error.code === 'PGRST116') {
-      return res.status(404).json({ error: 'Booking not found' });
+      return res.sendError('Booking not found', 404);
     }
-    return res.status(500).json({ error: error.message });
+    return res.sendDatabaseError(error, 'Update booking');
   }
-  res.json(data);
-});
+  res.sendSuccess(data, 'Booking updated successfully');
+}));
 
-// DELETE booking
-router.delete('/:id', requireOrgBranch, async (req, res) => {
+// DELETE booking (soft delete - cancel)
+router.delete('/:id', requireOrgBranch, asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { orgId, branchId, role } = req as any;
   
+  // Instead of hard delete, we'll cancel the booking
   let query = supabase
     .from('bookings')
-    .delete()
+    .update({ 
+      status: 'cancelled',
+      updated_at: new Date().toISOString()
+    })
     .eq('id', id)
     .eq('organization_id', orgId);
     
@@ -191,22 +271,30 @@ router.delete('/:id', requireOrgBranch, async (req, res) => {
   
   const { error } = await query;
   if (error) {
-    return res.status(500).json({ error: error.message });
+    return res.sendDatabaseError(error, 'Cancel booking');
   }
-  
-  res.status(204).send();
-});
 
-// UPDATE booking status
-router.patch('/:id/status', requireOrgBranch, async (req, res) => {
+  // Also update all articles to cancelled status
+  await supabase
+    .from('booking_articles')
+    .update({ 
+      status: 'cancelled',
+      updated_at: new Date().toISOString()
+    })
+    .eq('booking_id', id);
+  
+  res.sendSuccess(null, 'Booking cancelled successfully');
+}));
+
+// PATCH update booking status
+router.patch('/:id/status', requireOrgBranch, asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { orgId, branchId, role } = req as any;
   
-  // Validate status update
   const parse = updateBookingStatusSchema.safeParse(req.body);
-  if (!parse.success) return res.status(400).json({ error: parse.error.errors });
+  if (!parse.success) return res.sendValidationError(parse.error.errors);
   
-  const { status, pod_required } = parse.data;
+  const { status, pod_required, workflow_context } = parse.data;
   
   // Check if booking exists and get current status
   let checkQuery = supabase
@@ -222,38 +310,27 @@ router.patch('/:id/status', requireOrgBranch, async (req, res) => {
   const { data: booking, error: checkError } = await checkQuery.single();
   
   if (checkError || !booking) {
-    return res.status(404).json({ error: 'Booking not found' });
+    return res.sendError('Booking not found', 404);
   }
   
   // Validate status transition
   const isValidTransition = validateStatusTransition(booking.status, status);
   if (!isValidTransition.valid) {
-    return res.status(400).json({
-      error: 'Invalid status transition',
-      details: {
-        message: isValidTransition.message,
-        current_status: booking.status,
-        requested_status: status,
-        allowed_transitions: isValidTransition.allowedTransitions
-      }
-    });
+    return res.sendError(isValidTransition.message, 400);
   }
 
-  // Special handling for marking as delivered
-  if (status === 'delivered' && booking.status !== 'delivered') {
-    // Check if POD is required and not completed
-    if (booking.pod_required !== false && booking.pod_status !== 'completed') {
-      return res.status(400).json({ 
-        error: 'Cannot mark as delivered without completing POD process',
-        details: {
-          message: 'Please complete the Proof of Delivery process before marking this booking as delivered',
-          pod_status: booking.pod_status,
-          action_required: 'complete_pod'
-        }
-      });
+  // SECURITY: Restrict certain status changes to specific workflows only
+  const restrictedTransitions = ['in_transit', 'unloaded'];
+  if (restrictedTransitions.includes(status)) {
+    // These transitions should only happen through loading/unloading workflows
+    if (workflow_context !== 'loading' && workflow_context !== 'unloading') {
+      return res.sendError(
+        `Status '${status}' can only be set through proper loading/unloading workflows`,
+        403
+      );
     }
   }
-  
+
   // Update the status
   const updateData: any = { 
     status,
@@ -277,8 +354,17 @@ router.patch('/:id/status', requireOrgBranch, async (req, res) => {
   const { data, error } = await updateQuery.select().single();
   
   if (error) {
-    return res.status(500).json({ error: error.message });
+    return res.sendDatabaseError(error, 'Update booking status');
   }
+
+  // Also update article statuses to match booking status
+  await supabase
+    .from('booking_articles')
+    .update({ 
+      status: status,
+      updated_at: new Date().toISOString()
+    })
+    .eq('booking_id', id);
   
   // Log status change event
   await supabase
@@ -295,7 +381,63 @@ router.patch('/:id/status', requireOrgBranch, async (req, res) => {
       }
     });
   
-  res.json(data);
-});
+  res.sendSuccess(data, 'Booking status updated successfully');
+}));
+
+// GET booking articles separately
+router.get('/:id/articles', requireOrgBranch, asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { orgId } = req as any;
+  
+  const { data, error } = await supabase
+    .from('booking_articles')
+    .select(`
+      *,
+      article:articles(*),
+      booking:bookings!inner(organization_id)
+    `)
+    .eq('booking_id', id)
+    .eq('booking.organization_id', orgId);
+  
+  if (error) {
+    return res.sendDatabaseError(error, 'Get booking articles');
+  }
+  
+  res.sendSuccess(data, 'Booking articles retrieved successfully');
+}));
+
+// PATCH update individual article status
+router.patch('/:bookingId/articles/:articleId/status', requireOrgBranch, asyncHandler(async (req, res) => {
+  const { bookingId, articleId } = req.params;
+  const { status } = req.body;
+  const { orgId } = req as any;
+  
+  if (!status || !['booked', 'loaded', 'in_transit', 'unloaded', 'out_for_delivery', 'delivered', 'damaged', 'missing', 'cancelled'].includes(status)) {
+    return res.sendError('Invalid status', 400);
+  }
+  
+  const { data, error } = await supabase
+    .from('booking_articles')
+    .update({ 
+      status,
+      updated_at: new Date().toISOString(),
+      ...(status === 'delivered' && { delivered_at: new Date().toISOString() }),
+      ...(status === 'loaded' && { loaded_at: new Date().toISOString() }),
+      ...(status === 'unloaded' && { unloaded_at: new Date().toISOString() })
+    })
+    .eq('booking_id', bookingId)
+    .eq('id', articleId)
+    .select();
+  
+  if (error) {
+    return res.sendDatabaseError(error, 'Update article status');
+  }
+  
+  if (!data || data.length === 0) {
+    return res.sendError('Article not found', 404);
+  }
+  
+  res.sendSuccess(data[0], 'Article status updated successfully');
+}));
 
 export default router;

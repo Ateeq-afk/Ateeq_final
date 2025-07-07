@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  # Backend Development Service
+  backend-dev:
+    build:
+      context: ./backend
+      target: development
+    container_name: desicargo-backend-dev
+    ports:
+      - "4000:4000"
+    environment:
+      - NODE_ENV=development
+      - PORT=4000
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - JWT_SECRET=${JWT_SECRET:-dev-jwt-secret}
+      - LOG_LEVEL=debug
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+      - ./backend/logs:/app/logs
+    networks:
+      - desicargo-dev-network
+    depends_on:
+      - redis-dev
+
+  # Frontend Development Service
+  frontend-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: desicargo-frontend-dev
+    ports:
+      - "5174:5174"
+    environment:
+      - VITE_API_URL=http://localhost:4000
+      - VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
+      - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}
+    volumes:
+      - .:/app
+      - /app/node_modules
+    networks:
+      - desicargo-dev-network
+
+  # Redis for Development
+  redis-dev:
+    image: redis:7-alpine
+    container_name: desicargo-redis-dev
+    ports:
+      - "6379:6379"
+    networks:
+      - desicargo-dev-network
+
+networks:
+  desicargo-dev-network:
+    driver: bridge

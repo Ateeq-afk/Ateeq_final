@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { z, ZodSchema, ZodError } from 'zod';
+import DOMPurify from 'dompurify';
+import { JSDOM } from 'jsdom';
 
 // Request validation middleware
 export function validateRequest(schema: {
@@ -63,9 +65,42 @@ export const commonSchemas = {
   })
 };
 
+// Initialize DOMPurify with JSDOM for server-side use
+const window = new JSDOM('').window;
+const purify = DOMPurify(window as any);
+
 // Sanitization helpers
 export function sanitizeString(str: string): string {
-  return str.trim().replace(/[<>\"'&]/g, '');
+  if (!str || typeof str !== 'string') return str;
+  
+  // First trim the string
+  const trimmed = str.trim();
+  
+  // Use DOMPurify to sanitize HTML and prevent XSS
+  const sanitized = purify.sanitize(trimmed, {
+    ALLOWED_TAGS: [], // No HTML tags allowed
+    ALLOWED_ATTR: [], // No attributes allowed
+    KEEP_CONTENT: true // Keep text content
+  });
+  
+  return sanitized;
+}
+
+// For cases where we want to allow some safe HTML
+export function sanitizeHtml(str: string, allowedTags: string[] = []): string {
+  if (!str || typeof str !== 'string') return str;
+  
+  const trimmed = str.trim();
+  
+  // Use DOMPurify with specific allowed tags
+  const sanitized = purify.sanitize(trimmed, {
+    ALLOWED_TAGS: allowedTags,
+    ALLOWED_ATTR: ['href', 'target', 'rel'], // Common safe attributes
+    ADD_ATTR: ['target'], // Add target="_blank" for links
+    FORBID_ATTR: ['style', 'onclick', 'onload', 'onerror'] // Forbid dangerous attributes
+  });
+  
+  return sanitized;
 }
 
 export function sanitizeEmail(email: string): string {
@@ -165,8 +200,8 @@ export function validateFileUpload(options: {
 } = {}) {
   const { maxSize = 5 * 1024 * 1024, allowedMimeTypes = [], required = false } = options;
 
-  return (req: Request, res: Response, next: NextFunction) => {
-    const files = req.files as any;
+  return (req: Request & { files?: any }, res: Response, next: NextFunction) => {
+    const files = req.files;
     
     if (!files && required) {
       return (res as any).sendError('File upload required', 400);

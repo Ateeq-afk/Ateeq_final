@@ -3,6 +3,7 @@ import { customerSchema } from '../schemas';
 import { supabase } from '../supabaseClient';
 import { requireOrgBranch } from '../middleware/withOrgBranch';
 import { z } from 'zod';
+import { branchCache, searchCache, invalidateCache } from '../middleware/cache';
 
 const router = Router();
 
@@ -13,7 +14,7 @@ const customerIdSchema = z.object({
 });
 
 // GET all customers with pagination and filtering
-router.get('/', requireOrgBranch, async (req, res) => {
+router.get('/', requireOrgBranch, searchCache(1200), async (req, res) => {
   try {
     const { orgId, branchId, role } = req as any;
     const { 

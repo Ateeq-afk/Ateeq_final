@@ -21,7 +21,7 @@ async function checkOrganizationDirect(code: string) {
 
   return {
     organization_id: data.organization_id,
-    organization_name: data.organizations.name,
+    organization_name: (data.organizations as any)?.name || '',
     code: data.code
   };
 }
@@ -29,7 +29,7 @@ async function checkOrganizationDirect(code: string) {
 // Helper function for organization login via Supabase
 async function organizationLoginDirect(organizationCode: string, username: string, password: string) {
   // First check organization exists
-  const orgData = await checkOrganizationDirect(organizationCode);
+  await checkOrganizationDirect(organizationCode);
   
   // Generate the synthetic email
   const email = `${username}@${organizationCode}.internal`;
@@ -201,6 +201,61 @@ export const authService = {
     }
 
     return data.data;
+  },
+
+  // Google OAuth login
+  async googleLogin() {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        },
+      },
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    return data;
+  },
+
+  // Handle OAuth callback
+  async handleOAuthCallback() {
+    const { data, error } = await supabase.auth.getSession();
+    
+    if (error) {
+      throw error;
+    }
+
+    if (data.session) {
+      // Get or create user profile
+      const { data: userProfile, error: profileError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', data.session.user.id)
+        .single();
+
+      if (profileError && profileError.code !== 'PGRST116') {
+        throw profileError;
+      }
+
+      // If user doesn't exist, they need to be assigned to an organization
+      if (!userProfile) {
+        throw new Error('User not assigned to any organization. Please contact your administrator.');
+      }
+
+      return {
+        user: userProfile,
+        session: data.session,
+        token: data.session.access_token
+      };
+    }
+
+    throw new Error('No active session found');
   },
 
   // Legacy email-based login (for backward compatibility)

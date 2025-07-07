@@ -22,6 +22,21 @@ import {
   PieChart,
   LineChart
 } from 'lucide-react';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler,
+  ChartOptions,
+} from 'chart.js';
+import { Line, Bar, Doughnut } from 'react-chartjs-2';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -30,9 +45,21 @@ import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart as RechartsLineChart, Line, AreaChart, Area, PieChart as RechartsPieChart, Pie, Cell, Legend } from 'recharts';
 import { useNotificationSystem } from '@/hooks/useNotificationSystem';
 import type { Booking } from '@/types';
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+);
 
 interface AdvancedRevenueDashboardProps {
   bookings: Booking[];
@@ -216,19 +243,240 @@ export default function AdvancedRevenueDashboard({ bookings, dateRange = 'last_m
     return num.toFixed(0);
   };
 
-  const COLORS = ['#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#10b981'];
+  // Chart configurations
+  const areaChartOptions: ChartOptions<'line'> = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top' as const,
+        labels: {
+          usePointStyle: true,
+          font: { size: 12, weight: '500' },
+          color: '#64748b',
+        },
+      },
+      tooltip: {
+        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+        titleColor: '#f1f5f9',
+        bodyColor: '#e2e8f0',
+        borderColor: '#334155',
+        borderWidth: 1,
+        cornerRadius: 12,
+        padding: 16,
+        callbacks: {
+          label: function(context: any) {
+            return `${context.dataset.label}: ${formatCurrency(context.parsed.y)}`;
+          },
+        },
+      },
+    },
+    scales: {
+      x: {
+        grid: { color: 'rgba(148, 163, 184, 0.1)', drawBorder: false },
+        ticks: { color: '#64748b', font: { size: 11, weight: '500' } },
+      },
+      y: {
+        beginAtZero: true,
+        grid: { color: 'rgba(148, 163, 184, 0.1)', drawBorder: false },
+        ticks: {
+          color: '#64748b',
+          font: { size: 11, weight: '500' },
+          callback: function(value: any) { return formatNumber(value); },
+        },
+      },
+    },
+    elements: {
+      line: { tension: 0.4 },
+      point: { radius: 4, hoverRadius: 6, borderWidth: 2 },
+    },
+    animation: { duration: 2000, easing: 'easeInOutQuart' },
+  };
+
+  const doughnutOptions: ChartOptions<'doughnut'> = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'bottom' as const,
+        labels: {
+          usePointStyle: true,
+          font: { size: 12, weight: '500' },
+          color: '#64748b',
+          padding: 20,
+        },
+      },
+      tooltip: {
+        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+        titleColor: '#f1f5f9',
+        bodyColor: '#e2e8f0',
+        borderColor: '#334155',
+        borderWidth: 1,
+        cornerRadius: 12,
+        padding: 16,
+        callbacks: {
+          label: function(context: any) {
+            const total = context.dataset.data.reduce((a: number, b: number) => a + b, 0);
+            const percentage = ((context.parsed / total) * 100).toFixed(1);
+            return `${context.label}: ${formatCurrency(context.parsed)} (${percentage}%)`;
+          },
+        },
+      },
+    },
+    cutout: '60%',
+    animation: { duration: 2000, easing: 'easeInOutQuart' },
+  };
+
+  const areaChartData = {
+    labels: monthlyTrendData.map(d => d.month),
+    datasets: [
+      {
+        label: 'Revenue',
+        data: monthlyTrendData.map(d => d.revenue),
+        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+        borderColor: '#3b82f6',
+        borderWidth: 3,
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: '#3b82f6',
+        pointBorderColor: '#ffffff',
+        pointBorderWidth: 2,
+      },
+      {
+        label: 'Estimated Profit',
+        data: monthlyTrendData.map(d => d.profit),
+        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+        borderColor: '#10b981',
+        borderWidth: 3,
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: '#10b981',
+        pointBorderColor: '#ffffff',
+        pointBorderWidth: 2,
+      },
+    ],
+  };
+
+  const paymentDistributionData = {
+    labels: ['Paid', 'To Pay', 'Quotation'],
+    datasets: [
+      {
+        data: [analytics.paymentAnalysis.paid, analytics.paymentAnalysis.toPay, analytics.paymentAnalysis.quotation],
+        backgroundColor: [
+          'rgba(34, 197, 94, 0.8)',
+          'rgba(249, 115, 22, 0.8)',
+          'rgba(147, 51, 234, 0.8)',
+        ],
+        borderColor: [
+          '#22c55e',
+          '#f97316',
+          '#9333ea',
+        ],
+        borderWidth: 2,
+        hoverBorderWidth: 3,
+      },
+    ],
+  };
+
+  const barChartData = {
+    labels: monthlyTrendData.map(d => d.month),
+    datasets: [
+      {
+        label: 'Revenue',
+        data: monthlyTrendData.map(d => d.revenue),
+        backgroundColor: 'rgba(59, 130, 246, 0.8)',
+        borderColor: '#3b82f6',
+        borderWidth: 1,
+        borderRadius: 8,
+      },
+      {
+        label: 'Bookings',
+        data: monthlyTrendData.map(d => d.bookings),
+        backgroundColor: 'rgba(249, 115, 22, 0.8)',
+        borderColor: '#f97316',
+        borderWidth: 1,
+        borderRadius: 8,
+        yAxisID: 'y1',
+      },
+    ],
+  };
+
+  const barChartOptions: ChartOptions<'bar'> = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top' as const,
+        labels: {
+          usePointStyle: true,
+          font: { size: 12, weight: '500' },
+          color: '#64748b',
+        },
+      },
+      tooltip: {
+        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+        titleColor: '#f1f5f9',
+        bodyColor: '#e2e8f0',
+        borderColor: '#334155',
+        borderWidth: 1,
+        cornerRadius: 12,
+        padding: 16,
+        callbacks: {
+          label: function(context: any) {
+            if (context.dataset.label === 'Revenue') {
+              return `${context.dataset.label}: ${formatCurrency(context.parsed.y)}`;
+            }
+            return `${context.dataset.label}: ${context.parsed.y}`;
+          },
+        },
+      },
+    },
+    scales: {
+      x: {
+        grid: { color: 'rgba(148, 163, 184, 0.1)', drawBorder: false },
+        ticks: { color: '#64748b', font: { size: 11, weight: '500' } },
+      },
+      y: {
+        type: 'linear' as const,
+        display: true,
+        position: 'left' as const,
+        beginAtZero: true,
+        grid: { color: 'rgba(148, 163, 184, 0.1)', drawBorder: false },
+        ticks: {
+          color: '#64748b',
+          font: { size: 11, weight: '500' },
+          callback: function(value: any) { return formatNumber(value); },
+        },
+      },
+      y1: {
+        type: 'linear' as const,
+        display: true,
+        position: 'right' as const,
+        grid: { drawOnChartArea: false },
+        ticks: { color: '#64748b', font: { size: 11, weight: '500' } },
+      },
+    },
+    animation: { duration: 2000, easing: 'easeInOutQuart' },
+  };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20 dark:from-slate-900 dark:via-slate-800/50 dark:to-purple-900/20 min-h-screen p-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm rounded-2xl p-6 border border-slate-200/50 dark:border-slate-700/50"
+      >
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Revenue Analytics</h1>
-          <p className="text-gray-600 mt-1">Advanced insights and forecasting for your business</p>
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+            Revenue Analytics
+          </h1>
+          <p className="text-slate-600 dark:text-slate-400 mt-2 font-medium">Advanced insights and forecasting for your business</p>
         </div>
         <div className="flex items-center gap-3">
           <Select value={dateRange} onValueChange={onDateRangeChange}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-[180px] bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -239,16 +487,16 @@ export default function AdvancedRevenueDashboard({ bookings, dateRange = 'last_m
               <SelectItem value="all_time">All Time</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline" onClick={handleRefresh} disabled={refreshing}>
+          <Button variant="outline" onClick={handleRefresh} disabled={refreshing} className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50">
             <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          <Button variant="outline">
+          <Button variant="outline" className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50">
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>
         </div>
-      </div>
+      </motion.div>
 
       {/* Key Metrics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -288,7 +536,7 @@ export default function AdvancedRevenueDashboard({ bookings, dateRange = 'last_m
 
       {/* Main Dashboard Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-5 w-full max-w-2xl">
+        <TabsList className="grid grid-cols-5 w-full max-w-2xl bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border border-slate-200/50 dark:border-slate-700/50">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="trends">Trends</TabsTrigger>
           <TabsTrigger value="customers">Customers</TabsTrigger>
@@ -300,182 +548,128 @@ export default function AdvancedRevenueDashboard({ bookings, dateRange = 'last_m
         <TabsContent value="overview" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Revenue Trend Chart */}
-            <Card className="lg:col-span-2">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <LineChart className="h-5 w-5" />
-                  Revenue & Profit Trend
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={monthlyTrendData}>
-                      <defs>
-                        <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
-                          <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                        </linearGradient>
-                        <linearGradient id="colorProfit" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
-                          <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="month" />
-                      <YAxis tickFormatter={(value) => formatNumber(value)} />
-                      <Tooltip 
-                        formatter={(value: number) => [formatCurrency(value), '']}
-                        labelFormatter={(label) => `Month: ${label}`}
-                      />
-                      <Legend />
-                      <Area 
-                        type="monotone" 
-                        dataKey="revenue" 
-                        stackId="1"
-                        stroke="#3b82f6" 
-                        fillOpacity={1}
-                        fill="url(#colorRevenue)"
-                        name="Revenue"
-                      />
-                      <Area 
-                        type="monotone" 
-                        dataKey="profit" 
-                        stackId="2"
-                        stroke="#10b981" 
-                        fillOpacity={1}
-                        fill="url(#colorProfit)"
-                        name="Estimated Profit"
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+              className="lg:col-span-2"
+            >
+              <Card className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 shadow-xl">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <LineChart className="h-5 w-5 text-blue-500" />
+                    Revenue & Profit Trend
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[300px]">
+                    <Line data={areaChartData} options={areaChartOptions} />
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
 
             {/* Payment Distribution */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <PieChart className="h-5 w-5" />
-                  Payment Distribution
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[250px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <RechartsPieChart>
-                      <Pie
-                        data={[
-                          { name: 'Paid', value: analytics.paymentAnalysis.paid },
-                          { name: 'To Pay', value: analytics.paymentAnalysis.toPay },
-                          { name: 'Quotation', value: analytics.paymentAnalysis.quotation }
-                        ]}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={100}
-                        paddingAngle={5}
-                        dataKey="value"
-                      >
-                        {[
-                          { name: 'Paid', value: analytics.paymentAnalysis.paid },
-                          { name: 'To Pay', value: analytics.paymentAnalysis.toPay },
-                          { name: 'Quotation', value: analytics.paymentAnalysis.quotation }
-                        ].map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                      <Legend />
-                    </RechartsPieChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+            >
+              <Card className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 shadow-xl">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <PieChart className="h-5 w-5 text-purple-500" />
+                    Payment Distribution
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[250px]">
+                    <Doughnut data={paymentDistributionData} options={doughnutOptions} />
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
 
             {/* Business Health Score */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Zap className="h-5 w-5" />
-                  Business Health Score
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-medium">Revenue Growth</span>
-                    <span className="text-sm">{Math.min(100, Math.max(0, 50 + analytics.monthlyGrowth)).toFixed(0)}%</span>
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+            >
+              <Card className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 shadow-xl">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Zap className="h-5 w-5 text-yellow-500" />
+                    Business Health Score
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium">Revenue Growth</span>
+                      <span className="text-sm">{Math.min(100, Math.max(0, 50 + analytics.monthlyGrowth)).toFixed(0)}%</span>
+                    </div>
+                    <Progress value={Math.min(100, Math.max(0, 50 + analytics.monthlyGrowth))} className="h-2" />
                   </div>
-                  <Progress value={Math.min(100, Math.max(0, 50 + analytics.monthlyGrowth))} className="h-2" />
-                </div>
-                
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-medium">Collection Efficiency</span>
-                    <span className="text-sm">{(100 - analytics.riskLevel * 100).toFixed(0)}%</span>
+                  
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium">Collection Efficiency</span>
+                      <span className="text-sm">{(100 - analytics.riskLevel * 100).toFixed(0)}%</span>
+                    </div>
+                    <Progress value={100 - analytics.riskLevel * 100} className="h-2" />
                   </div>
-                  <Progress value={100 - analytics.riskLevel * 100} className="h-2" />
-                </div>
-                
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-medium">Customer Retention</span>
-                    <span className="text-sm">85%</span>
+                  
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium">Customer Retention</span>
+                      <span className="text-sm">85%</span>
+                    </div>
+                    <Progress value={85} className="h-2" />
                   </div>
-                  <Progress value={85} className="h-2" />
-                </div>
-                
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-medium">Profit Margin</span>
-                    <span className="text-sm">{(analytics.profitMargin * 100).toFixed(0)}%</span>
+                  
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium">Profit Margin</span>
+                      <span className="text-sm">{(analytics.profitMargin * 100).toFixed(0)}%</span>
+                    </div>
+                    <Progress value={analytics.profitMargin * 100} className="h-2" />
                   </div>
-                  <Progress value={analytics.profitMargin * 100} className="h-2" />
-                </div>
-                
-                <Alert>
-                  <CheckCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    Your business health score is <strong>Good</strong>. Revenue is growing and collection efficiency is strong.
-                  </AlertDescription>
-                </Alert>
-              </CardContent>
-            </Card>
+                  
+                  <Alert className="border-green-200 bg-green-50 dark:bg-green-900/20">
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <AlertDescription className="text-green-800 dark:text-green-200">
+                      Your business health score is <strong>Good</strong>. Revenue is growing and collection efficiency is strong.
+                    </AlertDescription>
+                  </Alert>
+                </CardContent>
+              </Card>
+            </motion.div>
           </div>
         </TabsContent>
 
-        {/* Other tabs would continue here... */}
+        {/* Trends Tab */}
         <TabsContent value="trends" className="space-y-6">
-          <div className="grid grid-cols-1 gap-6">
-            <Card>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="grid grid-cols-1 gap-6"
+          >
+            <Card className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 shadow-xl">
               <CardHeader>
-                <CardTitle>Booking Volume & Revenue Correlation</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5 text-orange-500" />
+                  Booking Volume & Revenue Correlation
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="h-[400px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={monthlyTrendData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="month" />
-                      <YAxis yAxisId="left" orientation="left" tickFormatter={(value) => formatNumber(value)} />
-                      <YAxis yAxisId="right" orientation="right" />
-                      <Tooltip 
-                        formatter={(value: number, name: string) => [
-                          name === 'revenue' ? formatCurrency(value) : value.toFixed(0),
-                          name === 'revenue' ? 'Revenue' : 'Bookings'
-                        ]}
-                      />
-                      <Legend />
-                      <Bar yAxisId="left" dataKey="revenue" fill="#3b82f6" name="Revenue" />
-                      <Bar yAxisId="right" dataKey="bookings" fill="#f59e0b" name="Bookings" />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  <Bar data={barChartData} options={barChartOptions} />
                 </div>
               </CardContent>
             </Card>
-          </div>
+          </motion.div>
         </TabsContent>
       </Tabs>
     </div>
@@ -493,36 +687,38 @@ interface MetricCardProps {
 
 function MetricCard({ title, value, change, icon: Icon, color, subtitle }: MetricCardProps) {
   const colorClasses = {
-    blue: 'bg-blue-50 text-blue-600',
-    green: 'bg-green-50 text-green-600',
-    red: 'bg-red-50 text-red-600',
-    amber: 'bg-amber-50 text-amber-600',
-    purple: 'bg-purple-50 text-purple-600'
+    blue: 'bg-blue-500 text-white',
+    green: 'bg-green-500 text-white',
+    red: 'bg-red-500 text-white',
+    amber: 'bg-amber-500 text-white',
+    purple: 'bg-purple-500 text-white'
   };
 
   return (
     <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6 }}
       whileHover={{ scale: 1.02 }}
-      transition={{ duration: 0.2 }}
     >
-      <Card className="hover:shadow-lg transition-shadow duration-300">
+      <Card className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 shadow-xl hover:shadow-2xl transition-all duration-300">
         <CardContent className="p-6">
           <div className="flex items-center justify-between mb-4">
-            <div className={`p-3 rounded-xl ${colorClasses[color]}`}>
+            <div className={`p-3 rounded-xl ${colorClasses[color]} shadow-lg`}>
               <Icon className="h-6 w-6" />
             </div>
-            <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-sm ${
-              change >= 0 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'
+            <div className={`flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${
+              change >= 0 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
             }`}>
               {change >= 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-              <span className="font-medium">{Math.abs(change).toFixed(1)}%</span>
+              <span>{Math.abs(change).toFixed(1)}%</span>
             </div>
           </div>
           
           <div className="mb-2">
-            <h3 className="text-2xl font-bold text-gray-900">{value}</h3>
-            <p className="text-gray-700 font-medium">{title}</p>
-            <p className="text-gray-500 text-xs mt-1">{subtitle}</p>
+            <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{value}</h3>
+            <p className="text-slate-700 dark:text-slate-300 font-medium">{title}</p>
+            <p className="text-slate-500 dark:text-slate-400 text-xs mt-1">{subtitle}</p>
           </div>
         </CardContent>
       </Card>

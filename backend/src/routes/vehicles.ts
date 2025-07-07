@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { vehicleSchema } from '../schemas';
+import { vehicleSchema, vehicleUpdateSchema } from '../schemas';
 import { supabase } from '../supabaseClient';
 import { requireOrgBranch } from '../middleware/withOrgBranch';
 
@@ -63,7 +63,7 @@ router.put('/:id', requireOrgBranch, async (req, res) => {
   const { id } = req.params;
   const { orgId, branchId, role } = req as any;
   
-  const parse = vehicleSchema.partial().safeParse(req.body);
+  const parse = vehicleUpdateSchema.safeParse(req.body);
   if (!parse.success) return res.status(400).json({ error: parse.error.errors });
   
   // Don't allow updating organization_id or branch_id

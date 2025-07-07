@@ -7,6 +7,19 @@ const warehouseService = require('./warehouseService.cjs');
 
 const billingService = require('./billingService.cjs');
 const app = express();
+
+// CORS middleware
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(200);
+  } else {
+    next();
+  }
+});
+
 app.use(bodyParser.json());
 
 const SECRET = process.env.JWT_SECRET || 'secret';
@@ -419,6 +432,188 @@ app.post('/edge/lr-number', auth, (req, res) => {
   res.json({ lrNumber });
 });
 
+// OGPL Management endpoints
+app.get('/api/loading/ogpls', auth, (req, res) => {
+  const { status } = req.query;
+  let filteredOgpls = ogplService.ogpls;
+  
+  if (status) {
+    filteredOgpls = filteredOgpls.filter(ogpl => ogpl.status === status);
+  }
+  
+  // Add mock vehicle and branch data
+  const ogplsWithDetails = filteredOgpls.map(ogpl => ({
+    ...ogpl,
+    vehicle: { id: 1, vehicle_number: 'MH12AB1234', type: 'truck' },
+    from_station: { id: 1, name: 'Main Branch', city: 'Mumbai' },
+    to_station: { id: 2, name: 'Second Branch', city: 'Delhi' },
+    loading_records: ogpl.lrIds.map(lrId => ({
+      id: lrId,
+      booking_id: lrId,
+      booking: bookings.find(b => b.id === lrId)
+    }))
+  }));
+  
+  res.json(ogplsWithDetails);
+});
+
+app.get('/api/loading/ogpls/:id', auth, (req, res) => {
+  const ogpl = ogplService.ogpls.find(o => o.id == req.params.id);
+  if (!ogpl) return res.status(404).json({ error: 'OGPL not found' });
+  
+  const ogplWithDetails = {
+    ...ogpl,
+    vehicle: { id: 1, vehicle_number: 'MH12AB1234', type: 'truck' },
+    from_station: { id: 1, name: 'Main Branch', city: 'Mumbai' },
+    to_station: { id: 2, name: 'Second Branch', city: 'Delhi' },
+    loading_records: ogpl.lrIds.map(lrId => ({
+      id: lrId,
+      booking_id: lrId,
+      booking: bookings.find(b => b.id === lrId)
+    }))
+  };
+  
+  res.json(ogplWithDetails);
+});
+
+app.post('/api/loading/ogpls', auth, (req, res) => {
+  try {
+    const ogplData = {
+      ...req.body,
+      lrIds: []
+    };
+    const ogpl = ogplService.createOGPL(ogplData);
+    res.status(201).json(ogpl);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.put('/api/loading/ogpls/:id', auth, (req, res) => {
+  const ogpl = ogplService.ogpls.find(o => o.id == req.params.id);
+  if (!ogpl) return res.status(404).json({ error: 'OGPL not found' });
+  
+  // Update OGPL fields
+  Object.assign(ogpl, req.body);
+  res.json(ogpl);
+});
+
+app.patch('/api/loading/ogpls/:id/status', auth, (req, res) => {
+  const ogpl = ogplService.ogpls.find(o => o.id == req.params.id);
+  if (!ogpl) return res.status(404).json({ error: 'OGPL not found' });
+  
+  ogpl.status = req.body.status;
+  res.json(ogpl);
+});
+
+app.post('/api/loading/ogpls/:id/bookings', auth, (req, res) => {
+  const ogpl = ogplService.ogpls.find(o => o.id == req.params.id);
+  if (!ogpl) return res.status(404).json({ error: 'OGPL not found' });
+  
+  const { booking_ids } = req.body;
+  
+  // Add bookings to OGPL
+  booking_ids.forEach(bookingId => {
+    if (!ogpl.lrIds.includes(bookingId)) {
+      ogpl.lrIds.push(bookingId);
+      // Update booking status
+      const booking = bookings.find(b => b.id == bookingId);
+      if (booking) {
+        booking.status = 'in_transit';
+        booking.loading_status = 'loaded';
+      }
+    }
+  });
+  
+  res.status(201).json({ success: true });
+});
+
+app.delete('/api/loading/ogpls/:id/bookings', auth, (req, res) => {
+  const ogpl = ogplService.ogpls.find(o => o.id == req.params.id);
+  if (!ogpl) return res.status(404).json({ error: 'OGPL not found' });
+  
+  const { booking_ids } = req.body;
+  
+  // Remove bookings from OGPL
+  ogpl.lrIds = ogpl.lrIds.filter(id => !booking_ids.includes(id));
+  
+  // Update booking statuses
+  booking_ids.forEach(bookingId => {
+    const booking = bookings.find(b => b.id == bookingId);
+    if (booking) {
+      booking.status = 'booked';
+      booking.loading_status = 'pending';
+    }
+  });
+  
+  res.status(204).send();
+});
+
+app.get('/api/loading/loading-sessions', auth, (req, res) => {
+  // Mock loading sessions
+  const sessions = ogplService.ogpls.map(ogpl => ({
+    id: ogpl.id,
+    ogpl_id: ogpl.id,
+    loaded_by: 'Admin User',
+    vehicle_id: 1,
+    from_branch_id: 1,
+    to_branch_id: 2,
+    total_items: ogpl.lrIds.length,
+    loaded_at: new Date().toISOString(),
+    created_at: new Date().toISOString(),
+    ogpl: {
+      ...ogpl,
+      loading_records: ogpl.lrIds.map(lrId => ({
+        id: lrId,
+        booking_id: lrId,
+        booking: bookings.find(b => b.id === lrId)
+      }))
+    },
+    vehicle: { id: 1, vehicle_number: 'MH12AB1234', type: 'truck' },
+    from_branch: { id: 1, name: 'Main Branch', city: 'Mumbai' },
+    to_branch: { id: 2, name: 'Second Branch', city: 'Delhi' }
+  }));
+  
+  res.json(sessions);
+});
+
+app.post('/api/loading/loading-sessions', auth, (req, res) => {
+  try {
+    const { ogpl_id, booking_ids } = req.body;
+    
+    // Add bookings to OGPL
+    const ogpl = ogplService.ogpls.find(o => o.id == ogpl_id);
+    if (!ogpl) return res.status(404).json({ error: 'OGPL not found' });
+    
+    booking_ids.forEach(bookingId => {
+      if (!ogpl.lrIds.includes(bookingId)) {
+        ogpl.lrIds.push(bookingId);
+        // Update booking status
+        const booking = bookings.find(b => b.id == bookingId);
+        if (booking) {
+          booking.status = 'in_transit';
+          booking.loading_status = 'loaded';
+        }
+      }
+    });
+    
+    // Update OGPL status
+    ogpl.status = 'in_transit';
+    
+    const session = {
+      id: Date.now(),
+      ...req.body,
+      loaded_at: new Date().toISOString(),
+      created_at: new Date().toISOString()
+    };
+    
+    res.status(201).json(session);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Legacy endpoints
 app.post('/edge/ogpl', auth, (req, res) => {
   try {
     const ogpl = ogplService.createOGPL(req.body);
@@ -607,6 +802,77 @@ app.get('/api/articles/:id/rates', auth, (req, res) => {
   res.json(mockRates);
 });
 
-app.listen(3000, () => {
-  console.log('API server running on http://localhost:3000');
+// Backwards compatibility routes (without /api prefix)
+app.get('/loading/ogpls', auth, (req, res) => {
+  const { status } = req.query;
+  let filteredOgpls = ogplService.ogpls;
+  
+  if (status) {
+    filteredOgpls = filteredOgpls.filter(ogpl => ogpl.status === status);
+  }
+  
+  // Add mock vehicle and branch data
+  const ogplsWithDetails = filteredOgpls.map(ogpl => ({
+    ...ogpl,
+    vehicle: { id: 1, vehicle_number: 'MH12AB1234', type: 'truck' },
+    from_station: { id: 1, name: 'Main Branch', city: 'Mumbai' },
+    to_station: { id: 2, name: 'Second Branch', city: 'Delhi' },
+    loading_records: ogpl.lrIds.map(lrId => ({
+      id: lrId,
+      booking_id: lrId,
+      loaded_at: new Date().toISOString(),
+      loaded_by: 'system',
+      booking: bookings.find(b => b.id == lrId)
+    }))
+  }));
+  
+  res.json(ogplsWithDetails);
+});
+
+app.post('/loading/ogpls', auth, (req, res) => {
+  try {
+    const ogplData = {
+      ...req.body,
+      status: 'created'
+    };
+    const ogpl = ogplService.createOGPL(ogplData);
+    res.status(201).json(ogpl);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.get('/loading/loading-sessions', auth, (req, res) => {
+  // Mock loading sessions
+  const sessions = ogplService.ogpls.map(ogpl => ({
+    id: ogpl.id,
+    ogpl_id: ogpl.id,
+    loaded_by: 'system',
+    vehicle_id: '1',
+    from_branch_id: '1',
+    to_branch_id: '2',
+    total_items: ogpl.lrIds.length,
+    loaded_at: new Date().toISOString(),
+    created_at: new Date().toISOString(),
+    ogpl: {
+      ...ogpl,
+      loading_records: ogpl.lrIds.map(lrId => ({
+        id: lrId,
+        booking_id: lrId,
+        loaded_at: new Date().toISOString(),
+        loaded_by: 'system',
+        booking: bookings.find(b => b.id == lrId)
+      }))
+    },
+    vehicle: { id: 1, vehicle_number: 'MH12AB1234', type: 'truck' },
+    from_branch: { id: 1, name: 'Main Branch' },
+    to_branch: { id: 2, name: 'Second Branch' }
+  }));
+  
+  res.json(sessions);
+});
+
+const PORT = process.env.PORT || 4000;
+app.listen(PORT, () => {
+  console.log(`API server running on http://localhost:${PORT}`);
 });

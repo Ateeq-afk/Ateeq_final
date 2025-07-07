@@ -23,6 +23,16 @@ interface PODDetailsProps {
 export default function PODDetails({ pod, onClose }: PODDetailsProps) {
   // Function to handle printing
   const handlePrint = () => {
+    // Check if delivery proof exists
+    const hasDeliveryProof = pod.signature_image || pod.photo_evidence || pod.receiver_photo;
+    
+    if (!hasDeliveryProof) {
+      const confirmPrint = window.confirm(
+        'No delivery proof uploaded. Print report anyway?\n\nThe report will be marked as "Pending Delivery Confirmation".'
+      );
+      if (!confirmPrint) return;
+    }
+    
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
     
@@ -118,6 +128,17 @@ export default function PODDetails({ pod, onClose }: PODDetailsProps) {
               border: 1px solid #eee;
               padding: 5px;
             }
+            .watermark {
+              position: fixed;
+              top: 50%;
+              left: 50%;
+              transform: translate(-50%, -50%) rotate(-45deg);
+              font-size: 48px;
+              color: rgba(255, 0, 0, 0.2);
+              font-weight: bold;
+              z-index: -1;
+              white-space: nowrap;
+            }
             @media print {
               body {
                 -webkit-print-color-adjust: exact;
@@ -127,10 +148,11 @@ export default function PODDetails({ pod, onClose }: PODDetailsProps) {
           </style>
         </head>
         <body>
+          ${!hasDeliveryProof ? '<div class="watermark">PENDING DELIVERY CONFIRMATION</div>' : ''}
           <div class="pod-container">
             <div class="pod-header">
               <div>
-                <h1 class="pod-title">Proof of Delivery</h1>
+                <h1 class="pod-title">Proof of Delivery${!hasDeliveryProof ? ' - PENDING' : ''}</h1>
                 <p class="pod-subtitle">LR #${pod.booking?.lr_number || 'N/A'}</p>
               </div>
               <div>

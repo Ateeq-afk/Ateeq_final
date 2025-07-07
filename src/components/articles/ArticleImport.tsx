@@ -6,8 +6,6 @@ import {
   X,
   Download,
   FileText,
-  Loader2,
-  FileSpreadsheet,
   AlertCircle,
   Info,
   ArrowRight,
@@ -37,9 +35,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -49,12 +45,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion';
 import {
   Table,
   TableBody,
@@ -76,13 +66,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { useArticles } from '@/hooks/useArticles';
 import { useBranches } from '@/hooks/useBranches';
 import { useNotificationSystem } from '@/hooks/useNotificationSystem';
@@ -583,14 +566,14 @@ export default function ArticleImport({ onClose, onSuccess }: Props) {
 
     setStep('complete');
     setTimeout(onSuccess, 2000);
-  }, [parsedData, config, mappings, articles, filterErrors, selectedRows, validationErrors, createArticle, transformValue, showSuccess, showWarning, showError, onSuccess]);
+  }, [parsedData, config, mappings, articles, filterErrors, selectedRows, validationErrors, createArticle, transformValue, showSuccess, showError, onSuccess]);
 
   // Download template
   const downloadTemplate = useCallback(() => {
     const headers = TARGET_FIELDS.map(f => f.label);
     const csv = Papa.unparse({
       fields: headers,
-      data: SAMPLE_DATA.map(row => headers.map(h => row[h] || '')),
+      data: SAMPLE_DATA.map(row => headers.map(h => (row as any)[h] || '')),
     });
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });

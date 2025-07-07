@@ -1,5 +1,5 @@
-import { supabase } from '@/lib/supabase';
-import type { Booking, Customer, Article } from '@/types';
+import { supabase } from '@/lib/supabaseClient';
+import type { Customer, Article } from '@/types';
 
 export interface RevenueMetrics {
   totalRevenue: number;
@@ -38,7 +38,7 @@ class RevenueService {
   /**
    * Calculate comprehensive revenue metrics
    */
-  async calculateRevenueMetrics(organizationId: string, dateRange?: string): Promise<RevenueMetrics> {
+  async calculateRevenueMetrics(organizationId: string): Promise<RevenueMetrics> {
     try {
       const { data: bookings, error } = await supabase
         .from('bookings')
@@ -54,25 +54,25 @@ class RevenueService {
       const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
 
       // Filter bookings by periods
-      const currentMonthBookings = bookings.filter(b => new Date(b.created_at) >= currentMonth);
-      const currentYearBookings = bookings.filter(b => new Date(b.created_at) >= currentYear);
-      const lastMonthBookings = bookings.filter(b => {
+      const currentMonthBookings = bookings.filter((b: any) => new Date(b.created_at) >= currentMonth);
+      const currentYearBookings = bookings.filter((b: any) => new Date(b.created_at) >= currentYear);
+      const lastMonthBookings = bookings.filter((b: any) => {
         const date = new Date(b.created_at);
         return date >= lastMonth && date < currentMonth;
       });
 
       // Calculate metrics
-      const totalRevenue = bookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
-      const monthlyRevenue = currentMonthBookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
-      const yearlyRevenue = currentYearBookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
-      const lastMonthRevenue = lastMonthBookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
+      const totalRevenue = bookings.reduce((sum: number, b: any) => sum + (b.total_amount || 0), 0);
+      const monthlyRevenue = currentMonthBookings.reduce((sum: number, b: any) => sum + (b.total_amount || 0), 0);
+      const yearlyRevenue = currentYearBookings.reduce((sum: number, b: any) => sum + (b.total_amount || 0), 0);
+      const lastMonthRevenue = lastMonthBookings.reduce((sum: number, b: any) => sum + (b.total_amount || 0), 0);
 
       const averageBookingValue = bookings.length > 0 ? totalRevenue / bookings.length : 0;
       
       // Collection rate (paid vs total)
       const paidAmount = bookings
-        .filter(b => b.payment_type === 'Paid')
-        .reduce((sum, b) => sum + (b.total_amount || 0), 0);
+        .filter((b: any) => b.payment_type === 'Paid')
+        .reduce((sum: number, b: any) => sum + (b.total_amount || 0), 0);
       const collectionRate = totalRevenue > 0 ? (paidAmount / totalRevenue) * 100 : 0;
 
       // Estimated profit margin (assuming 25-30% average)

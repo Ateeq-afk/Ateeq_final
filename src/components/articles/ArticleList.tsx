@@ -49,7 +49,6 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { ListEmptyState } from '@/components/ui/empty-state';
@@ -103,7 +102,6 @@ export default function ArticleList() {
   const [showBulkRates, setShowBulkRates] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>(VIEW_MODES.GRID);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [showFilters, setShowFilters] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // —— Filters & Sorting ——

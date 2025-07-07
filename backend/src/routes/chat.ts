@@ -1,13 +1,13 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { supabase } from '../supabaseClient';
-import { authenticateToken } from '../middleware/auth';
-import { validate } from '../middleware/validation';
+import { authenticate } from '../middleware/auth';
+import { validateRequest } from '../middleware/validation';
 
 const router = Router();
 
 // Apply authentication to all chat routes
-router.use(authenticateToken);
+router.use(authenticate);
 
 // Schema validations
 const createChannelSchema = z.object({
@@ -100,7 +100,7 @@ router.get('/channels', async (req, res) => {
 });
 
 // Create a new channel
-router.post('/channels', validate(createChannelSchema), async (req, res) => {
+router.post('/channels', validateRequest(createChannelSchema), async (req, res) => {
   try {
     const userId = req.user!.sub;
     const { name, description, type, memberIds = [] } = req.body;
@@ -277,7 +277,7 @@ router.get('/channels/:channelId/messages', async (req, res) => {
 });
 
 // Send a message
-router.post('/messages', validate(sendMessageSchema), async (req, res) => {
+router.post('/messages', validateRequest(sendMessageSchema), async (req, res) => {
   try {
     const userId = req.user!.sub;
     const { channelId, content, type, parentMessageId, attachments } = req.body;
@@ -354,7 +354,7 @@ router.post('/messages', validate(sendMessageSchema), async (req, res) => {
 });
 
 // Update a message
-router.put('/messages/:messageId', validate(updateMessageSchema), async (req, res) => {
+router.put('/messages/:messageId', validateRequest(updateMessageSchema), async (req, res) => {
   try {
     const userId = req.user!.sub;
     const { messageId } = req.params;

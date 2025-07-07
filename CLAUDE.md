@@ -20,7 +20,10 @@ npm run dev
 # Mock backend server (for local development)
 npm run start:server
 
-# Production backend (with Supabase)
+# Production backend (with Supabase) 
+cd backend && npm run dev
+
+# Backend development with auto-reload
 cd backend && npm run dev
 
 # Build for production
@@ -127,8 +130,21 @@ All data is scoped by branch/organization. Users can only access data within the
 ### API Integration
 
 - Frontend expects backend at `http://localhost:4000`
+- Mock server runs on `http://localhost:3000` 
 - All API endpoints require JWT token in Authorization header
 - Response format: `{ success: boolean, data?: any, error?: string }`
+
+### Major API Routes
+
+The backend provides comprehensive APIs for:
+- **Auth**: `/api/auth/*` - Authentication, registration, organization management
+- **Bookings**: `/api/bookings/*` - Complete booking lifecycle management
+- **Articles**: `/api/articles/*` - Article tracking and warehouse management  
+- **Fleet**: `/api/vehicles/*`, `/api/drivers/*` - Vehicle and driver management
+- **Financial**: `/api/billing/*`, `/api/payments/*`, `/api/rates/*` - Billing, payments, credit management
+- **Loading**: `/api/loading/*` - OGPL creation and management
+- **Chat**: `/api/chat/*` - Real-time messaging system
+- **POD**: `/api/pod/*` - Proof of delivery management
 
 ### Database Considerations
 
@@ -184,6 +200,65 @@ SUPABASE_SERVICE_ROLE_KEY=
 PORT=4000
 ```
 
+### Database Migrations
+
+- Migration files are in `/backend/migrations/` 
+- Use sequential numbering (000_, 001_, etc.) for new migrations
+- Always test migrations before committing
+- Include RLS policies for multi-tenant data isolation
+
+### New Feature Development
+
+4. **Billing & Financial Systems**
+   - Credit limit management per customer
+   - Rate management with distance-based calculations  
+   - Payment processing with multiple modes
+   - Invoice generation and outstanding tracking
+
+5. **Fleet & Driver Management**
+   - Vehicle registration and tracking
+   - Driver assignment and performance monitoring
+   - Route optimization and fuel tracking
+
+6. **Chat System**
+   - Real-time messaging with Supabase Realtime
+   - File attachments via Supabase Storage
+   - Branch-scoped conversations
+
 ## Working Practices
 
 - I want you to work on both front end and backend - run the migrations for all tasks that I give you
+- Always check for existing implementations before creating new features
+- Use the established patterns for API routes, services, and components
+
+## Database Migrations
+
+We have an automated migration system. When you need to make database changes:
+
+1. **Use the migration helpers**:
+   ```javascript
+   import helpers from './migration-helpers.js';
+   
+   // Create tables
+   await helpers.createTable('table_name', columns, options);
+   
+   // Add columns
+   await helpers.addColumn('table_name', columnDef);
+   
+   // Execute custom SQL
+   await helpers.executeMigration('migration_name', sql);
+   ```
+
+2. **Or use the MigrationRunner directly**:
+   ```javascript
+   import { MigrationRunner } from './migration-handler.js';
+   const runner = new MigrationRunner();
+   await runner.executeMigration(sql, 'descriptive_name');
+   ```
+
+3. **All migrations are automatically**:
+   - Executed against Supabase
+   - Saved to `/backend/migrations/` with timestamps
+   - Validated for safety (no DROP DATABASE, etc.)
+
+See `/backend/MIGRATION_INSTRUCTIONS_FOR_CLAUDE.md` for detailed examples.

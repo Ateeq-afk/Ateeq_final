@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Truck, 
   Package, 
@@ -9,10 +9,16 @@ import {
   CheckCircle2, 
   Printer, 
   Download, 
-  ArrowLeft 
+  ArrowLeft,
+  Edit,
+  Settings
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
+import EditOGPLModal from './EditOGPLModal';
+import ManageOGPLBookings from './ManageOGPLBookings';
+import { useVehicles } from '@/hooks/useVehicles';
+import { useBranches } from '@/hooks/useBranches';
 
 interface LoadingDetailsProps {
   session: any;
@@ -20,6 +26,10 @@ interface LoadingDetailsProps {
 }
 
 export default function LoadingDetails({ session, onClose }: LoadingDetailsProps) {
+  const [showEditOGPL, setShowEditOGPL] = useState(false);
+  const [showManageBookings, setShowManageBookings] = useState(false);
+  const { vehicles } = useVehicles();
+  const { branches } = useBranches();
   // Function to handle printing
   const handlePrint = () => {
     const printWindow = window.open('', '_blank');
@@ -49,6 +59,15 @@ export default function LoadingDetails({ session, onClose }: LoadingDetailsProps
             th {
               background-color: #f3f4f6;
               font-weight: bold;
+            }
+            th:first-child {
+              background-color: #e5e7eb;
+              color: #1f2937;
+            }
+            td:first-child {
+              background-color: #f9fafb;
+              font-weight: bold;
+              color: #111827;
             }
             h2, h3, h4 {
               margin-top: 0;
@@ -134,10 +153,11 @@ export default function LoadingDetails({ session, onClose }: LoadingDetailsProps
               <table>
                 <tr>
                   <th>LR Number</th>
+                  <th>Quantity</th>
+                  <th>Private Mark</th>
                   <th>Sender</th>
                   <th>Receiver</th>
                   <th>Article</th>
-                  <th>Quantity</th>
                   <th>Amount</th>
                 </tr>
                 ${session.ogpl?.loading_records?.map(record => {
@@ -145,15 +165,16 @@ export default function LoadingDetails({ session, onClose }: LoadingDetailsProps
                   if (!booking) return '';
                   return `
                     <tr>
-                      <td>${booking.lr_number || 'N/A'}</td>
+                      <td style="font-weight: bold;">${booking.lr_number || 'N/A'}</td>
+                      <td>${booking.quantity || '0'} ${booking.uom || ''}</td>
+                      <td>${booking.private_mark_number || '-'}</td>
                       <td>${booking.sender?.name || 'N/A'}</td>
                       <td>${booking.receiver?.name || 'N/A'}</td>
                       <td>${booking.article?.name || 'N/A'}</td>
-                      <td>${booking.quantity || '0'} ${booking.uom || ''}</td>
                       <td>₹${booking.total_amount?.toFixed(2) || '0.00'}</td>
                     </tr>
                   `;
-                }).join('') || '<tr><td colspan="6">No items loaded</td></tr>'}
+                }).join('') || '<tr><td colspan="7">No items loaded</td></tr>'}
               </table>
             </div>
             
@@ -196,6 +217,28 @@ export default function LoadingDetails({ session, onClose }: LoadingDetailsProps
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {session.ogpl && (
+            <>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setShowEditOGPL(true)} 
+                className="flex items-center gap-1"
+              >
+                <Edit className="h-4 w-4" />
+                Edit OGPL
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setShowManageBookings(true)} 
+                className="flex items-center gap-1"
+              >
+                <Settings className="h-4 w-4" />
+                Manage Bookings
+              </Button>
+            </>
+          )}
           <Button variant="outline" size="sm" onClick={handlePrint} className="flex items-center gap-1">
             <Printer className="h-4 w-4" />
             Print
@@ -392,6 +435,34 @@ export default function LoadingDetails({ session, onClose }: LoadingDetailsProps
           Back to Dashboard
         </Button>
       </div>
+      
+      {/* Edit OGPL Modal */}
+      {showEditOGPL && session.ogpl && (
+        <EditOGPLModal
+          isOpen={showEditOGPL}
+          onClose={() => setShowEditOGPL(false)}
+          ogpl={session.ogpl}
+          vehicles={vehicles}
+          branches={branches}
+          onSuccess={() => {
+            setShowEditOGPL(false);
+            // Optionally refresh the session data
+          }}
+        />
+      )}
+      
+      {/* Manage Bookings Modal */}
+      {showManageBookings && session.ogpl && (
+        <ManageOGPLBookings
+          isOpen={showManageBookings}
+          onClose={() => setShowManageBookings(false)}
+          ogpl={session.ogpl}
+          onSuccess={() => {
+            setShowManageBookings(false);
+            // Optionally refresh the session data
+          }}
+        />
+      )}
     </div>
   );
 }

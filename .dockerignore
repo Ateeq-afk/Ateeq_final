@@ -1,0 +1,59 @@
+# Dependencies
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Production build
+dist
+build
+
+# Environment files
+.env
+.env.local
+.env.production
+.env.staging
+backend/.env
+backend/.env.local
+backend/.env.production
+backend/.env.staging
+
+# Logs
+logs
+*.log
+backend/logs
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Git
+.git
+.gitignore
+
+# Docker
+Dockerfile*
+docker-compose*
+.dockerignore
+
+# Documentation
+README.md
+*.md
+docs/
+
+# Tests
+tests/
+**/*.test.*
+**/*.spec.*
+
+# Misc
+.editorconfig
+.eslintrc*
+.prettierrc*
+tsconfig.json

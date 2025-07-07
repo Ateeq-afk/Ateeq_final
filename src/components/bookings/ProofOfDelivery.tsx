@@ -220,6 +220,16 @@ export default function ProofOfDelivery({
   };
 
   const handlePrint = () => {
+    // Check if delivery proof exists
+    const hasDeliveryProof = deliveryDetails.signature || deliveryDetails.photo || deliveryDetails.receiverPhoto;
+    
+    if (!hasDeliveryProof) {
+      const confirmPrint = window.confirm(
+        'No delivery proof uploaded. Print report anyway?\n\nThe report will be marked as "Pending Delivery Confirmation".'
+      );
+      if (!confirmPrint) return;
+    }
+    
     // Create a print-friendly version of the POD
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
@@ -243,6 +253,17 @@ export default function ProofOfDelivery({
             .signature-section { margin-top: 30px; text-align: center; }
             .signature-image { max-width: 300px; border: 1px solid #ddd; padding: 10px; }
             .photo-evidence { max-width: 400px; margin: 10px auto; }
+            .watermark {
+              position: fixed;
+              top: 50%;
+              left: 50%;
+              transform: translate(-50%, -50%) rotate(-45deg);
+              font-size: 48px;
+              color: rgba(255, 0, 0, 0.2);
+              font-weight: bold;
+              z-index: -1;
+              white-space: nowrap;
+            }
             @media print { 
               body { margin: 10px; }
               .no-print { display: none; }
@@ -250,9 +271,10 @@ export default function ProofOfDelivery({
           </style>
         </head>
         <body>
+          ${!hasDeliveryProof ? '<div class="watermark">PENDING DELIVERY CONFIRMATION</div>' : ''}
           <div class="header">
             <div class="company-name">DesiCargo</div>
-            <div class="pod-title">Proof of Delivery</div>
+            <div class="pod-title">Proof of Delivery${!hasDeliveryProof ? ' - PENDING' : ''}</div>
           </div>
 
           <div class="section">

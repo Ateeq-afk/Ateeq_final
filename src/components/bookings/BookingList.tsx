@@ -278,6 +278,7 @@ export default function BookingList() {
                 <MobileCardRow label="Route" value={`${booking.from_branch_details?.name || 'N/A'} → ${booking.to_branch_details?.name || 'N/A'}`} />
                 <MobileCardRow label="Sender" value={booking.sender?.name || 'N/A'} />
                 <MobileCardRow label="Receiver" value={booking.receiver?.name || 'N/A'} />
+                <MobileCardRow label="Articles" value={`${booking.booking_articles?.length || 1} ${(booking.booking_articles?.length || 1) === 1 ? 'item' : 'items'}`} />
                 <MobileCardRow label="Amount" value={`₹${booking.total_amount.toFixed(2)}`} />
                 <div className="flex gap-2 mt-3">
                   <Button
@@ -337,6 +338,7 @@ export default function BookingList() {
               <th className="px-4 py-3 text-left">To</th>
               <th className="px-4 py-3 text-left">Sender</th>
               <th className="px-4 py-3 text-left">Receiver</th>
+              <th className="px-4 py-3 text-left">Articles</th>
               <th className="px-4 py-3 text-left">Status</th>
               <th
                 className="px-4 py-3 text-left cursor-pointer"
@@ -373,6 +375,11 @@ export default function BookingList() {
                 <td className="px-4 py-3">{booking.to_branch_details?.name}</td>
                 <td className="px-4 py-3">{booking.sender?.name}</td>
                 <td className="px-4 py-3">{booking.receiver?.name}</td>
+                <td className="px-4 py-3">
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    {booking.booking_articles?.length || 1} {(booking.booking_articles?.length || 1) === 1 ? 'item' : 'items'}
+                  </span>
+                </td>
                 <td className="px-4 py-3">
                   <StatusBadge status={booking.status} />
                 </td>
@@ -429,7 +436,7 @@ export default function BookingList() {
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={10} className="text-center py-8 text-muted-foreground">
+                <td colSpan={11} className="text-center py-8 text-muted-foreground">
                   <Package className="mx-auto mb-2" />
                   No bookings found
                 </td>

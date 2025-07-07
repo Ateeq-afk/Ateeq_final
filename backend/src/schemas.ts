@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { bookingArticleSchema, validateArticleCombination } from './schemas/bookingArticle';
+
 export const bookingSchema = z.object({
   // Core booking fields
   lr_number: z.string().optional(), // Made optional as it will be generated server-side
@@ -16,46 +18,28 @@ export const bookingSchema = z.object({
   sender_id: z.string().min(1, 'Sender is required'),
   receiver_id: z.string().min(1, 'Receiver is required'),
   
-  // Article information
-  article_id: z.string().min(1, 'Article is required'),
-  description: z.string().optional(),
-  uom: z.string(),
-  actual_weight: z.number().optional(),
-  charged_weight: z.number().optional(),
-  quantity: z.number().min(1),
+  // Articles information (NEW - replaces single article_id)
+  articles: z.array(bookingArticleSchema).min(1, 'At least one article is required'),
   
   // Payment information
   payment_type: z.enum(['Paid', 'To Pay', 'Quotation']),
-  freight_per_qty: z.number().min(0),
-  loading_charges: z.number().min(0).default(0),
-  unloading_charges: z.number().min(0).default(0),
   
-  // Additional fields
-  private_mark_number: z.string().optional(),
+  // Booking-level options
+  delivery_type: z.enum(['Standard', 'Express', 'Same Day']).default('Standard'),
+  priority: z.enum(['Normal', 'High', 'Urgent']).default('Normal'),
+  expected_delivery_date: z.string().optional(),
+  reference_number: z.string().optional(),
   remarks: z.string().optional(),
   
-  // Invoice information
+  // Invoice information (booking-level)
   has_invoice: z.boolean().default(false),
   invoice_number: z.string().optional(),
   invoice_date: z.string().optional(),
   invoice_amount: z.number().optional(),
   eway_bill_number: z.string().optional(),
-  
-  // Additional options
-  delivery_type: z.enum(['Standard', 'Express', 'Same Day']).default('Standard'),
-  insurance_required: z.boolean().default(false),
-  insurance_value: z.number().optional(),
-  insurance_charge: z.number().min(0).optional(),
-  fragile: z.boolean().default(false),
-  priority: z.enum(['Normal', 'High', 'Urgent']).default('Normal'),
-  expected_delivery_date: z.string().optional(),
-  packaging_type: z.string().optional(),
-  packaging_charge: z.number().min(0).optional(),
-  special_instructions: z.string().optional(),
-  reference_number: z.string().optional(),
 }).refine(data => {
   // If lr_type is manual, manual_lr_number is required
-  if (data.lr_type === 'manual' && !data.manual_lr_number && !data.lr_number) {
+  if (data.lr_type === 'manual' && !data.manual_lr_number) {
     return false;
   }
   return true;
@@ -63,23 +47,30 @@ export const bookingSchema = z.object({
   message: 'Manual LR number is required when lr_type is manual',
   path: ['manual_lr_number']
 }).refine(data => {
+  // Validate from_branch and to_branch are different
+  if (data.from_branch === data.to_branch) {
+    return false;
+  }
+  return true;
+}, {
+  message: 'Origin and destination branches cannot be the same',
+  path: ['to_branch']
+}).refine(data => {
   // If has_invoice is true, invoice details are required
   if (data.has_invoice) {
     return !!data.invoice_number && !!data.invoice_date && !!data.invoice_amount;
   }
   return true;
 }, {
-  message: 'Invoice details are required',
+  message: 'Invoice details are required when has_invoice is true',
   path: ['invoice_number']
 }).refine(data => {
-  // If insurance_required is true, insurance_value is required
-  if (data.insurance_required) {
-    return !!data.insurance_value;
-  }
-  return true;
+  // Validate articles combination
+  const validation = validateArticleCombination(data.articles);
+  return validation.valid;
 }, {
-  message: 'Insurance value is required',
-  path: ['insurance_value']
+  message: 'Invalid article combination',
+  path: ['articles']
 });
 
 export const customerSchema = z.object({
@@ -92,7 +83,49 @@ export const customerSchema = z.object({
 export const vehicleSchema = z.object({
   branch_id: z.string(),
   organization_id: z.string(),
-  number: z.string(),
+  vehicle_number: z.string().min(1, 'Vehicle number is required'),
+  type: z.enum(['own', 'hired', 'attached']),
+  make: z.string().min(1, 'Make is required'),
+  model: z.string().min(1, 'Model is required'),
+  year: z.number().int().min(1900).max(new Date().getFullYear() + 1),
+  color: z.string().optional(),
+  
+  // Technical Specifications
+  fuel_type: z.enum(['diesel', 'petrol', 'cng', 'electric', 'hybrid']),
+  capacity: z.string().optional(),
+  engine_number: z.string().optional(),
+  chassis_number: z.string().optional(),
+  
+  // Registration & Compliance
+  registration_date: z.string().optional(),
+  registration_valid_till: z.string().optional(),
+  insurance_number: z.string().optional(),
+  insurance_provider: z.string().optional(),
+  insurance_expiry: z.string().optional(),
+  fitness_certificate_number: z.string().optional(),
+  fitness_expiry: z.string().optional(),
+  permit_number: z.string().optional(),
+  permit_type: z.string().optional(),
+  permit_expiry: z.string().optional(),
+  pollution_certificate_number: z.string().optional(),
+  pollution_expiry: z.string().optional(),
+  
+  // Status & Maintenance
+  status: z.enum(['active', 'maintenance', 'inactive', 'sold', 'accident']).default('active'),
+  last_maintenance_date: z.string().optional(),
+  next_maintenance_date: z.string().optional(),
+  current_odometer_reading: z.number().optional(),
+  
+  // Additional Information
+  purchase_date: z.string().optional(),
+  purchase_price: z.number().optional(),
+  vendor_name: z.string().optional(),
+  notes: z.string().optional(),
+});
+
+export const vehicleUpdateSchema = vehicleSchema.partial().omit({
+  branch_id: true,
+  organization_id: true,
 });
 
 export const articleSchema = z.object({
@@ -180,10 +213,11 @@ export const podTemplateSchema = z.object({
   is_active: z.boolean().default(true),
 });
 
-// Update booking status with POD validation
+// Update booking status with POD validation and workflow context
 export const updateBookingStatusSchema = z.object({
   status: z.enum(['booked', 'in_transit', 'unloaded', 'out_for_delivery', 'delivered', 'cancelled', 'pod_received']),
   pod_required: z.boolean().optional(),
+  workflow_context: z.enum(['loading', 'unloading', 'delivery', 'manual']).optional(),
 }).refine((data) => {
   // If marking as delivered, ensure POD is not required or will be handled
   if (data.status === 'delivered' && data.pod_required !== false) {
@@ -349,4 +383,147 @@ export const warehouseZoneSchema = z.object({
   humidity_controlled: z.boolean().default(false),
   security_level: z.enum(['standard', 'restricted', 'high_security']).default('standard'),
   status: z.enum(['active', 'inactive', 'maintenance']).default('active'),
+});
+
+// Driver management schemas
+export const driverSchema = z.object({
+  branch_id: z.string(),
+  organization_id: z.string(),
+  
+  // Personal Information
+  employee_code: z.string().min(1, 'Employee code is required'),
+  name: z.string().min(1, 'Name is required'),
+  mobile: z.string().min(10, 'Valid mobile number required'),
+  alternate_mobile: z.string().optional(),
+  email: z.string().email().optional(),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  pincode: z.string().optional(),
+  date_of_birth: z.string().optional(),
+  blood_group: z.string().optional(),
+  
+  // License Information
+  license_number: z.string().min(1, 'License number is required'),
+  license_type: z.string().min(1, 'License type is required'),
+  license_issue_date: z.string().optional(),
+  license_expiry_date: z.string().optional(),
+  
+  // Employment Information
+  joining_date: z.string().min(1, 'Joining date is required'),
+  status: z.enum(['active', 'inactive', 'suspended', 'terminated']).default('active'),
+  salary: z.number().optional(),
+  
+  // Additional Documents
+  aadhar_number: z.string().optional(),
+  pan_number: z.string().optional(),
+  emergency_contact_name: z.string().optional(),
+  emergency_contact_number: z.string().optional(),
+});
+
+export const driverUpdateSchema = driverSchema.partial().omit({
+  branch_id: true,
+  organization_id: true,
+});
+
+// Vehicle assignment schemas
+export const vehicleAssignmentSchema = z.object({
+  vehicle_id: z.string().uuid(),
+  driver_id: z.string().uuid(),
+  assignment_type: z.enum(['primary', 'secondary', 'temporary']),
+  assigned_from: z.string().default(() => new Date().toISOString().split('T')[0]),
+  assigned_till: z.string().optional(),
+  is_active: z.boolean().default(true),
+  notes: z.string().optional(),
+});
+
+// Vehicle maintenance schemas
+export const vehicleMaintenanceSchema = z.object({
+  vehicle_id: z.string().uuid(),
+  maintenance_type: z.enum(['routine', 'breakdown', 'accident', 'scheduled']),
+  description: z.string().min(1, 'Description is required'),
+  service_date: z.string().min(1, 'Service date is required'),
+  next_service_date: z.string().optional(),
+  
+  // Cost Information
+  labor_cost: z.number().optional(),
+  parts_cost: z.number().optional(),
+  total_cost: z.number().optional(),
+  
+  // Service Provider
+  service_provider: z.string().optional(),
+  service_location: z.string().optional(),
+  bill_number: z.string().optional(),
+  
+  // Odometer Reading
+  odometer_reading: z.number().optional(),
+  
+  // Parts Replaced
+  parts_replaced: z.string().optional(),
+  
+  status: z.enum(['scheduled', 'in_progress', 'completed', 'cancelled']).default('scheduled'),
+  notes: z.string().optional(),
+});
+
+// Fuel record schemas
+export const fuelRecordSchema = z.object({
+  vehicle_id: z.string().uuid(),
+  driver_id: z.string().uuid().optional(),
+  
+  // Fuel Information
+  fuel_date: z.string().default(() => new Date().toISOString().split('T')[0]),
+  fuel_type: z.string().min(1, 'Fuel type is required'),
+  quantity: z.number().positive('Quantity must be positive'),
+  rate_per_unit: z.number().positive('Rate must be positive'),
+  total_amount: z.number().positive('Total amount must be positive'),
+  
+  // Station Information
+  fuel_station_name: z.string().optional(),
+  location: z.string().optional(),
+  bill_number: z.string().optional(),
+  
+  // Odometer Reading
+  odometer_reading: z.number().positive('Odometer reading must be positive'),
+  distance_covered: z.number().optional(),
+  mileage: z.number().optional(),
+  
+  payment_mode: z.enum(['cash', 'card', 'credit', 'company_card']).optional(),
+});
+
+// Vehicle document schemas
+export const vehicleDocumentSchema = z.object({
+  vehicle_id: z.string().uuid(),
+  document_type: z.string().min(1, 'Document type is required'),
+  document_number: z.string().optional(),
+  issue_date: z.string().optional(),
+  expiry_date: z.string().optional(),
+  issuing_authority: z.string().optional(),
+  
+  // File storage
+  file_name: z.string().optional(),
+  file_url: z.string().optional(),
+  file_size: z.number().optional(),
+  
+  notes: z.string().optional(),
+});
+
+// GPS tracking schemas
+export const gpsTrackingSchema = z.object({
+  vehicle_id: z.string().uuid(),
+  device_id: z.string().min(1, 'Device ID is required'),
+  provider: z.string().optional(),
+  
+  // Current Location
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+  altitude: z.number().optional(),
+  speed: z.number().optional(),
+  heading: z.number().min(0).max(360).optional(),
+  
+  // Additional Data
+  battery_level: z.number().min(0).max(100).optional(),
+  signal_strength: z.number().optional(),
+  engine_status: z.boolean().optional(),
+  ac_status: z.boolean().optional(),
+  fuel_level: z.number().min(0).max(100).optional(),
 });

@@ -331,8 +331,8 @@ export default function ArticleExport({ articles, onClose, onSuccess }: Props) {
     // Sort data
     if (config.sortBy) {
       processedData.sort((a, b) => {
-        const aVal = a[config.sortBy] || '';
-        const bVal = b[config.sortBy] || '';
+        const aVal = (a as any)[config.sortBy] || '';
+        const bVal = (b as any)[config.sortBy] || '';
         const comparison = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
         return config.sortOrder === 'asc' ? comparison : -comparison;
       });
@@ -345,7 +345,7 @@ export default function ArticleExport({ articles, onClose, onSuccess }: Props) {
       Object.entries(config.fields).forEach(([field, include]) => {
         if (!include) return;
 
-        let value = article[field];
+        let value = (article as any)[field];
 
         // Format based on field type
         if (field === 'created_at' || field === 'updated_at') {
@@ -419,7 +419,7 @@ export default function ArticleExport({ articles, onClose, onSuccess }: Props) {
         Object.entries(config.fields).forEach(([field, include]) => {
           if (!include) return;
 
-          let value = article[field];
+          let value = (article as any)[field];
 
           // Format values
           if (field === 'created_at' || field === 'updated_at') {

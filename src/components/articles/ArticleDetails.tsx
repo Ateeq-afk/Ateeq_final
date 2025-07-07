@@ -86,7 +86,7 @@ const TIME_RANGES: TimeRange[] = [
 
 export default function ArticleDetails({ article, onClose, onEdit }: Props) {
   const { getArticle, updateArticle, getArticleRates } = useArticles();
-  const { showSuccess, showError, showInfo } = useNotificationSystem();
+  const { showSuccess } = useNotificationSystem();
 
   const [current, setCurrent] = useState(article);
   const [isEditing, setIsEditing] = useState(false);
@@ -116,7 +116,11 @@ export default function ArticleDetails({ article, onClose, onEdit }: Props) {
     if (activeTab === 'rates' && customerRates.length === 0) {
       setRatesLoading(true);
       getArticleRates(current.id)
-        .then((r) => mounted && setCustomerRates(r))
+        .then((r) => mounted && setCustomerRates(r.map(rate => ({
+          ...rate,
+          customer_name: rate.customer_name || '',
+          customer_type: rate.customer_type || 'individual'
+        }))))
         .catch(() => mounted && setCustomerRates([]))
         .finally(() => mounted && setRatesLoading(false));
     }
@@ -380,7 +384,7 @@ Special Handling: ${current.requires_special_handling ? 'Yes' : 'No'}
         </div>
 
         {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'overview' | 'bookings' | 'rates' | 'analytics')} className="space-y-4">
           <div className="flex items-center justify-between">
             <TabsList className="grid grid-cols-4 w-[400px]">
               <TabsTrigger value="overview">Overview</TabsTrigger>

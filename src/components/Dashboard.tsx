@@ -1,21 +1,18 @@
 import React, { useState, lazy, Suspense } from 'react';
-import {
-  Menu,
-} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
+import { Routes, Route, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import MobileNav from './MobileNav';
-import DashboardStats from './DashboardStats';
+const OperationalDashboard = lazy(() => import('./OperationalDashboard'));
+const ExecutiveDashboard = lazy(() => import('./ExecutiveDashboard'));
 import { PageBreadcrumb } from './ui/breadcrumb';
 // import ChatInterface from './chat/ChatInterface';
 
 // Lazy load dashboard components for better code splitting
 const BookingListEnhanced = lazy(() => import('./bookings/BookingListEnhanced'));
 const BookingDetails = lazy(() => import('./bookings/BookingDetails'));
-const ArticleList = lazy(() => import('./articles/ArticleList'));
+const ArticleList = lazy(() => import('./articles/ArticleListEnterprise'));
 const CustomerList = lazy(() => import('./customers/CustomerList'));
 const VehicleList = lazy(() => import('./vehicles/VehicleList'));
 const BranchManagementPage = lazy(() => import('@/pages/BranchManagementPage'));
@@ -25,10 +22,18 @@ const ReportsPage = lazy(() => import('@/pages/ReportsPage'));
 const LoadingManagementPage = lazy(() => import('@/pages/LoadingManagementPage'));
 const UnloadingPage = lazy(() => import('@/components/UnloadingPage'));
 const PODDashboard = lazy(() => import('@/components/pod/PODDashboard'));
-const LazyBook = lazy(() => import('./bookings/LazyBook'));
+const PremiumSinglePageBookingForm = lazy(() => import('./bookings/PremiumSinglePageBookingForm'));
 const PreferencesPage = lazy(() => import("@/pages/PreferencesPage"));
 const OrganizationManagement = lazy(() => import('./organizations/OrganizationManagement').then(m => ({ default: m.OrganizationManagement })));
 const ArticleTrackingDashboard = lazy(() => import('./tracking/ArticleTrackingDashboard').then(m => ({ default: m.ArticleTrackingDashboard })));
+const PaymentDashboardPage = lazy(() => import('@/pages/PaymentDashboardPage'));
+const PaymentListPage = lazy(() => import('@/pages/PaymentListPage'));
+const OutstandingListPage = lazy(() => import('@/pages/OutstandingListPage'));
+const FinancialDashboard = lazy(() => import('./FinancialDashboard'));
+const ExpenseManagement = lazy(() => import('./expenses/ExpenseManagement'));
+const CreditDashboard = lazy(() => import('./credit/CreditDashboard'));
+const MobileScanningInterface = lazy(() => import('./scanning/MobileScanningInterface').then(m => ({ default: m.MobileScanningInterface })));
+const ArticleMovementAnalytics = lazy(() => import('./analytics/ArticleMovementAnalytics').then(m => ({ default: m.ArticleMovementAnalytics })));
 
 // Dashboard loading component
 const DashboardLoader = () => (
@@ -42,10 +47,9 @@ const DashboardLoader = () => (
 
 export default function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const location = useLocation();
-  const navigate = useNavigate();
 
   const getCurrentPage = () => {
     const path = location.pathname.split('/')[2] || 'dashboard';
@@ -55,15 +59,6 @@ export default function Dashboard() {
   const handleNavigate = (page: string) => {
     // Close sidebar on navigation (mobile)
     setSidebarOpen(false);
-
-    // Set loading state if navigating to new-booking
-    if (page === 'new-booking') {
-      setIsLoading(true);
-      // Simulate loading delay
-      setTimeout(() => {
-        setIsLoading(false);
-      }, 1000);
-    }
   };
 
   return (
@@ -85,55 +80,54 @@ export default function Dashboard() {
         onNavigate={handleNavigate}
       />
 
-      {/* Sidebar */}
-      <div
-        className={`
-        fixed inset-0 z-40 lg:relative
-        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-        transition-transform duration-300 ease-in-out
-        lg:flex lg:flex-shrink-0
-      `}
-      >
-        {/* Overlay */}
-        <AnimatePresence>
-          {sidebarOpen && (
+      {/* Sidebar - Desktop */}
+      <div className="hidden lg:flex lg:flex-shrink-0">
+        <Sidebar 
+          onNavigate={handleNavigate} 
+          currentPage={getCurrentPage()} 
+          onOpenChat={() => setChatOpen(true)}
+          isCollapsed={sidebarCollapsed}
+          onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+        />
+      </div>
+
+      {/* Sidebar - Mobile */}
+      <AnimatePresence>
+        {sidebarOpen && (
+          <>
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="fixed inset-0 bg-black/40 backdrop-blur-md lg:hidden"
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 lg:hidden"
               onClick={() => setSidebarOpen(false)}
             />
-          )}
-        </AnimatePresence>
-
-        {/* Sidebar content */}
-        <motion.div
-          initial={{ x: -280 }}
-          animate={{ x: 0 }}
-          transition={{ 
-            type: "spring",
-            stiffness: 300,
-            damping: 30
-          }}
-          className="relative z-50 w-72 h-full glass-strong shadow-2xl border-r border-white/10"
-        >
-          <div className="absolute inset-0 bg-gradient-to-b from-background/95 to-background/98 dark:from-background/80 dark:to-background/90" />
-          <div className="relative z-10">
-            <Sidebar 
-              onNavigate={handleNavigate} 
-              currentPage={getCurrentPage()} 
-              onOpenChat={() => setChatOpen(true)}
-            />
-          </div>
-        </motion.div>
-      </div>
+            <motion.div
+              initial={{ x: -280 }}
+              animate={{ x: 0 }}
+              exit={{ x: -280 }}
+              transition={{ 
+                type: "spring",
+                stiffness: 300,
+                damping: 30
+              }}
+              className="fixed left-0 top-0 bottom-0 z-50 w-72 lg:hidden"
+            >
+              <Sidebar 
+                onNavigate={handleNavigate} 
+                currentPage={getCurrentPage()} 
+                onOpenChat={() => setChatOpen(true)}
+              />
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Main content */}
-      <main className="flex-1 overflow-y-auto relative" id="main-content">
-        <div className="p-4 md:p-6 lg:p-8 pt-16 lg:pt-8">
-          <Header />
+      <main className="flex-1 flex flex-col overflow-hidden relative" id="main-content">
+        <Header onMenuClick={() => setSidebarOpen(true)} />
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
           <PageBreadcrumb />
           <AnimatePresence mode="wait">
             <motion.div
@@ -148,13 +142,15 @@ export default function Dashboard() {
             >
               <Suspense fallback={<DashboardLoader />}>
                 <Routes>
-                  <Route path="/" element={<DashboardStats />} />
+                  <Route path="/" element={<ExecutiveDashboard />} />
+                  <Route path="/operational" element={<OperationalDashboard />} />
                   <Route path="/customers" element={<CustomerList />} />
                   <Route path="/vehicles" element={<VehicleList />} />
                   <Route path="/articles" element={<ArticleList />} />
                   <Route path="/bookings" element={<BookingListEnhanced />} />
+                  <Route path="/bookings/new" element={<PremiumSinglePageBookingForm />} />
                   <Route path="/bookings/:id" element={<BookingDetails />} />
-                  <Route path="/new-booking" element={<LazyBook />} />
+                  <Route path="/new-booking" element={<PremiumSinglePageBookingForm />} />
                   <Route path="/branches" element={<BranchManagementPage />} />
                   <Route path="/warehouse" element={<WarehouseManagementPage />} />
                   <Route path="/revenue" element={<RevenuePage />} />
@@ -163,8 +159,16 @@ export default function Dashboard() {
                   <Route path="/unloading" element={<UnloadingPage />} />
                   <Route path="/pod" element={<PODDashboard />} />
                   <Route path="/tracking" element={<ArticleTrackingDashboard />} />
+                  <Route path="/scanner" element={<MobileScanningInterface />} />
+                  <Route path="/analytics" element={<ArticleMovementAnalytics />} />
                   <Route path="/settings" element={<PreferencesPage />} />
                   <Route path="/organizations" element={<OrganizationManagement />} />
+                  <Route path="/payments" element={<PaymentDashboardPage />} />
+                  <Route path="/payments/list" element={<PaymentListPage />} />
+                  <Route path="/payments/outstanding" element={<OutstandingListPage />} />
+                  <Route path="/financial" element={<FinancialDashboard />} />
+                  <Route path="/expenses" element={<ExpenseManagement />} />
+                  <Route path="/credit" element={<CreditDashboard />} />
                 </Routes>
               </Suspense>
             </motion.div>

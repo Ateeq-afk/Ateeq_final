@@ -25,7 +25,9 @@ import {
   Target,
   TrendingUp,
   AlertTriangle,
-  Eye
+  Eye,
+  Edit,
+  MoreVertical
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,6 +43,17 @@ import { motion } from 'framer-motion';
 import { useNotificationSystem } from '@/hooks/useNotificationSystem';
 import LoadingForm from './LoadingForm';
 import LoadingDetails from './LoadingDetails';
+import EditOGPLModal from './EditOGPLModal';
+import ManageOGPLBookings from './ManageOGPLBookings';
+import LoadingSheet from './LoadingSheet';
+import LoadingOptimizer from './LoadingOptimizer';
+import { loadingService } from '@/services/loading';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 export default function LoadingDashboard() {
   const [activeTab, setActiveTab] = useState<'pending' | 'history' | 'analytics'>('pending');
@@ -56,6 +69,10 @@ export default function LoadingDashboard() {
   const [selectedBookings, setSelectedBookings] = useState<string[]>([]);
   const [showLoadingOptimizer, setShowLoadingOptimizer] = useState(false);
   const [loadingStats, setLoadingStats] = useState<any>(null);
+  const [showEditOGPL, setShowEditOGPL] = useState(false);
+  const [showManageBookings, setShowManageBookings] = useState(false);
+  const [showLoadingSheet, setShowLoadingSheet] = useState(false);
+  const [selectedOGPL, setSelectedOGPL] = useState<any>(null);
   
   const { getCurrentUserBranch, user } = useAuth();
   const { showSuccess, showError } = useNotificationSystem();
@@ -561,12 +578,12 @@ export default function LoadingDashboard() {
                       <Button 
                         variant="outline" 
                         size="sm"
-                        onClick={optimizeLoading}
+                        onClick={() => setShowLoadingOptimizer(true)}
                         className="flex items-center gap-2"
                         disabled={filteredPendingBookings.length === 0}
                       >
                         <Target className="h-4 w-4" />
-                        Smart Select
+                        AI Optimizer
                       </Button>
                       <Button 
                         variant="outline" 
@@ -845,15 +862,48 @@ export default function LoadingDashboard() {
                           {ogpl.loading_records?.length || 0} LRs
                         </td>
                         <td className="px-6 py-4">
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => setShowLoadingForm(true)}
-                            className="flex items-center gap-1"
-                          >
-                            <Plus className="h-3.5 w-3.5" />
-                            Add LRs
-                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setSelectedOGPL(ogpl);
+                                  setShowEditOGPL(true);
+                                }}
+                              >
+                                <Edit className="h-4 w-4 mr-2" />
+                                Edit OGPL
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setSelectedOGPL(ogpl);
+                                  setShowManageBookings(true);
+                                }}
+                              >
+                                <Package className="h-4 w-4 mr-2" />
+                                Manage Bookings
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setSelectedOGPL(ogpl);
+                                  setShowLoadingSheet(true);
+                                }}
+                              >
+                                <FileText className="h-4 w-4 mr-2" />
+                                Loading Sheet
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => setShowLoadingForm(true)}
+                              >
+                                <Plus className="h-4 w-4 mr-2" />
+                                Add LRs
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </td>
                       </tr>
                     ))}
@@ -1166,6 +1216,84 @@ export default function LoadingDashboard() {
                 </p>
               </div>
             )}
+          </div>
+        </div>
+      )}
+      
+      {/* Edit OGPL Modal */}
+      {showEditOGPL && selectedOGPL && (
+        <EditOGPLModal
+          isOpen={showEditOGPL}
+          onClose={() => {
+            setShowEditOGPL(false);
+            setSelectedOGPL(null);
+          }}
+          ogpl={selectedOGPL}
+          vehicles={vehicles}
+          branches={branches}
+          onSuccess={() => {
+            handleRefresh();
+            setShowEditOGPL(false);
+            setSelectedOGPL(null);
+          }}
+        />
+      )}
+      
+      {/* Manage Bookings Modal */}
+      {showManageBookings && selectedOGPL && (
+        <ManageOGPLBookings
+          isOpen={showManageBookings}
+          onClose={() => {
+            setShowManageBookings(false);
+            setSelectedOGPL(null);
+          }}
+          ogpl={selectedOGPL}
+          onSuccess={() => {
+            handleRefresh();
+            setShowManageBookings(false);
+            setSelectedOGPL(null);
+          }}
+        />
+      )}
+      
+      {/* Loading Sheet Modal */}
+      {showLoadingSheet && selectedOGPL && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-5xl w-full max-h-[90vh] overflow-y-auto">
+            <LoadingSheet
+              ogpl={selectedOGPL}
+              onClose={() => {
+                setShowLoadingSheet(false);
+                setSelectedOGPL(null);
+              }}
+              onUpdate={() => {
+                handleRefresh();
+                setShowLoadingSheet(false);
+                setSelectedOGPL(null);
+              }}
+            />
+          </div>
+        </div>
+      )}
+      
+      {/* Loading Optimizer Modal */}
+      {showLoadingOptimizer && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+            <LoadingOptimizer
+              bookings={filteredPendingBookings}
+              vehicles={vehicles}
+              onOptimize={(optimizedGroups) => {
+                // Apply the optimization by selecting the bookings from optimized groups
+                const bookingIds = optimizedGroups.flatMap(group => 
+                  group.bookings.map((b: any) => b.id)
+                );
+                setSelectedBookings(bookingIds);
+                setShowLoadingOptimizer(false);
+                showSuccess('Optimization Applied', `Selected ${bookingIds.length} bookings in ${optimizedGroups.length} optimized groups`);
+              }}
+              onClose={() => setShowLoadingOptimizer(false)}
+            />
           </div>
         </div>
       )}

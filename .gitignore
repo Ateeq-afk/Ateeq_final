@@ -22,4 +22,12 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+# Environment variables (never commit production credentials)
 .env
+.env.local
+.env.production
+.env.staging
+backend/.env
+backend/.env.local
+backend/.env.production
+backend/.env.staging

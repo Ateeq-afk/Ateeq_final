@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { supabase } from '../supabaseClient';
-import jwt from 'jsonwebtoken';
+import * as jwt from 'jsonwebtoken';
 
 interface AuthenticatedRequest extends Request {
   user?: any;
@@ -123,7 +123,7 @@ export function requireOrganization(req: AuthenticatedRequest, res: Response, ne
 
 // Middleware to check for admin role
 export function requireAdmin(req: AuthenticatedRequest, res: Response, next: NextFunction): void {
-  if (req.userRole !== 'admin') {
+  if (!['admin', 'superadmin'].includes(req.userRole || '')) {
     res.status(403).json({ error: 'Admin access required' });
     return;
   }
@@ -132,7 +132,7 @@ export function requireAdmin(req: AuthenticatedRequest, res: Response, next: Nex
 
 // Middleware to check for branch manager or above
 export function requireBranchManager(req: AuthenticatedRequest, res: Response, next: NextFunction): void {
-  if (!['admin', 'branch_manager'].includes(req.userRole || '')) {
+  if (!['admin', 'superadmin', 'branch_manager'].includes(req.userRole || '')) {
     res.status(403).json({ error: 'Branch manager access required' });
     return;
   }

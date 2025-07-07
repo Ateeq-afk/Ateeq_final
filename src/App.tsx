@@ -13,6 +13,8 @@ const SignUpPage = lazy(() => import('./pages/SignUpPage'));
 const OrganizationSignIn = lazy(() => import('./pages/auth/OrganizationSignIn').then(m => ({ default: m.OrganizationSignIn })));
 const CreateOrganizationPage = lazy(() => import('./pages/CreateOrganizationPage'));
 const SuperAdminBranchPage = lazy(() => import('./pages/SuperAdminBranchPage'));
+const AboutPage = lazy(() => import('./pages/AboutPage'));
+const AuthCallbackPage = lazy(() => import('./pages/AuthCallbackPage'));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -46,6 +48,11 @@ function App() {
                 <OrganizationSignIn />
               </RouteErrorBoundary>
             } />
+            <Route path="/auth/callback" element={
+              <RouteErrorBoundary>
+                <AuthCallbackPage />
+              </RouteErrorBoundary>
+            } />
             <Route path="/signup" element={
               <RouteErrorBoundary>
                 <SignUpPage />
@@ -74,6 +81,11 @@ function App() {
             <Route path="/track/:lrNumber" element={
               <RouteErrorBoundary>
                 <TrackingPage />
+              </RouteErrorBoundary>
+            } />
+            <Route path="/about" element={
+              <RouteErrorBoundary>
+                <AboutPage />
               </RouteErrorBoundary>
             } />
             <Route path="*" element={

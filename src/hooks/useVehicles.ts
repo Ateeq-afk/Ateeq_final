@@ -13,28 +13,88 @@ const isValidUUID = (uuid: string | null): boolean => {
 export interface Vehicle {
   id: string;
   branch_id: string;
+  organization_id: string;
+  
+  // Basic Information
   vehicle_number: string;
   type: 'own' | 'hired' | 'attached';
   make: string;
   model: string;
   year: number;
-  status: 'active' | 'maintenance' | 'inactive';
-  last_maintenance_date: string | null;
-  next_maintenance_date: string | null;
+  color?: string;
+  
+  // Technical Specifications
+  fuel_type: 'diesel' | 'petrol' | 'cng' | 'electric' | 'hybrid';
+  capacity?: string;
+  engine_number?: string;
+  chassis_number?: string;
+  
+  // Registration & Compliance
+  registration_date?: string;
+  registration_valid_till?: string;
+  insurance_number?: string;
+  insurance_provider?: string;
+  insurance_expiry?: string;
+  fitness_certificate_number?: string;
+  fitness_expiry?: string;
+  permit_number?: string;
+  permit_type?: string;
+  permit_expiry?: string;
+  pollution_certificate_number?: string;
+  pollution_expiry?: string;
+  
+  // Status & Maintenance
+  status: 'active' | 'maintenance' | 'inactive' | 'sold' | 'accident';
+  last_maintenance_date?: string;
+  next_maintenance_date?: string;
+  current_odometer_reading?: number;
+  
+  // Additional Information
+  purchase_date?: string;
+  purchase_price?: number;
+  vendor_name?: string;
+  notes?: string;
+  
+  // System fields
   created_at: string;
   updated_at: string;
+  created_by?: string;
+  is_deleted: boolean;
 }
 
 const VEHICLE_COLUMNS = [
   'branch_id',
+  'organization_id',
   'vehicle_number',
   'type',
   'make',
   'model',
   'year',
+  'color',
+  'fuel_type',
+  'capacity',
+  'engine_number',
+  'chassis_number',
+  'registration_date',
+  'registration_valid_till',
+  'insurance_number',
+  'insurance_provider',
+  'insurance_expiry',
+  'fitness_certificate_number',
+  'fitness_expiry',
+  'permit_number',
+  'permit_type',
+  'permit_expiry',
+  'pollution_certificate_number',
+  'pollution_expiry',
   'status',
   'last_maintenance_date',
   'next_maintenance_date',
+  'current_odometer_reading',
+  'purchase_date',
+  'purchase_price',
+  'vendor_name',
+  'notes',
 ] as const;
 
 type VehicleInsert = Pick<

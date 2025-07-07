@@ -25,6 +25,7 @@ interface AuthContextType {
   refreshToken: () => Promise<boolean>
   getCurrentUserBranch: () => { id: string } | null
   getOrganizationContext: () => { id: string; name: string; code: string } | null
+  fetchUserProfile: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -36,11 +37,12 @@ const AuthContext = createContext<AuthContextType>({
   login: async (_u: string, _p: string) => {},
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   signIn: async (_authData: any) => {},
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+   
   logout: async () => {},
   refreshToken: async () => false,
   getCurrentUserBranch: () => null,
-  getOrganizationContext: () => null
+  getOrganizationContext: () => null,
+  fetchUserProfile: async () => {}
 })
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -171,10 +173,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const storedToken = tokenManager.getToken();
         const storedUser = secureStorage.getItem('userData');
         
-        if (storedToken && storedUser && !user) {
-          const userData = JSON.parse(storedUser);
+        if (storedToken) {
           setToken(storedToken);
-          setUser(userData);
+          
+          if (storedUser && !user) {
+            const userData = JSON.parse(storedUser);
+            setUser(userData);
+            
+            // If user data is missing organization context, fetch fresh profile
+            if (!userData.organization_id && !userData.user_metadata?.organization_id) {
+              console.log('User missing organization context, fetching fresh profile...');
+              // Delay profile fetch to ensure token is set
+              setTimeout(() => {
+                fetchUserProfile();
+              }, 100);
+            }
+          } else if (!user) {
+            // No stored user data, fetch from backend
+            console.log('No stored user data, fetching profile...');
+            setTimeout(() => {
+              fetchUserProfile();
+            }, 100);
+          }
         }
       } catch (err) {
         console.error('Failed to restore auth state:', err);
@@ -184,7 +204,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setToken(null);
         setUser(null);
       } finally {
-        setLoading(false);
+        // Only set loading to false if we're not fetching profile
+        if (!tokenManager.getToken()) {
+          setLoading(false);
+        }
       }
     };
 
@@ -227,6 +250,75 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Fetch complete user profile with organization context
+  const fetchUserProfile = async () => {
+    try {
+      if (!token) {
+        console.warn('No token available for profile fetch');
+        return;
+      }
+
+      setLoading(true);
+      const response = await fetch('http://localhost:4000/api/auth/me', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Profile fetch failed: ${response.status}`);
+      }
+
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        const profileData = result.data;
+        
+        // Create enriched user object with organization context
+        const enrichedUser = {
+          id: profileData.id,
+          email: profileData.email,
+          user_metadata: {
+            username: profileData.username,
+            full_name: profileData.full_name,
+            role: profileData.finalEffectiveRole,
+            organization_id: profileData.userOrganizationId,
+            organization_name: profileData.organizationName,
+            organization_code: profileData.organizationCode,
+            branch_id: profileData.userBranchId,
+            branch_name: profileData.branchName
+          },
+          // Also include at root level for compatibility
+          username: profileData.username,
+          full_name: profileData.full_name,
+          role: profileData.finalEffectiveRole,
+          organization_id: profileData.userOrganizationId,
+          organization_name: profileData.organizationName,
+          organization_code: profileData.organizationCode,
+          branch_id: profileData.userBranchId,
+          branch_name: profileData.branchName
+        } as UserPayload;
+
+        setUser(enrichedUser);
+        secureStorage.setItem('userData', JSON.stringify(enrichedUser));
+        
+        console.log('User profile updated with organization context:', {
+          userId: enrichedUser.id,
+          orgId: enrichedUser.organization_id,
+          branchId: enrichedUser.branch_id,
+          role: enrichedUser.role
+        });
+      }
+    } catch (err) {
+      console.error('Failed to fetch user profile:', err);
+      setError(err as Error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Update logout to clear custom auth data securely
   const enhancedLogout = async () => {
     try {
@@ -253,7 +345,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       logout: enhancedLogout,
       refreshToken,
       getCurrentUserBranch,
-      getOrganizationContext 
+      getOrganizationContext,
+      fetchUserProfile
     }}>
       {children}
     </AuthContext.Provider>

@@ -4,6 +4,7 @@ import { useNotificationSystem } from '@/hooks/useNotificationSystem';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBranchSelection } from '@/contexts/BranchSelectionContext';
 import { useBookings } from '@/hooks/useBookings';
+import { unloadingService } from '@/services/unloading';
 
 // Simple UUID validation used across hooks
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -106,7 +107,7 @@ export function useUnloading() {
     }
   }, [selectedBranch, userBranch]);
 
-  // Unload an OGPL
+  // Unload an OGPL using the new secure unloading service
   const unloadOGPL = async (
     ogplId: string,
     bookingIds: string[],
@@ -120,44 +121,22 @@ export function useUnloading() {
       setLoading(true);
       setError(null);
 
-      // Validate identifiers before hitting the database
+      // Validate identifiers
       if (!isValidUUID(ogplId)) {
-        console.error('Invalid OGPL ID:', ogplId);
         throw new Error('Invalid OGPL ID');
       }
 
       if (!branchId || !isValidUUID(branchId)) {
-        console.error('Invalid or missing branch ID:', branchId);
         throw new Error('Invalid or missing branch ID');
       }
 
       if (!bookingIds.length) {
-        console.error('No bookings provided for unloading');
         throw new Error('No bookings provided for unloading');
       }
-      
-      console.log('Validating booking IDs and conditions...');
-      for (const id of bookingIds) {
-        if (!isValidUUID(id)) {
-          console.error(`Invalid booking ID: ${id}`);
-          throw new Error(`Invalid booking ID: ${id}`);
-        }
-        if (!conditions[id]) {
-          console.error(`Missing unloading condition for booking ${id}`);
-          throw new Error(`Missing unloading condition for booking ${id}`);
-        }
-      }
-
-      console.log('Unloading OGPL:', ogplId);
-      console.log('Booking IDs:', bookingIds);
-      console.log('Branch ID:', branchId);
-      console.log('Conditions sample:', Object.entries(conditions).slice(0, 2));
 
       // Validate conditions
-      console.log('Validating conditions for damaged items...');
       const hasInvalidEntries = Object.entries(conditions).some(([bookingId, condition]) => {
         if (condition.status === 'damaged' && !condition.remarks) {
-          console.error(`Missing remarks for damaged item: ${bookingId}`);
           showError('Validation Error', 'Please provide remarks for all damaged items');
           return true;
         }
@@ -168,148 +147,26 @@ export function useUnloading() {
         throw new Error('Please provide remarks for all damaged items');
       }
 
-      // Count items by status
-      const goodCount = Object.values(conditions).filter(c => c.status === 'good').length;
-      const damagedCount = Object.values(conditions).filter(c => c.status === 'damaged').length;
-      const missingCount = Object.values(conditions).filter(c => c.status === 'missing').length;
-      console.log('Status counts:', { goodCount, damagedCount, missingCount });
-
-      // 1. Create unloading session
-      console.log('Creating unloading session...');
-      const { data: sessionData, error: sessionError } = await supabase
-        .from('unloading_sessions')
-        .insert({
-          ogpl_id: ogplId,
-          unloaded_by: 'Admin User', // In a real app, this would be the current user
-          branch_id: branchId,
-          total_items: bookingIds.length,
-          items_damaged: damagedCount,
-          items_missing: missingCount,
-          notes: `Unloaded ${goodCount} items in good condition, ${damagedCount} damaged, ${missingCount} missing`
-        })
-        .select()
-        .single();
-      
-      if (sessionError) {
-        console.error('Error creating unloading session:', sessionError);
-        const errorMessage = `Failed to create unloading session: ${sessionError.message} (Code: ${sessionError.code})`;
-        throw new Error(errorMessage);
-      }
-      
-      console.log('Unloading session created successfully:', sessionData);
-
-      // 2. Create unloading record in the legacy format for backward compatibility (optional)
-      try {
-        console.log('Creating legacy unloading record...');
-        const { data: unloadingRecord, error: unloadingError } = await supabase
-          .from('unloading_records')
-          .insert({
-            ogpl_id: ogplId,
-            unloaded_at: new Date().toISOString(),
-            unloaded_by: 'Admin User', // This would be the current user's ID
-            conditions
-          })
-          .select()
-          .single();
-
-        if (unloadingError) {
-          console.warn('Legacy unloading record creation failed (non-critical):', unloadingError);
-          // Continue anyway since we have the new session record
-        } else {
-          console.log('Legacy unloading record created:', unloadingRecord);
-        }
-      } catch (legacyError) {
-        console.warn('Legacy unloading record creation failed (non-critical):', legacyError);
-        // Continue anyway
-      }
-
-      // 3. Update OGPL status to 'unloaded' instead of 'completed'
-      console.log('Updating OGPL status to "unloaded"...');
-      const { data: updatedOgpl, error: ogplError } = await supabase
-        .from('ogpl')
-        .update({
-          status: 'unloaded',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', ogplId)
-        .select();
-
-      if (ogplError) {
-        console.error('Error updating OGPL status:', ogplError);
-        const errorMessage = `Failed to update OGPL status: ${ogplError.message} (Code: ${ogplError.code})`;
-        throw new Error(errorMessage);
-      }
-      
-      console.log('OGPL status updated successfully:', updatedOgpl);
-      
-      // Verify the OGPL status update
-      console.log('Verifying OGPL status update...');
-      const { data: verifyOgpl, error: verifyError } = await supabase
-        .from('ogpl')
-        .select('id, status')
-        .eq('id', ogplId)
-        .single();
-        
-      if (verifyError) {
-        console.error('Error verifying OGPL status:', verifyError);
-      } else {
-        console.log('Verified OGPL status:', verifyOgpl);
-      }
-
-      // 4. Update booking statuses
-      console.log('Updating booking statuses...');
-      for (const bookingId of bookingIds) {
-        const condition = conditions[bookingId];
-        
-        try {
-          console.log(`Updating booking ${bookingId} with condition:`, condition.status);
-          // Mark as unloaded if item was received
-          if (condition && condition.status !== 'missing') {
-            await updateBookingStatus(
-              bookingId,
-              'unloaded',
-              {
-                unloading_status: 'unloaded',
-                unloading_session_id: sessionData.id,
-                pod_status: 'pending',
-                pod_data: {
-                  condition: condition.status,
-                  remarks: condition.remarks,
-                  photo: condition.photo,
-                  unloaded_at: new Date().toISOString()
-                }
-              }
-            );
-            console.log(`Booking ${bookingId} updated to "unloaded" status`);
-          } else {
-            // For missing items, update status but don't mark as delivered
-            await updateBookingStatus(
-              bookingId, 
-              'in_transit', 
-              { 
-                unloading_status: 'missing',
-                unloading_session_id: sessionData.id,
-                pod_data: {
-                  condition: 'missing',
-                  remarks: condition?.remarks,
-                  unloaded_at: new Date().toISOString()
-                }
-              }
-            );
-            console.log(`Booking ${bookingId} marked as "missing"`);
+      // Convert conditions to the format expected by the service
+      const formattedConditions = Object.fromEntries(
+        Object.entries(conditions).map(([bookingId, condition]) => [
+          bookingId,
+          {
+            status: condition.status as 'good' | 'damaged' | 'missing',
+            remarks: condition.remarks,
+            photo: condition.photo
           }
-        } catch (bookingError) {
-          console.error(`Failed to update booking ${bookingId}:`, bookingError);
-          const errorMessage = bookingError instanceof Error ? bookingError.message : 'Unknown error';
-          throw new Error(`Failed to update booking ${bookingId}: ${errorMessage}`);
-        }
-      }
+        ])
+      );
+
+      // Use the new unloading service which properly handles workflow context
+      console.log('Calling unloading service...');
+      const result = await unloadingService.completeUnloading(ogplId, formattedConditions);
       
-      console.log('All bookings updated successfully');
-      console.log('=== UNLOAD OGPL FUNCTION COMPLETED SUCCESSFULLY ===');
-      
+      console.log('Unloading service completed successfully:', result);
       showSuccess('Unloading Complete', `All items have been successfully unloaded`);
-      return sessionData;
+      
+      return result;
     } catch (err) {
       console.error('=== UNLOAD OGPL FUNCTION FAILED ===');
       console.error('Failed to unload OGPL:', err);

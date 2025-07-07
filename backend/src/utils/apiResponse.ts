@@ -1,4 +1,7 @@
 import { Response } from 'express';
+import { log } from './logger';
+import SentryManager from '../config/sentry';
+import { captureBusinessError } from '../middleware/sentry';
 
 // Standardized API response interface
 export interface ApiResponse<T = any> {
@@ -57,8 +60,21 @@ export function sendError(
     statusCode
   };
 
-  // Log error for debugging
-  console.error(`API Error [${statusCode}] ${res.req.method} ${res.req.originalUrl}:`, error, details);
+  // Log error with structured logging
+  log.error(`API Error: ${res.req.method} ${res.req.originalUrl}`, {
+    statusCode,
+    method: res.req.method,
+    path: res.req.originalUrl,
+    userAgent: res.req.get('User-Agent'),
+    ip: res.req.ip,
+    error: error instanceof Error ? {
+      name: error.name,
+      message: error.message,
+      stack: error.stack
+    } : error,
+    details,
+    timestamp: new Date().toISOString()
+  });
 
   return res.status(statusCode).json(response);
 }
@@ -69,6 +85,18 @@ export function sendValidationError(
   validationErrors: any,
   message: string = 'Validation failed'
 ): Response<ApiErrorResponse> {
+  // Capture validation errors for analysis (but with lower severity)
+  if (SentryManager.isReady()) {
+    SentryManager.captureMessage(
+      `Validation failed: ${res.req.method} ${res.req.path}`,
+      'warning',
+      {
+        validation_errors: validationErrors,
+        request_data: res.req.body
+      }
+    );
+  }
+
   return sendError(res, 'Validation Error', 400, validationErrors, message);
 }
 
@@ -102,6 +130,18 @@ export function sendServerError(
   error: any,
   message: string = 'Internal server error'
 ): Response<ApiErrorResponse> {
+  // Capture error in Sentry for 500-level errors
+  if (SentryManager.isReady() && error instanceof Error) {
+    SentryManager.captureException(error, {
+      request_context: {
+        method: res.req.method,
+        url: res.req.url,
+        user_agent: res.req.get('User-Agent'),
+        ip: res.req.ip
+      }
+    });
+  }
+
   // Don't expose internal error details in production
   const details = process.env.NODE_ENV === 'development' ? error : undefined;
   return sendError(res, 'Server Error', 500, details, message);
@@ -114,6 +154,17 @@ export function sendDatabaseError(
   operation: string = 'Database operation'
 ): Response<ApiErrorResponse> {
   const message = `${operation} failed`;
+  
+  // Capture database errors in Sentry with context
+  if (SentryManager.isReady() && error instanceof Error) {
+    SentryManager.captureException(error, {
+      database_context: {
+        operation,
+        error_code: error.code || 'unknown',
+        error_details: error.details || error.hint || error.message
+      }
+    });
+  }
   
   // Handle common database errors
   if (error.code === 'PGRST116') {
@@ -135,7 +186,18 @@ export function sendDatabaseError(
 export function asyncHandler(fn: Function) {
   return (req: any, res: any, next: any) => {
     Promise.resolve(fn(req, res, next)).catch((error) => {
-      console.error('Async handler error:', error);
+      log.error('Async handler caught unhandled promise rejection', {
+        method: req.method,
+        path: req.originalUrl,
+        ip: req.ip,
+        userAgent: req.get('User-Agent'),
+        error: error instanceof Error ? {
+          name: error.name,
+          message: error.message,
+          stack: error.stack
+        } : error,
+        timestamp: new Date().toISOString()
+      });
       sendServerError(res, error);
     });
   };

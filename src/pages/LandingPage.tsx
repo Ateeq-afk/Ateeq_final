@@ -1,17 +1,24 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, useScroll, useTransform } from 'framer-motion';
-import { Truck, Package, ArrowRight, CheckCircle, Users, BarChart3, Shield, Clock, Globe, Zap, Star, Menu, X, ChevronRight, Building2, MapPin, Phone, Mail } from 'lucide-react';
+import { motion, useScroll, useTransform, useMotionValue, useSpring } from 'framer-motion';
+import { Truck, Package, ArrowRight, CheckCircle, Users, BarChart3, Shield, Clock, Globe, Zap, Star, Menu, X, ChevronRight, Building2, MapPin, Phone, Mail, Sparkles, TrendingUp, Award, Headphones, Rocket, Target, Heart, ShieldCheck, FileCheck, UserCheck, Cpu, Cloud, Smartphone, MessageSquare, Calendar, DollarSign, BarChart, Briefcase, Layers, CheckSquare, Activity, Lock, Database, RefreshCw, Settings, ArrowUpRight, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTheme } from '@/contexts/ThemeContext';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 export default function LandingPage() {
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const { scrollY } = useScroll();
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+  const springX = useSpring(mouseX, { stiffness: 300, damping: 30 });
+  const springY = useSpring(mouseY, { stiffness: 300, damping: 30 });
+  
   const headerBackground = useTransform(
     scrollY,
     [0, 100],
@@ -22,6 +29,15 @@ export default function LandingPage() {
     [0, 100],
     ['rgba(17, 24, 39, 0)', 'rgba(17, 24, 39, 0.95)']
   );
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      mouseX.set((e.clientX - window.innerWidth / 2) / 50);
+      mouseY.set((e.clientY - window.innerHeight / 2) / 50);
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, [mouseX, mouseY]);
 
 
   // Animation variants
@@ -60,47 +76,125 @@ export default function LandingPage() {
   const features = [
     {
       icon: <Truck className="h-6 w-6" />,
-      title: 'Fleet Management',
-      description: 'Efficiently manage your entire fleet with real-time tracking and maintenance scheduling.',
-      color: 'blue'
+      title: 'Smart Fleet Management',
+      description: 'AI-powered fleet optimization with real-time GPS tracking, predictive maintenance alerts, and automated route planning to maximize efficiency.',
+      color: 'blue',
+      stats: '35% reduction in fuel costs'
     },
     {
       icon: <Package className="h-6 w-6" />,
-      title: 'Booking Management',
-      description: 'Create and track bookings with ease, from pickup to delivery.',
-      color: 'green'
+      title: 'Intelligent Booking System',
+      description: 'Streamline operations with automated booking workflows, smart pricing algorithms, and instant customer notifications.',
+      color: 'green',
+      stats: '60% faster booking process'
     },
     {
       icon: <Users className="h-6 w-6" />,
-      title: 'Customer Management',
-      description: 'Maintain detailed customer profiles and preferences for personalized service.',
-      color: 'purple'
+      title: 'CRM & Customer Portal',
+      description: 'Build lasting relationships with comprehensive customer profiles, self-service portals, and personalized communication tools.',
+      color: 'purple',
+      stats: '4.8/5 customer satisfaction'
     },
     {
       icon: <BarChart3 className="h-6 w-6" />,
-      title: 'Advanced Analytics',
-      description: 'Gain insights with comprehensive reports and analytics dashboards.',
-      color: 'amber'
+      title: 'Business Intelligence',
+      description: 'Make data-driven decisions with real-time analytics, custom reports, and predictive insights powered by machine learning.',
+      color: 'amber',
+      stats: '200+ KPI metrics tracked'
     },
     {
       icon: <Shield className="h-6 w-6" />,
-      title: 'Secure Platform',
-      description: 'Enterprise-grade security to protect your business data.',
-      color: 'red'
+      title: 'Bank-Grade Security',
+      description: 'Rest easy with 256-bit encryption, SOC 2 compliance, automated backups, and multi-factor authentication.',
+      color: 'red',
+      stats: '99.99% uptime guarantee'
     },
     {
       icon: <CheckCircle className="h-6 w-6" />,
-      title: 'Proof of Delivery',
-      description: 'Digital POD with signature capture and photo evidence.',
-      color: 'indigo'
+      title: 'Digital POD & Documentation',
+      description: 'Paperless operations with e-signatures, photo evidence, automated invoicing, and instant delivery confirmations.',
+      color: 'indigo',
+      stats: '100% paperless workflow'
+    }
+  ];
+
+  const additionalFeatures = [
+    {
+      icon: <Smartphone className="h-5 w-5" />,
+      title: 'Mobile First Design',
+      description: 'Native mobile apps for drivers and customers'
+    },
+    {
+      icon: <Cloud className="h-5 w-5" />,
+      title: 'Cloud Infrastructure',
+      description: 'Scalable cloud platform with global CDN'
+    },
+    {
+      icon: <Cpu className="h-5 w-5" />,
+      title: 'AI & Automation',
+      description: 'Smart automation for repetitive tasks'
+    },
+    {
+      icon: <RefreshCw className="h-5 w-5" />,
+      title: 'Real-time Sync',
+      description: 'Instant updates across all devices'
+    },
+    {
+      icon: <Lock className="h-5 w-5" />,
+      title: 'Role-Based Access',
+      description: 'Granular permissions and access control'
+    },
+    {
+      icon: <Headphones className="h-5 w-5" />,
+      title: '24/7 Support',
+      description: 'Round-the-clock customer assistance'
     }
   ];
 
   const stats = [
-    { value: '50K+', label: 'Active Shipments', icon: <Package className="h-5 w-5" /> },
-    { value: '99.9%', label: 'Uptime SLA', icon: <Clock className="h-5 w-5" /> },
-    { value: '200+', label: 'Cities Covered', icon: <MapPin className="h-5 w-5" /> },
-    { value: '24/7', label: 'Customer Support', icon: <Phone className="h-5 w-5" /> }
+    { value: '2M+', label: 'Shipments Delivered', icon: <Package className="h-5 w-5" />, trend: '+23%' },
+    { value: '99.99%', label: 'Platform Uptime', icon: <Activity className="h-5 w-5" />, trend: 'SLA' },
+    { value: '500+', label: 'Cities Covered', icon: <MapPin className="h-5 w-5" />, trend: '+45' },
+    { value: '15K+', label: 'Happy Clients', icon: <Heart className="h-5 w-5" />, trend: '+18%' }
+  ];
+
+  const testimonials = [
+    {
+      name: 'Rajesh Kumar',
+      role: 'CEO, FastTrack Logistics',
+      company: 'Enterprise Client',
+      image: '👨‍💼',
+      quote: 'DesiCargo transformed our operations completely. We\'ve seen a 40% increase in efficiency and our customers love the real-time tracking. The ROI was evident within the first quarter.',
+      rating: 5,
+      metrics: ['40% efficiency gain', '3x faster deliveries', '₹2Cr saved annually']
+    },
+    {
+      name: 'Priya Sharma',
+      role: 'Operations Head, QuickShip',
+      company: 'Growing Business',
+      image: '👩‍💼',
+      quote: 'The automation features are game-changing. What used to take hours now happens in minutes. Our team can focus on growth instead of manual tasks.',
+      rating: 5,
+      metrics: ['90% time saved', '5x team productivity', 'Zero paper usage']
+    },
+    {
+      name: 'Amit Patel',
+      role: 'Founder, City Express',
+      company: 'Small Business',
+      image: '👨‍💼',
+      quote: 'As a small business, we needed something affordable yet powerful. DesiCargo delivered on both fronts. The customer support is exceptional.',
+      rating: 5,
+      metrics: ['₹50K monthly savings', '24/7 support access', '2-hour setup time']
+    },
+    {
+      name: 'Sarah Johnson',
+      role: 'Logistics Manager, GlobalTech',
+      company: 'International Client',
+      image: '👩‍💼',
+      quote: 'The multi-branch support and analytics capabilities are exactly what we needed for our pan-India operations. Highly recommended!',
+      rating: 5,
+      metrics: ['15 branches connected', 'Real-time insights', 'Unified dashboard']
+    }
   ];
 
   const pricingPlans = [
@@ -111,12 +205,17 @@ export default function LandingPage() {
       description: 'Perfect for small logistics businesses',
       features: [
         'Up to 100 bookings/month',
-        'Basic fleet management',
-        'Customer management',
-        'Email support',
-        'Mobile app access'
+        'Basic fleet management (10 vehicles)',
+        'Customer management portal',
+        'Email & chat support',
+        'Mobile app for drivers',
+        'Basic analytics dashboard',
+        'Invoice generation',
+        '7-day data backup'
       ],
-      highlighted: false
+      highlighted: false,
+      badge: null,
+      savings: null
     },
     {
       name: 'Professional',
@@ -125,13 +224,19 @@ export default function LandingPage() {
       description: 'For growing logistics companies',
       features: [
         'Up to 1000 bookings/month',
-        'Advanced fleet management',
+        'Advanced fleet management (50 vehicles)',
         'Multi-branch support',
-        'Priority support',
-        'API access',
-        'Custom reports'
+        'Priority phone & chat support',
+        'API access & webhooks',
+        'Advanced analytics & custom reports',
+        'White-label mobile apps',
+        'Automated billing & GST',
+        'Real-time notifications',
+        '30-day data backup'
       ],
-      highlighted: true
+      highlighted: true,
+      badge: 'Most Popular',
+      savings: 'Save ₹30,000/year'
     },
     {
       name: 'Enterprise',
@@ -140,13 +245,65 @@ export default function LandingPage() {
       description: 'For large-scale operations',
       features: [
         'Unlimited bookings',
-        'Custom integrations',
+        'Unlimited fleet size',
+        'Custom integrations & features',
         'Dedicated account manager',
-        '24/7 phone support',
-        'SLA guarantee',
-        'On-premise deployment'
+        '24/7 phone, chat & on-site support',
+        'SLA guarantee (99.99% uptime)',
+        'On-premise deployment option',
+        'Advanced security features',
+        'Custom training programs',
+        'Unlimited data retention'
       ],
-      highlighted: false
+      highlighted: false,
+      badge: null,
+      savings: null
+    }
+  ];
+
+  const processSteps = [
+    {
+      number: '01',
+      title: 'Sign Up & Setup',
+      description: 'Create your account and configure your business profile in minutes',
+      icon: <UserCheck className="h-6 w-6" />
+    },
+    {
+      number: '02',
+      title: 'Add Your Fleet',
+      description: 'Import vehicles, drivers, and set up your operational parameters',
+      icon: <Truck className="h-6 w-6" />
+    },
+    {
+      number: '03',
+      title: 'Start Booking',
+      description: 'Begin accepting bookings and watch your business grow',
+      icon: <Rocket className="h-6 w-6" />
+    },
+    {
+      number: '04',
+      title: 'Track & Optimize',
+      description: 'Monitor performance and optimize operations with AI insights',
+      icon: <TrendingUp className="h-6 w-6" />
+    }
+  ];
+
+  const faqs = [
+    {
+      question: 'How quickly can I get started with DesiCargo?',
+      answer: 'You can be up and running in less than 2 hours! Our onboarding team will guide you through the setup process, import your existing data, and provide training to your team.'
+    },
+    {
+      question: 'Is my data secure with DesiCargo?',
+      answer: 'Absolutely! We use bank-grade 256-bit encryption, maintain SOC 2 compliance, and perform regular security audits. Your data is backed up across multiple data centers with 99.99% uptime guarantee.'
+    },
+    {
+      question: 'Can I integrate DesiCargo with my existing systems?',
+      answer: 'Yes! We offer REST APIs, webhooks, and pre-built integrations with popular accounting software, GPS providers, and communication platforms. Our team can also build custom integrations.'
+    },
+    {
+      question: 'What kind of support do you provide?',
+      answer: 'We offer 24/7 support through multiple channels - phone, chat, email, and WhatsApp. Enterprise customers get a dedicated account manager and on-site support when needed.'
     }
   ];
 
@@ -179,10 +336,11 @@ export default function LandingPage() {
             
             {/* Desktop Navigation */}
             <nav className="hidden lg:flex items-center gap-8">
-              <a href="#features" className="text-gray-600 dark:text-gray-300 hover:text-brand-600 dark:hover:text-brand-400 transition-colors">Features</a>
-              <a href="#pricing" className="text-gray-600 dark:text-gray-300 hover:text-brand-600 dark:hover:text-brand-400 transition-colors">Pricing</a>
-              <a href="#testimonials" className="text-gray-600 dark:text-gray-300 hover:text-brand-600 dark:hover:text-brand-400 transition-colors">Testimonials</a>
-              <a href="#contact" className="text-gray-600 dark:text-gray-300 hover:text-brand-600 dark:hover:text-brand-400 transition-colors">Contact</a>
+              <a href="#features" className="text-gray-600 dark:text-gray-300 hover:text-brand-600 dark:hover:text-brand-400 transition-colors font-medium">Features</a>
+              <a href="#how-it-works" className="text-gray-600 dark:text-gray-300 hover:text-brand-600 dark:hover:text-brand-400 transition-colors font-medium">How it Works</a>
+              <a href="#pricing" className="text-gray-600 dark:text-gray-300 hover:text-brand-600 dark:hover:text-brand-400 transition-colors font-medium">Pricing</a>
+              <a href="#testimonials" className="text-gray-600 dark:text-gray-300 hover:text-brand-600 dark:hover:text-brand-400 transition-colors font-medium">Testimonials</a>
+              <button onClick={() => navigate('/about')} className="text-gray-600 dark:text-gray-300 hover:text-brand-600 dark:hover:text-brand-400 transition-colors font-medium">About</button>
             </nav>
             
             <div className="flex items-center gap-4">
@@ -230,9 +388,10 @@ export default function LandingPage() {
             >
               <div className="flex flex-col gap-2">
                 <a href="#features" className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-brand-600 dark:hover:text-brand-400 transition-colors">Features</a>
+                <a href="#how-it-works" className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-brand-600 dark:hover:text-brand-400 transition-colors">How it Works</a>
                 <a href="#pricing" className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-brand-600 dark:hover:text-brand-400 transition-colors">Pricing</a>
                 <a href="#testimonials" className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-brand-600 dark:hover:text-brand-400 transition-colors">Testimonials</a>
-                <a href="#contact" className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-brand-600 dark:hover:text-brand-400 transition-colors">Contact</a>
+                <button onClick={() => navigate('/about')} className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-brand-600 dark:hover:text-brand-400 transition-colors w-full text-left">About</button>
                 <div className="flex gap-2 px-4 pt-2">
                   <Button 
                     variant="outline" 
@@ -256,109 +415,276 @@ export default function LandingPage() {
 
       {/* Hero Section */}
       <motion.section 
-        className="pt-32 pb-20 md:pt-40 md:pb-32 px-4"
+        className="relative pt-32 pb-20 md:pt-40 md:pb-32 px-4 overflow-hidden"
         initial="hidden"
         animate="visible"
         variants={containerVariants}
       >
-        <div className="container mx-auto max-w-6xl">
-          <div className="flex flex-col md:flex-row items-center gap-12">
-            <motion.div className="md:w-1/2 text-center md:text-left" variants={itemVariants}>
-              <Badge className="mb-4 bg-brand-100 text-brand-700 dark:bg-brand-900/30 dark:text-brand-400 border-0">
-                <Zap className="h-3 w-3 mr-1" />
-                Trusted by 500+ Logistics Companies
-              </Badge>
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold mb-6 bg-gradient-to-r from-brand-700 to-blue-600 dark:from-brand-500 dark:to-blue-400 text-transparent bg-clip-text leading-tight">
-                Streamline Your Logistics Operations
+        {/* Animated Background */}
+        <div className="absolute inset-0 -z-10">
+          <div className="absolute inset-0 bg-gradient-to-br from-brand-50 via-blue-50 to-purple-50 dark:from-gray-900 dark:via-brand-950 dark:to-blue-950" />
+          <motion.div 
+            className="absolute top-20 -left-20 w-96 h-96 bg-gradient-to-br from-brand-400/20 to-blue-400/20 rounded-full blur-3xl"
+            animate={{
+              x: [0, 50, 0],
+              y: [0, -30, 0],
+              scale: [1, 1.2, 1],
+            }}
+            transition={{
+              duration: 20,
+              repeat: Infinity,
+              ease: "easeInOut"
+            }}
+          />
+          <motion.div 
+            className="absolute bottom-20 -right-20 w-96 h-96 bg-gradient-to-br from-purple-400/20 to-pink-400/20 rounded-full blur-3xl"
+            animate={{
+              x: [0, -50, 0],
+              y: [0, 30, 0],
+              scale: [1, 1.1, 1],
+            }}
+            transition={{
+              duration: 15,
+              repeat: Infinity,
+              ease: "easeInOut"
+            }}
+          />
+        </div>
+
+        <div className="container mx-auto max-w-7xl relative">
+          <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
+            <motion.div className="lg:w-1/2 text-center lg:text-left" variants={itemVariants}>
+              <motion.div 
+                className="inline-flex items-center gap-2 mb-6"
+                whileHover={{ scale: 1.05 }}
+              >
+                <Badge className="bg-gradient-to-r from-brand-100 to-blue-100 text-brand-700 dark:from-brand-900/30 dark:to-blue-900/30 dark:text-brand-400 border-0 px-4 py-1.5">
+                  <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                  #1 Logistics Platform in India
+                </Badge>
+                <Badge className="bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 dark:from-green-900/30 dark:to-emerald-900/30 dark:text-green-400 border-0 px-3 py-1.5">
+                  <TrendingUp className="h-3.5 w-3.5 mr-1" />
+                  40% Growth
+                </Badge>
+              </motion.div>
+              
+              <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold mb-6 leading-[1.1]">
+                <span className="bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-200 text-transparent bg-clip-text">
+                  Transform Your
+                </span>
+                <br />
+                <span className="bg-gradient-to-r from-brand-600 via-blue-600 to-purple-600 dark:from-brand-400 dark:via-blue-400 dark:to-purple-400 text-transparent bg-clip-text">
+                  Logistics Business
+                </span>
               </h1>
-              <p className="text-lg md:text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-xl mx-auto md:mx-0">
-                DesiCargo provides a comprehensive solution for managing your entire logistics workflow from booking to delivery.
+              
+              <p className="text-lg md:text-xl lg:text-2xl text-gray-600 dark:text-gray-300 mb-8 max-w-2xl mx-auto lg:mx-0 leading-relaxed">
+                Join <span className="font-semibold text-brand-600 dark:text-brand-400">15,000+ businesses</span> using DesiCargo's AI-powered platform to deliver <span className="font-semibold">2M+ packages</span> monthly with 99.9% reliability.
               </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start mb-8">
-                <Button 
-                  size="lg" 
-                  onClick={() => navigate('/signup')}
-                  className="bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-700 hover:to-brand-600 text-white shadow-lg group"
-                >
-                  Start Free Trial
-                  <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="lg"
-                  onClick={() => navigate('/track')}
-                  className="border-brand-200 text-brand-700 hover:bg-brand-50 dark:border-brand-700 dark:text-brand-400 dark:hover:bg-brand-900/30"
-                >
-                  Track Shipment
-                </Button>
+              
+              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-8">
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                  <Button 
+                    size="xl" 
+                    onClick={() => navigate('/signup')}
+                    className="bg-gradient-to-r from-brand-600 via-brand-500 to-blue-600 hover:from-brand-700 hover:via-brand-600 hover:to-blue-700 text-white shadow-xl hover:shadow-2xl group px-8 py-6 text-lg font-semibold"
+                  >
+                    Start 14-Day Free Trial
+                    <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                  </Button>
+                </motion.div>
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                  <Button 
+                    variant="outline" 
+                    size="xl"
+                    onClick={() => setIsVideoPlaying(true)}
+                    className="border-2 border-gray-300 dark:border-gray-600 hover:border-brand-500 dark:hover:border-brand-400 px-8 py-6 text-lg font-semibold group"
+                  >
+                    <Play className="mr-2 h-5 w-5 group-hover:text-brand-600 dark:group-hover:text-brand-400" />
+                    Watch Demo
+                  </Button>
+                </motion.div>
               </div>
-              <div className="flex items-center gap-8 text-sm text-gray-600 dark:text-gray-400 justify-center md:justify-start">
+              
+              <div className="flex flex-wrap items-center gap-6 text-sm text-gray-600 dark:text-gray-400 justify-center lg:justify-start">
                 <div className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                  <span>No credit card required</span>
+                  <CheckCircle className="h-5 w-5 text-green-500" />
+                  <span className="font-medium">No Credit Card</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                  <span>14-day free trial</span>
+                  <CheckCircle className="h-5 w-5 text-green-500" />
+                  <span className="font-medium">Setup in 2 Hours</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5 text-green-500" />
+                  <span className="font-medium">Cancel Anytime</span>
                 </div>
               </div>
+
+              {/* Customer Avatars */}
+              <motion.div 
+                className="mt-8 flex items-center gap-4 justify-center lg:justify-start"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+              >
+                <div className="flex -space-x-3">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <div key={i} className="h-10 w-10 rounded-full border-2 border-white dark:border-gray-800 bg-gradient-to-br from-brand-400 to-blue-500 flex items-center justify-center text-white font-semibold text-sm">
+                      {String.fromCharCode(65 + i)}
+                    </div>
+                  ))}
+                </div>
+                <div className="text-sm">
+                  <div className="flex items-center gap-1">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                    ))}
+                  </div>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    <span className="font-semibold text-gray-900 dark:text-white">4.9/5</span> from 2,000+ reviews
+                  </p>
+                </div>
+              </motion.div>
             </motion.div>
             <motion.div 
-              className="md:w-1/2 relative"
+              className="lg:w-1/2 relative w-full max-w-2xl"
               variants={itemVariants}
+              style={{
+                transform: `translateX(${springX}px) translateY(${springY}px)`,
+              }}
             >
               <div className="relative">
+                {/* Floating Elements */}
                 <motion.div 
-                  className="absolute inset-0 bg-gradient-to-r from-blue-500 to-brand-500 rounded-3xl blur-3xl opacity-20 dark:opacity-30"
+                  className="absolute -top-10 -left-10 bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-4 hidden lg:block"
                   animate={{
-                    scale: [1, 1.1, 1],
-                    rotate: [-5, -10, -5],
+                    y: [0, -20, 0],
+                    rotate: [-5, 5, -5]
                   }}
                   transition={{
-                    duration: 8,
-                    ease: "easeInOut",
+                    duration: 6,
                     repeat: Infinity,
+                    ease: "easeInOut"
                   }}
-                />
-                <div className="relative bg-white dark:bg-gray-800 rounded-3xl shadow-2xl overflow-hidden border border-gray-200 dark:border-gray-700">
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                      <Package className="h-6 w-6 text-green-600 dark:text-green-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white">Live Tracking</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">PKG-2024-1234</p>
+                    </div>
+                  </div>
+                </motion.div>
+
+                <motion.div 
+                  className="absolute -bottom-10 -right-10 bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-4 hidden lg:block"
+                  animate={{
+                    y: [0, 20, 0],
+                    rotate: [5, -5, 5]
+                  }}
+                  transition={{
+                    duration: 5,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                  }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="h-12 w-12 rounded-full bg-brand-100 dark:bg-brand-900/30 flex items-center justify-center">
+                      <TrendingUp className="h-6 w-6 text-brand-600 dark:text-brand-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white">Revenue Growth</p>
+                      <p className="text-xs text-green-600 dark:text-green-400">+45% this month</p>
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* Main Dashboard Preview */}
+                <motion.div 
+                  className="relative bg-white dark:bg-gray-800 rounded-3xl shadow-2xl overflow-hidden border border-gray-200 dark:border-gray-700"
+                  whileHover={{ scale: 1.02 }}
+                  transition={{ type: "spring", stiffness: 300 }}
+                >
                   <div className="bg-gradient-to-r from-brand-600 to-blue-600 p-4">
-                    <div className="flex items-center gap-2">
-                      <div className="h-3 w-3 rounded-full bg-red-400"></div>
-                      <div className="h-3 w-3 rounded-full bg-yellow-400"></div>
-                      <div className="h-3 w-3 rounded-full bg-green-400"></div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="h-3 w-3 rounded-full bg-red-400"></div>
+                        <div className="h-3 w-3 rounded-full bg-yellow-400"></div>
+                        <div className="h-3 w-3 rounded-full bg-green-400"></div>
+                      </div>
+                      <div className="text-white/80 text-sm font-medium">DesiCargo Dashboard</div>
                     </div>
                   </div>
-                  <img 
-                    src="https://images.pexels.com/photos/7706458/pexels-photo-7706458.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2" 
-                    alt="Logistics Dashboard" 
-                    className="w-full h-auto"
-                  />
-                  <div className="p-6 bg-gradient-to-t from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
-                    <div className="flex items-center gap-4 mb-3">
-                      <div className="h-10 w-10 rounded-lg bg-brand-100 dark:bg-brand-900/30 flex items-center justify-center">
-                        <BarChart3 className="h-5 w-5 text-brand-600 dark:text-brand-400" />
+                  
+                  {/* Dashboard Content */}
+                  <div className="p-6 bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
+                    {/* Stats Row */}
+                    <div className="grid grid-cols-4 gap-4 mb-6">
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-brand-600 dark:text-brand-400">2.4K</p>
+                        <p className="text-xs text-gray-600 dark:text-gray-400">Active</p>
                       </div>
-                      <div>
-                        <h3 className="text-xl font-bold text-gray-900 dark:text-white">Live Analytics</h3>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Real-time insights</p>
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-green-600 dark:text-green-400">98%</p>
+                        <p className="text-xs text-gray-600 dark:text-gray-400">On-time</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">₹2.1M</p>
+                        <p className="text-xs text-gray-600 dark:text-gray-400">Revenue</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">4.9★</p>
+                        <p className="text-xs text-gray-600 dark:text-gray-400">Rating</p>
                       </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-3 text-center">
-                      <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-3">
-                        <p className="text-2xl font-bold text-brand-600 dark:text-brand-400">98%</p>
-                        <p className="text-xs text-gray-600 dark:text-gray-300">On-time</p>
+                    
+                    {/* Chart Preview */}
+                    <div className="bg-gray-100 dark:bg-gray-700/50 rounded-xl p-4 mb-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Delivery Performance</h4>
+                        <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-xs">
+                          +12% vs last month
+                        </Badge>
                       </div>
-                      <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-3">
-                        <p className="text-2xl font-bold text-green-600 dark:text-green-400">24K</p>
-                        <p className="text-xs text-gray-600 dark:text-gray-300">Deliveries</p>
+                      <div className="h-32 flex items-end gap-2">
+                        {[65, 80, 45, 90, 70, 85, 60, 95, 75, 88].map((height, i) => (
+                          <motion.div
+                            key={i}
+                            className="flex-1 bg-gradient-to-t from-brand-500 to-brand-400 dark:from-brand-600 dark:to-brand-500 rounded-t"
+                            initial={{ height: 0 }}
+                            animate={{ height: `${height}%` }}
+                            transition={{ delay: i * 0.1, duration: 0.5 }}
+                          />
+                        ))}
                       </div>
-                      <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-3">
-                        <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">4.9</p>
-                        <p className="text-xs text-gray-600 dark:text-gray-300">Rating</p>
+                    </div>
+                    
+                    {/* Recent Activity */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors">
+                        <div className="h-8 w-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                          <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">Order #1234 Delivered</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">Mumbai to Delhi • 2 mins ago</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors">
+                        <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                          <Truck className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">Vehicle MH-01-1234 Dispatched</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">25 packages • 5 mins ago</p>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
+                </motion.div>
               </div>
             </motion.div>
           </div>
@@ -366,61 +692,139 @@ export default function LandingPage() {
       </motion.section>
 
       {/* Stats Section */}
-      <section className="py-16 bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
-        <div className="container mx-auto max-w-6xl px-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+      <section className="py-20 bg-gradient-to-b from-white via-gray-50 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+        <div className="container mx-auto max-w-7xl px-4">
+          <motion.div 
+            className="text-center mb-12"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+          >
+            <h2 className="text-3xl md:text-4xl font-bold mb-4 bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-200 text-transparent bg-clip-text">
+              Trusted by India's Leading Logistics Companies
+            </h2>
+            <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+              Our platform powers logistics operations across the country with unmatched reliability
+            </p>
+          </motion.div>
+          
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
             {stats.map((stat, index) => (
               <motion.div
                 key={index}
-                className="text-center"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 * index }}
+                className="relative group"
+                initial={{ opacity: 0, scale: 0.9 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.1 * index, type: "spring", stiffness: 100 }}
+                whileHover={{ y: -5 }}
               >
-                <div className="inline-flex items-center justify-center h-12 w-12 rounded-full bg-brand-100 dark:bg-brand-900/30 text-brand-600 dark:text-brand-400 mb-3">
-                  {stat.icon}
+                <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100 dark:border-gray-700 hover:border-brand-200 dark:hover:border-brand-700">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-brand-100 to-blue-100 dark:from-brand-900/30 dark:to-blue-900/30 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                      {stat.icon}
+                    </div>
+                    {stat.trend && (
+                      <Badge className={cn(
+                        "text-xs font-medium",
+                        stat.trend.includes('+') 
+                          ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" 
+                          : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                      )}>
+                        {stat.trend}
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="text-left">
+                    <h3 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-1 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
+                      {stat.value}
+                    </h3>
+                    <p className="text-sm md:text-base text-gray-600 dark:text-gray-400 font-medium">
+                      {stat.label}
+                    </p>
+                  </div>
                 </div>
-                <h3 className="text-3xl font-bold text-gray-900 dark:text-white mb-1">{stat.value}</h3>
-                <p className="text-gray-600 dark:text-gray-400">{stat.label}</p>
               </motion.div>
             ))}
           </div>
+          
+          {/* Trust Indicators */}
+          <motion.div 
+            className="mt-16 flex flex-wrap items-center justify-center gap-8"
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.5 }}
+          >
+            <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+              <Shield className="h-5 w-5 text-green-500" />
+              <span className="text-sm font-medium">ISO 27001 Certified</span>
+            </div>
+            <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+              <Award className="h-5 w-5 text-blue-500" />
+              <span className="text-sm font-medium">Best Logistics Platform 2024</span>
+            </div>
+            <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+              <ShieldCheck className="h-5 w-5 text-purple-500" />
+              <span className="text-sm font-medium">SOC 2 Type II Compliant</span>
+            </div>
+          </motion.div>
         </div>
       </section>
 
       {/* Features Section */}
-      <section id="features" className="py-20 bg-gray-50 dark:bg-gray-800/50">
-        <div className="container mx-auto max-w-6xl px-4">
-          <div className="text-center mb-16">
+      <section id="features" className="py-24 bg-gradient-to-b from-gray-50 to-white dark:from-gray-800/50 dark:to-gray-900">
+        <div className="container mx-auto max-w-7xl px-4">
+          <div className="text-center mb-20">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="mb-6"
+            >
+              <Badge className="bg-gradient-to-r from-brand-100 to-blue-100 text-brand-700 dark:from-brand-900/30 dark:to-blue-900/30 dark:text-brand-400 mb-4 px-4 py-1.5">
+                <Layers className="h-3.5 w-3.5 mr-1.5" />
+                Complete Solution Suite
+              </Badge>
+            </motion.div>
             <motion.h2 
-              className="text-3xl md:text-4xl font-bold mb-4 bg-gradient-to-r from-brand-700 to-blue-600 dark:from-brand-500 dark:to-blue-400 text-transparent bg-clip-text"
+              className="text-4xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-gray-900 via-brand-700 to-blue-700 dark:from-white dark:via-brand-400 dark:to-blue-400 text-transparent bg-clip-text"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              viewport={{ once: true }}
+            >
+              Everything You Need to Scale
+            </motion.h2>
+            <motion.p 
+              className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto leading-relaxed"
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
               viewport={{ once: true }}
             >
-              Comprehensive Logistics Management
-            </motion.h2>
-            <motion.p 
-              className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto"
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              viewport={{ once: true }}
-            >
-              Everything you need to manage your logistics business efficiently in one platform.
+              From single truck operations to multi-city fleets, our comprehensive platform grows with your business
             </motion.p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
             {features.map((feature, index) => {
               const colorClasses = {
-                blue: 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400',
-                green: 'bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400',
-                purple: 'bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400',
-                amber: 'bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400',
-                red: 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400',
-                indigo: 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
+                blue: 'from-blue-500 to-cyan-500',
+                green: 'from-green-500 to-emerald-500',
+                purple: 'from-purple-500 to-pink-500',
+                amber: 'from-amber-500 to-orange-500',
+                red: 'from-red-500 to-rose-500',
+                indigo: 'from-indigo-500 to-purple-500'
+              };
+              
+              const bgColorClasses = {
+                blue: 'bg-blue-50 dark:bg-blue-900/20',
+                green: 'bg-green-50 dark:bg-green-900/20',
+                purple: 'bg-purple-50 dark:bg-purple-900/20',
+                amber: 'bg-amber-50 dark:bg-amber-900/20',
+                red: 'bg-red-50 dark:bg-red-900/20',
+                indigo: 'bg-indigo-50 dark:bg-indigo-900/20'
               };
               
               return (
@@ -431,47 +835,224 @@ export default function LandingPage() {
                   initial="hidden"
                   whileInView="visible"
                   viewport={{ once: true }}
-                  whileHover={{ y: -5, transition: { duration: 0.2 } }}
-                  className="group"
+                  whileHover={{ y: -10, transition: { duration: 0.3 } }}
+                  className="group relative"
                 >
-                  <Card className="h-full bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-brand-300 dark:hover:border-brand-700 transition-all duration-300 hover:shadow-xl">
-                    <CardContent className="p-6">
-                      <div className={`h-12 w-12 rounded-full ${colorClasses[feature.color as keyof typeof colorClasses]} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300`}>
-                        {feature.icon}
+                  <div className="absolute inset-0 bg-gradient-to-r from-brand-500/20 to-blue-500/20 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  <Card className="relative h-full bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border-gray-200/50 dark:border-gray-700/50 hover:border-brand-300 dark:hover:border-brand-600 transition-all duration-300 shadow-lg hover:shadow-2xl rounded-3xl overflow-hidden">
+                    <CardContent className="p-8">
+                      <div className={`h-16 w-16 rounded-2xl ${bgColorClasses[feature.color as keyof typeof bgColorClasses]} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300`}>
+                        <div className={`h-10 w-10 rounded-xl bg-gradient-to-br ${colorClasses[feature.color as keyof typeof colorClasses]} flex items-center justify-center text-white shadow-lg`}>
+                          {feature.icon}
+                        </div>
                       </div>
-                      <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{feature.title}</h3>
-                      <p className="text-gray-600 dark:text-gray-300">{feature.description}</p>
+                      <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
+                        {feature.title}
+                      </h3>
+                      <p className="text-gray-600 dark:text-gray-300 mb-4 leading-relaxed">
+                        {feature.description}
+                      </p>
+                      {feature.stats && (
+                        <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                          <p className="text-sm font-semibold text-brand-600 dark:text-brand-400 flex items-center gap-2">
+                            <TrendingUp className="h-4 w-4" />
+                            {feature.stats}
+                          </p>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 </motion.div>
               );
             })}
           </div>
+
+          {/* Additional Features Grid */}
+          <motion.div 
+            className="mt-20"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+          >
+            <h3 className="text-2xl font-bold text-center mb-12 text-gray-900 dark:text-white">
+              Plus Everything Else You Need
+            </h3>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
+              {additionalFeatures.map((feature, index) => (
+                <motion.div
+                  key={index}
+                  className="text-center group"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.05 }}
+                  whileHover={{ y: -5 }}
+                >
+                  <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl p-6 hover:bg-brand-50 dark:hover:bg-brand-900/20 transition-all duration-300">
+                    <div className="h-12 w-12 mx-auto mb-3 rounded-xl bg-white dark:bg-gray-700 flex items-center justify-center text-gray-700 dark:text-gray-300 group-hover:text-brand-600 dark:group-hover:text-brand-400 shadow-sm">
+                      {feature.icon}
+                    </div>
+                    <h4 className="font-semibold text-sm text-gray-900 dark:text-white mb-1">
+                      {feature.title}
+                    </h4>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                      {feature.description}
+                    </p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* How It Works Section */}
+      <section id="how-it-works" className="py-24 bg-white dark:bg-gray-900">
+        <div className="container mx-auto max-w-7xl px-4">
+          <div className="text-center mb-20">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="mb-6"
+            >
+              <Badge className="bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700 dark:from-purple-900/30 dark:to-pink-900/30 dark:text-purple-400 mb-4 px-4 py-1.5">
+                <Rocket className="h-3.5 w-3.5 mr-1.5" />
+                Quick Setup Process
+              </Badge>
+            </motion.div>
+            <motion.h2 
+              className="text-4xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-200 text-transparent bg-clip-text"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              viewport={{ once: true }}
+            >
+              Get Started in 4 Simple Steps
+            </motion.h2>
+            <motion.p 
+              className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              viewport={{ once: true }}
+            >
+              From signup to your first delivery - be operational in less than 2 hours
+            </motion.p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 relative">
+            {/* Connection Line */}
+            <div className="hidden lg:block absolute top-24 left-16 right-16 h-0.5 bg-gradient-to-r from-brand-200 via-blue-200 to-purple-200 dark:from-brand-700 dark:via-blue-700 dark:to-purple-700" />
+            
+            {processSteps.map((step, index) => (
+              <motion.div
+                key={index}
+                className="relative"
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.2 }}
+              >
+                <div className="text-center">
+                  {/* Step Number */}
+                  <motion.div 
+                    className="relative z-10 mx-auto mb-6"
+                    whileHover={{ scale: 1.1 }}
+                    transition={{ type: "spring", stiffness: 300 }}
+                  >
+                    <div className="h-24 w-24 mx-auto rounded-full bg-gradient-to-br from-brand-100 to-blue-100 dark:from-brand-900/30 dark:to-blue-900/30 flex items-center justify-center relative">
+                      <div className="h-20 w-20 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center shadow-lg">
+                        <span className="text-3xl font-bold bg-gradient-to-r from-brand-600 to-blue-600 text-transparent bg-clip-text">
+                          {step.number}
+                        </span>
+                      </div>
+                      <div className="absolute -bottom-2 -right-2 h-10 w-10 rounded-full bg-gradient-to-br from-brand-500 to-blue-500 flex items-center justify-center text-white shadow-md">
+                        {step.icon}
+                      </div>
+                    </div>
+                  </motion.div>
+                  
+                  {/* Content */}
+                  <motion.div
+                    whileHover={{ y: -5 }}
+                    className="bg-gray-50 dark:bg-gray-800 rounded-2xl p-6 h-full"
+                  >
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
+                      {step.title}
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-400">
+                      {step.description}
+                    </p>
+                  </motion.div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* CTA */}
+          <motion.div 
+            className="text-center mt-16"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.8 }}
+          >
+            <Button
+              size="xl"
+              onClick={() => navigate('/signup')}
+              className="bg-gradient-to-r from-brand-600 via-brand-500 to-blue-600 hover:from-brand-700 hover:via-brand-600 hover:to-blue-700 text-white shadow-xl hover:shadow-2xl px-8 py-6 text-lg font-semibold group"
+            >
+              Start Your Free Trial Now
+              <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+            </Button>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-4">
+              No credit card required • 14-day free trial • Cancel anytime
+            </p>
+          </motion.div>
         </div>
       </section>
 
       {/* Pricing Section */}
-      <section id="pricing" className="py-20 bg-white dark:bg-gray-900">
-        <div className="container mx-auto max-w-6xl px-4">
+      <section id="pricing" className="py-24 bg-gradient-to-b from-gray-50 to-white dark:from-gray-800/50 dark:to-gray-900">
+        <div className="container mx-auto max-w-7xl px-4">
           <motion.div 
-            className="text-center mb-16"
+            className="text-center mb-20"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
             viewport={{ once: true }}
           >
-            <Badge className="mb-4 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-0">
-              Simple, Transparent Pricing
+            <Badge className="mb-6 bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 dark:from-green-900/30 dark:to-emerald-900/30 dark:text-green-400 px-4 py-1.5">
+              <DollarSign className="h-3.5 w-3.5 mr-1.5" />
+              Flexible Pricing Plans
             </Badge>
-            <h2 className="text-3xl md:text-4xl font-bold mb-4 bg-gradient-to-r from-brand-700 to-blue-600 dark:from-brand-500 dark:to-blue-400 text-transparent bg-clip-text">
-              Choose Your Plan
+            <h2 className="text-4xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-gray-900 via-brand-700 to-green-700 dark:from-white dark:via-brand-400 dark:to-green-400 text-transparent bg-clip-text">
+              Investment That Pays for Itself
             </h2>
-            <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-              Start with a 14-day free trial. No credit card required.
+            <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto leading-relaxed">
+              Choose the perfect plan for your business. Upgrade, downgrade, or cancel anytime.
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+          {/* Pricing Toggle */}
+          <motion.div 
+            className="flex items-center justify-center mb-12"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+          >
+            <div className="bg-gray-100 dark:bg-gray-800 rounded-full p-1 flex items-center">
+              <button className="px-6 py-2 rounded-full bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-medium shadow-sm">
+                Monthly
+              </button>
+              <button className="px-6 py-2 rounded-full text-gray-600 dark:text-gray-400 font-medium">
+                Annual <span className="text-green-600 dark:text-green-400 text-sm ml-1">(Save 20%)</span>
+              </button>
+            </div>
+          </motion.div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-16">
             {pricingPlans.map((plan, index) => (
               <motion.div
                 key={index}
@@ -479,165 +1060,203 @@ export default function LandingPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 * index }}
                 viewport={{ once: true }}
-                whileHover={{ y: -5 }}
-                className={`relative ${plan.highlighted ? 'md:-mt-4' : ''}`}
+                whileHover={{ y: -10 }}
+                className={`relative ${plan.highlighted ? 'lg:scale-105 z-10' : ''}`}
               >
-                {plan.highlighted && (
-                  <div className="absolute -top-4 left-0 right-0 flex justify-center">
-                    <Badge className="bg-gradient-to-r from-brand-600 to-brand-500 text-white border-0">
-                      Most Popular
+                {plan.badge && (
+                  <div className="absolute -top-5 left-0 right-0 flex justify-center">
+                    <Badge className="bg-gradient-to-r from-brand-600 to-blue-600 text-white border-0 px-4 py-1.5 shadow-lg">
+                      <Sparkles className="h-3.5 w-3.5 mr-1" />
+                      {plan.badge}
                     </Badge>
                   </div>
                 )}
-                <Card className={`h-full ${plan.highlighted ? 'border-brand-500 shadow-xl' : 'border-gray-200 dark:border-gray-700'}`}>
+                <Card className={`h-full rounded-3xl overflow-hidden ${plan.highlighted ? 'border-2 border-brand-500 shadow-2xl bg-gradient-to-br from-white to-brand-50/20 dark:from-gray-800 dark:to-brand-950/20' : 'border-gray-200 dark:border-gray-700 shadow-lg'}`}>
                   <CardContent className="p-8">
-                    <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
-                    <p className="text-gray-600 dark:text-gray-400 mb-6">{plan.description}</p>
-                    <div className="mb-6">
-                      <span className="text-4xl font-bold">{plan.price}</span>
-                      {plan.period && <span className="text-gray-600 dark:text-gray-400">/{plan.period}</span>}
+                    {/* Plan Header */}
+                    <div className="mb-8">
+                      <h3 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">{plan.name}</h3>
+                      <p className="text-gray-600 dark:text-gray-400">{plan.description}</p>
                     </div>
+                    
+                    {/* Pricing */}
+                    <div className="mb-8">
+                      <div className="flex items-baseline gap-2 mb-2">
+                        <span className="text-5xl font-bold text-gray-900 dark:text-white">{plan.price}</span>
+                        {plan.period && <span className="text-gray-600 dark:text-gray-400 text-lg">/{plan.period}</span>}
+                      </div>
+                      {plan.savings && (
+                        <p className="text-sm text-green-600 dark:text-green-400 font-medium">{plan.savings}</p>
+                      )}
+                    </div>
+                    
+                    {/* CTA Button */}
                     <Button 
-                      className={`w-full mb-8 ${plan.highlighted ? 'bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-700 hover:to-brand-600 text-white' : ''}`}
-                      variant={plan.highlighted ? 'default' : 'outline'}
-                      onClick={() => navigate('/signup')}
+                      size="lg"
+                      className={`w-full mb-8 font-semibold ${plan.highlighted 
+                        ? 'bg-gradient-to-r from-brand-600 via-brand-500 to-blue-600 hover:from-brand-700 hover:via-brand-600 hover:to-blue-700 text-white shadow-lg' 
+                        : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white'}`}
+                      onClick={() => navigate(plan.name === 'Enterprise' ? '/contact' : '/signup')}
                     >
-                      {plan.name === 'Enterprise' ? 'Contact Sales' : 'Get Started'}
-                      <ChevronRight className="ml-2 h-4 w-4" />
+                      {plan.name === 'Enterprise' ? 'Contact Sales' : 'Start Free Trial'}
+                      <ChevronRight className="ml-2 h-5 w-5" />
                     </Button>
-                    <ul className="space-y-3">
+                    
+                    {/* Features */}
+                    <div className="space-y-3">
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Everything in {plan.name}:</p>
                       {plan.features.map((feature, idx) => (
-                        <li key={idx} className="flex items-start gap-3">
-                          <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
-                          <span className="text-gray-700 dark:text-gray-300">{feature}</span>
-                        </li>
+                        <motion.div
+                          key={idx}
+                          initial={{ opacity: 0, x: -20 }}
+                          whileInView={{ opacity: 1, x: 0 }}
+                          viewport={{ once: true }}
+                          transition={{ delay: 0.05 * idx }}
+                          className="flex items-start gap-3"
+                        >
+                          <div className="h-5 w-5 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                            <CheckCircle className="h-3 w-3 text-green-600 dark:text-green-400" />
+                          </div>
+                          <span className="text-gray-700 dark:text-gray-300 text-sm">{feature}</span>
+                        </motion.div>
                       ))}
-                    </ul>
+                    </div>
                   </CardContent>
                 </Card>
               </motion.div>
             ))}
           </div>
+
+          {/* Money Back Guarantee */}
+          <motion.div 
+            className="text-center mt-12"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+          >
+            <div className="inline-flex items-center gap-3 bg-green-50 dark:bg-green-900/20 rounded-full px-6 py-3">
+              <ShieldCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
+              <p className="text-green-700 dark:text-green-300 font-medium">
+                30-day money-back guarantee • No questions asked
+              </p>
+            </div>
+          </motion.div>
         </div>
       </section>
 
       {/* Testimonials */}
-      <section id="testimonials" className="py-20 bg-gray-50 dark:bg-gray-800/50">
-        <div className="container mx-auto max-w-6xl px-4">
+      <section id="testimonials" className="py-24 bg-white dark:bg-gray-900">
+        <div className="container mx-auto max-w-7xl px-4">
           <motion.div 
-            className="text-center mb-16"
+            className="text-center mb-20"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
             viewport={{ once: true }}
           >
-            <h2 className="text-3xl md:text-4xl font-bold mb-4 bg-gradient-to-r from-brand-700 to-blue-600 dark:from-brand-500 dark:to-blue-400 text-transparent bg-clip-text">
-              Trusted by Logistics Companies
+            <Badge className="mb-6 bg-gradient-to-r from-amber-100 to-orange-100 text-amber-700 dark:from-amber-900/30 dark:to-orange-900/30 dark:text-amber-400 px-4 py-1.5">
+              <Star className="h-3.5 w-3.5 mr-1.5" />
+              Customer Success Stories
+            </Badge>
+            <h2 className="text-4xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-200 text-transparent bg-clip-text">
+              Loved by Logistics Leaders
             </h2>
-            <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-              See what our customers have to say about DesiCargo.
+            <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
+              Join thousands of companies that trust DesiCargo to power their logistics operations
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <motion.div 
-              className="group"
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              viewport={{ once: true }}
-              whileHover={{ y: -5 }}
-            >
-              <Card className="h-full bg-white dark:bg-gray-800 hover:shadow-xl transition-all duration-300">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center">
-                      <div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center mr-4">
-                        <span className="text-blue-600 dark:text-blue-400 font-bold">AB</span>
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-gray-900 dark:text-white">Amit Bansal</h4>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">CEO, Express Logistics</p>
-                      </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-16">
+            {testimonials.slice(0, 2).map((testimonial, index) => (
+              <motion.div 
+                key={index}
+                className="group"
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 + index * 0.1 }}
+                viewport={{ once: true }}
+                whileHover={{ y: -5 }}
+              >
+                <Card className="h-full bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 border-gray-200 dark:border-gray-700 hover:border-brand-300 dark:hover:border-brand-600 shadow-lg hover:shadow-2xl transition-all duration-300 rounded-2xl overflow-hidden">
+                  <CardContent className="p-8">
+                    {/* Quote */}
+                    <div className="mb-6">
+                      <div className="text-6xl text-brand-200 dark:text-brand-800 mb-4">“</div>
+                      <p className="text-lg text-gray-700 dark:text-gray-300 leading-relaxed font-medium">
+                        {testimonial.quote}
+                      </p>
                     </div>
-                    <div className="flex gap-1">
-                      {[...Array(5)].map((_, i) => (
-                        <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                    
+                    {/* Metrics */}
+                    <div className="grid grid-cols-3 gap-4 mb-6 pb-6 border-b border-gray-200 dark:border-gray-700">
+                      {testimonial.metrics.map((metric, idx) => (
+                        <div key={idx} className="text-center">
+                          <p className="text-sm font-semibold text-brand-600 dark:text-brand-400">
+                            {metric}
+                          </p>
+                        </div>
                       ))}
                     </div>
-                  </div>
-                  <p className="text-gray-600 dark:text-gray-300 italic">
-                    "DesiCargo has transformed our logistics operations. The platform is intuitive and has helped us reduce operational costs by 30%."
-                  </p>
-                </CardContent>
-              </Card>
-            </motion.div>
+                    
+                    {/* Author */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="h-14 w-14 rounded-full bg-gradient-to-br from-brand-100 to-blue-100 dark:from-brand-900/30 dark:to-blue-900/30 flex items-center justify-center text-2xl">
+                          {testimonial.image}
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-gray-900 dark:text-white">{testimonial.name}</h4>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">{testimonial.role}</p>
+                          <p className="text-xs text-brand-600 dark:text-brand-400">{testimonial.company}</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-0.5">
+                        {[...Array(testimonial.rating)].map((_, i) => (
+                          <Star key={i} className="h-5 w-5 fill-yellow-400 text-yellow-400" />
+                        ))}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
 
-            <motion.div 
-              className="group"
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              viewport={{ once: true }}
-              whileHover={{ y: -5 }}
-            >
-              <Card className="h-full bg-white dark:bg-gray-800 hover:shadow-xl transition-all duration-300">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center">
-                      <div className="h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/50 flex items-center justify-center mr-4">
-                        <span className="text-green-600 dark:text-green-400 font-bold">SP</span>
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-gray-900 dark:text-white">Sunita Patel</h4>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Operations Manager, FastTrack Cargo</p>
-                      </div>
-                    </div>
-                    <div className="flex gap-1">
-                      {[...Array(5)].map((_, i) => (
+          {/* Smaller Testimonials Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {testimonials.slice(2).map((testimonial, index) => (
+              <motion.div 
+                key={index + 2}
+                className="group"
+                initial={{ opacity: 0, scale: 0.95 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                transition={{ delay: index * 0.1 }}
+                viewport={{ once: true }}
+                whileHover={{ y: -5 }}
+              >
+                <Card className="h-full bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-brand-300 dark:hover:border-brand-600 shadow-md hover:shadow-xl transition-all duration-300 rounded-xl">
+                  <CardContent className="p-6">
+                    <div className="flex gap-1 mb-4">
+                      {[...Array(testimonial.rating)].map((_, i) => (
                         <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
                       ))}
                     </div>
-                  </div>
-                  <p className="text-gray-600 dark:text-gray-300 italic">
-                    "The real-time tracking and POD features have significantly improved our customer satisfaction. Our clients love the transparency."
-                  </p>
-                </CardContent>
-              </Card>
-            </motion.div>
-
-            <motion.div 
-              className="group"
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
-              viewport={{ once: true }}
-              whileHover={{ y: -5 }}
-            >
-              <Card className="h-full bg-white dark:bg-gray-800 hover:shadow-xl transition-all duration-300">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center">
-                      <div className="h-12 w-12 rounded-full bg-purple-100 dark:bg-purple-900/50 flex items-center justify-center mr-4">
-                        <span className="text-purple-600 dark:text-purple-400 font-bold">RK</span>
+                    <p className="text-gray-700 dark:text-gray-300 mb-4 italic">
+                      "{testimonial.quote}"
+                    </p>
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-gradient-to-br from-brand-100 to-blue-100 dark:from-brand-900/30 dark:to-blue-900/30 flex items-center justify-center text-lg">
+                        {testimonial.image}
                       </div>
                       <div>
-                        <h4 className="font-bold text-gray-900 dark:text-white">Rajesh Kumar</h4>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Director, Global Freight Solutions</p>
+                        <h4 className="font-semibold text-gray-900 dark:text-white text-sm">{testimonial.name}</h4>
+                        <p className="text-xs text-gray-600 dark:text-gray-400">{testimonial.role}</p>
                       </div>
                     </div>
-                    <div className="flex gap-1">
-                      {[...Array(5)].map((_, i) => (
-                        <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                      ))}
-                    </div>
-                  </div>
-                  <p className="text-gray-600 dark:text-gray-300 italic">
-                    "We've been able to scale our operations across multiple branches seamlessly with DesiCargo. The analytics help us make data-driven decisions."
-                  </p>
-                </CardContent>
-              </Card>
-            </motion.div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
           </div>
         </div>
       </section>
@@ -843,7 +1462,7 @@ export default function LandingPage() {
             <div>
               <h3 className="text-lg font-bold mb-4 text-white">Company</h3>
               <ul className="space-y-2">
-                <li><a href="#" className="hover:text-brand-400 transition-colors">About Us</a></li>
+                <li><button onClick={() => navigate('/about')} className="hover:text-brand-400 transition-colors">About Us</button></li>
                 <li><a href="#" className="hover:text-brand-400 transition-colors">Careers</a></li>
                 <li><a href="#" className="hover:text-brand-400 transition-colors">Contact</a></li>
                 <li><a href="#" className="hover:text-brand-400 transition-colors">Privacy Policy</a></li>

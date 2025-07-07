@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
-import { warehouseService, type Warehouse, type WarehouseLocation, type CreateWarehouseData, type CreateLocationData } from '@/services/warehouses';
+import { warehouseService, type Warehouse, type CreateWarehouseData, type CreateLocationData } from '@/services/warehouses';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBranchSelection } from '@/contexts/BranchSelectionContext';
 import { ArticleTrackingView } from '@/components/warehouse/ArticleTrackingView';

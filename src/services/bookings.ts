@@ -10,6 +10,58 @@ export interface BookingFilters {
   end_date?: string;
 }
 
+export interface BookingArticle {
+  article_id: string;
+  quantity: number;
+  actual_weight: number;
+  charged_weight: number;
+  declared_value: number;
+  rate_per_unit: number;
+  rate_type: 'per_kg' | 'per_quantity';
+  loading_charge_per_unit: number;
+  unloading_charge_per_unit: number;
+  insurance_required?: boolean;
+  insurance_value?: number;
+  insurance_charge?: number;
+  packaging_charge?: number;
+  description?: string;
+  private_mark_number?: string;
+  is_fragile?: boolean;
+  special_instructions?: string;
+  warehouse_location?: string;
+}
+
+export interface CreateBookingData {
+  // Core booking fields
+  lr_type: 'system' | 'manual';
+  manual_lr_number?: string;
+  branch_id?: string;
+  from_branch: string;
+  to_branch: string;
+  
+  // Customer information
+  sender_id: string;
+  receiver_id: string;
+  
+  // Articles (new multi-article support)
+  articles: BookingArticle[];
+  
+  // Payment and delivery
+  payment_type: 'Paid' | 'To Pay' | 'Quotation';
+  delivery_type?: 'Standard' | 'Express' | 'Same Day';
+  priority?: 'Normal' | 'High' | 'Urgent';
+  expected_delivery_date?: string;
+  
+  // Additional details
+  reference_number?: string;
+  remarks?: string;
+  has_invoice?: boolean;
+  invoice_number?: string;
+  invoice_date?: string;
+  invoice_amount?: number;
+  eway_bill_number?: string;
+}
+
 class BookingService {
   // Get all bookings with filters
   async getBookings(filters?: BookingFilters): Promise<Booking[]> {
@@ -23,8 +75,15 @@ class BookingService {
     return response.data.data || response.data;
   }
 
-  // Create new booking
-  async createBooking(data: Omit<Booking, 'id' | 'created_at' | 'updated_at'>): Promise<Booking> {
+  // Create new booking (updated to support multi-article)
+  async createBooking(data: CreateBookingData | Omit<Booking, 'id' | 'created_at' | 'updated_at'>): Promise<Booking> {
+    // If the data has 'articles' array, it's the new format
+    if ('articles' in data && Array.isArray(data.articles)) {
+      const response = await api.post('/bookings', data);
+      return response.data.data || response.data;
+    }
+    
+    // Otherwise, it's the old format - convert to new format if needed
     const response = await api.post('/bookings', data);
     return response.data.data || response.data;
   }

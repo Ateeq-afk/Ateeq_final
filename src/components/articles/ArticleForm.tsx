@@ -163,7 +163,6 @@ const CATEGORIES = [
 export default function ArticleForm({ onSubmit, onCancel, initialData }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState('basic');
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [formProgress, setFormProgress] = useState(0);
@@ -214,7 +213,7 @@ export default function ArticleForm({ onSubmit, onCancel, initialData }: Props) 
       'tax_rate', 'unit_of_measure', 'min_quantity', 'category'
     ];
     const filledFields = fields.filter(field => {
-      const value = watchedFields[field];
+      const value = (watchedFields as any)[field];
       return value !== undefined && value !== '' && value !== 0;
     });
     setFormProgress((filledFields.length / fields.length) * 100);

@@ -4,6 +4,7 @@ import { useNotificationSystem } from '@/hooks/useNotificationSystem';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBranchSelection } from '@/contexts/BranchSelectionContext';
 import { useBookings } from '@/hooks/useBookings';
+import { loadingService } from '@/services/loading';
 
 export function useLoading() {
   const [loading, setLoading] = useState(false);
@@ -29,20 +30,23 @@ export function useLoading() {
       
       console.log('Getting pending bookings for loading, branchId:', effectiveBranchId);
       
-      // Get bookings that are in 'booked' status and have loading_status 'pending'
+      // Get bookings that are in 'booked' status and not yet loaded
       const { data, error: fetchError } = await supabase
         .from('bookings')
         .select(`
           *,
+          booking_articles(
+            *,
+            article:articles(*)
+          ),
           sender:customers!sender_id(id, name, mobile, email, type),
           receiver:customers!receiver_id(id, name, mobile, email, type),
-          article:articles(id, name, description, base_rate),
           from_branch_details:branches!from_branch(id, name, city, state),
           to_branch_details:branches!to_branch(id, name, city, state)
         `)
         .eq('from_branch', effectiveBranchId)
         .eq('status', 'booked')
-        .eq('loading_status', 'pending')
+        .is('loading_session_id', null)
         .order('created_at', { ascending: false });
       
       if (fetchError) {
@@ -76,34 +80,16 @@ export function useLoading() {
         return [];
       }
       
-      console.log('Getting active OGPLs, branchId:', effectiveBranchId);
+      console.log('Getting active OGPLs');
       
-      const { data, error: fetchError } = await supabase
-        .from('ogpl')
-        .select(`
-          *,
-          vehicle:vehicles(*),
-          from_station:branches!from_station(*),
-          to_station:branches!to_station(*),
-          loading_records(
-            id,
-            booking_id,
-            loaded_at,
-            loaded_by
-          )
-        `)
-        .eq('from_station', effectiveBranchId)
-        .eq('status', 'created')
-        .order('created_at', { ascending: false });
+      // Use the loading service instead of direct Supabase calls
+      const data = await loadingService.getOGPLs({ status: 'created' });
       
-      if (fetchError) {
-        console.error('Error fetching active OGPLs:', fetchError);
-        const errorMessage = `Failed to fetch active OGPLs: ${fetchError.message} (Code: ${fetchError.code})`;
-        throw new Error(errorMessage);
-      }
+      // Filter by branch since the API doesn't support branch filtering yet
+      const filteredData = data.filter((ogpl: any) => ogpl.from_station === effectiveBranchId);
       
-      console.log('Active OGPLs:', data?.length);
-      return data || [];
+      console.log('Active OGPLs:', filteredData.length);
+      return filteredData;
     } catch (err) {
       console.error('Failed to get active OGPLs:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to get active OGPLs';
@@ -130,31 +116,16 @@ export function useLoading() {
       
       console.log('Creating OGPL:', data);
       
-      // Generate OGPL number
-      const ogplNumber = `OGPL-${Date.now().toString().slice(-8)}`;
-      
-      // Create the OGPL
-      const { data: ogplData, error: ogplError } = await supabase
-        .from('ogpl')
-        .insert({
-          ogpl_number: ogplNumber,
-          vehicle_id: data.vehicleId,
-          from_station: data.fromBranchId,
-          to_station: data.toBranchId,
-          transit_date: data.transitDate,
-          primary_driver_name: data.driverName,
-          primary_driver_mobile: data.driverMobile,
-          remarks: data.remarks,
-          status: 'created'
-        })
-        .select()
-        .single();
-      
-      if (ogplError) {
-        console.error('Error creating OGPL:', ogplError);
-        const errorMessage = `Failed to create OGPL: ${ogplError.message} (Code: ${ogplError.code})`;
-        throw new Error(errorMessage);
-      }
+      // Use the loading service
+      const ogplData = await loadingService.createOGPL({
+        vehicle_id: data.vehicleId,
+        from_station: data.fromBranchId,
+        to_station: data.toBranchId,
+        transit_date: data.transitDate,
+        primary_driver_name: data.driverName,
+        primary_driver_mobile: data.driverMobile,
+        remarks: data.remarks
+      });
       
       console.log('OGPL created:', ogplData);
       return ogplData;
@@ -184,78 +155,17 @@ export function useLoading() {
       
       console.log('Creating loading session:', data);
       
-      // 1. Create the loading session
-      const { data: sessionData, error: sessionError } = await supabase
-        .from('loading_sessions')
-        .insert({
-          ogpl_id: data.ogplId,
-          loaded_by: 'Admin User', // In a real app, this would be the current user
-          vehicle_id: data.vehicleId,
-          from_branch_id: data.fromBranchId,
-          to_branch_id: data.toBranchId,
-          notes: data.notes,
-          total_items: data.bookingIds.length
-        })
-        .select()
-        .single();
-      
-      if (sessionError) {
-        console.error('Error creating loading session:', sessionError);
-        const errorMessage = `Failed to create loading session: ${sessionError.message} (Code: ${sessionError.code})`;
-        throw new Error(errorMessage);
-      }
+      // Use the loading service
+      const sessionData = await loadingService.createLoadingSession({
+        ogpl_id: data.ogplId,
+        vehicle_id: data.vehicleId,
+        from_branch_id: data.fromBranchId,
+        to_branch_id: data.toBranchId,
+        booking_ids: data.bookingIds,
+        notes: data.notes
+      });
       
       console.log('Loading session created:', sessionData);
-      
-      // 2. Create loading records for each booking
-      const loadingRecords = data.bookingIds.map(bookingId => ({
-        ogpl_id: data.ogplId,
-        booking_id: bookingId,
-        loaded_by: 'Admin User' // In a real app, this would be the current user
-      }));
-      
-      const { data: recordsData, error: recordsError } = await supabase
-        .from('loading_records')
-        .insert(loadingRecords)
-        .select();
-      
-      if (recordsError) {
-        console.error('Error creating loading records:', recordsError);
-        const errorMessage = `Failed to create loading records: ${recordsError.message} (Code: ${recordsError.code})`;
-        throw new Error(errorMessage);
-      }
-      
-      console.log('Loading records created:', recordsData?.length);
-      
-      // 3. Update the status of each booking
-      for (const bookingId of data.bookingIds) {
-        try {
-          await updateBookingStatus(
-            bookingId, 
-            'in_transit', 
-            { 
-              loading_status: 'loaded',
-              loading_session_id: sessionData.id
-            }
-          );
-        } catch (bookingError) {
-          console.error(`Failed to update booking ${bookingId}:`, bookingError);
-          const errorMessage = bookingError instanceof Error ? bookingError.message : 'Unknown error';
-          throw new Error(`Failed to update booking ${bookingId}: ${errorMessage}`);
-        }
-      }
-      
-      // 4. Update the OGPL status to in_transit
-      const { error: ogplError } = await supabase
-        .from('ogpl')
-        .update({ status: 'in_transit' })
-        .eq('id', data.ogplId);
-      
-      if (ogplError) {
-        console.error('Error updating OGPL status:', ogplError);
-        const errorMessage = `Failed to update OGPL status: ${ogplError.message} (Code: ${ogplError.code})`;
-        throw new Error(errorMessage);
-      }
       
       showSuccess('Loading Complete', `${data.bookingIds.length} bookings have been loaded successfully`);
       return sessionData;
@@ -283,28 +193,16 @@ export function useLoading() {
         return [];
       }
       
-      console.log('Getting loading history, branchId:', effectiveBranchId);
+      console.log('Getting loading history');
       
-      const { data, error: fetchError } = await supabase
-        .from('loading_sessions')
-        .select(`
-          *,
-          ogpl:ogpl(*),
-          vehicle:vehicles(*),
-          from_branch:branches!from_branch_id(*),
-          to_branch:branches!to_branch_id(*)
-        `)
-        .eq('from_branch_id', effectiveBranchId)
-        .order('created_at', { ascending: false });
+      // Use the loading service
+      const data = await loadingService.getLoadingSessions();
       
-      if (fetchError) {
-        console.error('Error fetching loading history:', fetchError);
-        const errorMessage = `Failed to fetch loading history: ${fetchError.message} (Code: ${fetchError.code})`;
-        throw new Error(errorMessage);
-      }
+      // Filter by branch since the API doesn't support branch filtering yet
+      const filteredData = data.filter((session: any) => session.from_branch_id === effectiveBranchId);
       
-      console.log('Loading history:', data?.length);
-      return data || [];
+      console.log('Loading history:', filteredData.length);
+      return filteredData;
     } catch (err) {
       console.error('Failed to get loading history:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to get loading history';

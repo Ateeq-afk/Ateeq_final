@@ -64,6 +64,7 @@ import ProofOfDelivery from './ProofOfDelivery';
 import BookingCard from './BookingCard';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { useHotkeys } from 'react-hotkeys-hook';
+import { BookingFormWizard } from './BookingFormWizard';
 
 const DEFAULT_FILTERS: Filters = {
   search: '',
@@ -115,6 +116,7 @@ export default function BookingListEnhanced() {
   });
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [showWizard, setShowWizard] = useState(false);
 
   // Data Fetching
   const { bookings, loading: isLoading, error, refresh, updateBookingStatus } = useBookings();
@@ -135,7 +137,7 @@ export default function BookingListEnhanced() {
   }, [filtered]);
 
   // Keyboard shortcuts
-  useHotkeys('cmd+n, ctrl+n', () => navigate('/dashboard/new-booking'), [navigate]);
+  useHotkeys('cmd+n, ctrl+n', () => navigate('/dashboard/bookings/new'), [navigate]);
   useHotkeys('cmd+r, ctrl+r', () => refresh(), [refresh]);
   useHotkeys('cmd+p, ctrl+p', () => handlePrint(), [filtered, selectedIds]);
   useHotkeys('/', () => document.getElementById('search-input')?.focus());
@@ -406,14 +408,28 @@ export default function BookingListEnhanced() {
                 <RefreshCw className="h-4 w-4" />
               </Button>
 
-              <Button
-                size="sm"
-                onClick={() => navigate('/dashboard/new-booking')}
-                className="bg-brand-700 hover:bg-brand-600 text-white shadow-lg"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                New Booking
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="sm"
+                    className="bg-brand-700 hover:bg-brand-600 text-white shadow-lg"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    New Booking
+                    <ChevronDown className="h-4 w-4 ml-2" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setShowWizard(true)}>
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Wizard Mode (Recommended)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/dashboard/bookings/new')}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Advanced Form
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </motion.div>
@@ -875,6 +891,16 @@ export default function BookingListEnhanced() {
               bookingId={showPODId}
               onClose={() => setShowPODId(null)}
               onSubmit={handlePODSubmit}
+            />
+          )}
+          {showWizard && (
+            <BookingFormWizard
+              onClose={() => setShowWizard(false)}
+              onBookingCreated={(booking) => {
+                setShowWizard(false);
+                refresh();
+                showSuccess('Booking created successfully!', `LR Number: ${booking.lr_number}`);
+              }}
             />
           )}
         </AnimatePresence>

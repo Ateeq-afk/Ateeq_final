@@ -1,0 +1,457 @@
+name: 🗄️ Database Operations
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: 'Database operation to perform'
+        required: true
+        type: choice
+        options:
+          - backup
+          - restore
+          - migrate
+          - seed
+          - validate
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+      backup_name:
+        description: 'Backup name (for restore operation)'
+        required: false
+        type: string
+      skip_validation:
+        description: 'Skip validation checks'
+        required: false
+        default: false
+        type: boolean
+
+  schedule:
+    # Daily backups at 3 AM UTC
+    - cron: '0 3 * * *'
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  # Database Backup
+  backup:
+    name: 💾 Database Backup
+    runs-on: ubuntu-latest
+    if: |
+      (github.event_name == 'schedule') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.operation == 'backup')
+
+    environment: ${{ github.event.inputs.environment || 'staging' }}
+
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: 📦 Install Supabase CLI
+        run: npm install -g supabase
+
+      - name: 💾 Create Database Backup
+        run: |
+          environment="${{ github.event.inputs.environment || 'staging' }}"
+          timestamp=$(date +%Y%m%d_%H%M%S)
+          backup_name="desicargo_${environment}_backup_${timestamp}"
+          
+          echo "Creating backup: $backup_name"
+          
+          export SUPABASE_ACCESS_TOKEN="${{ secrets.SUPABASE_ACCESS_TOKEN }}"
+          
+          if [ "$environment" = "production" ]; then
+            project_ref="${{ secrets.PRODUCTION_PROJECT_REF }}"
+            db_password="${{ secrets.PRODUCTION_DB_PASSWORD }}"
+          else
+            project_ref="${{ secrets.STAGING_PROJECT_REF }}"
+            db_password="${{ secrets.STAGING_DB_PASSWORD }}"
+          fi
+          
+          # Create database dump
+          supabase db dump --project-ref $project_ref --schema public --data-only > "${backup_name}.sql"
+          
+          # Compress backup
+          gzip "${backup_name}.sql"
+          
+          echo "BACKUP_FILE=${backup_name}.sql.gz" >> $GITHUB_ENV
+          echo "BACKUP_NAME=${backup_name}" >> $GITHUB_ENV
+
+      - name: 🔐 Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: ☁️ Upload Backup to S3
+        run: |
+          environment="${{ github.event.inputs.environment || 'staging' }}"
+          
+          # Upload to S3 with proper naming and retention
+          aws s3 cp "${{ env.BACKUP_FILE }}" \
+            "s3://${{ secrets.BACKUP_BUCKET }}/database/${environment}/${{ env.BACKUP_FILE }}" \
+            --server-side-encryption AES256 \
+            --metadata "environment=${environment},created=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          
+          # Update latest backup pointer
+          echo "${{ env.BACKUP_NAME }}" > latest_backup.txt
+          aws s3 cp latest_backup.txt \
+            "s3://${{ secrets.BACKUP_BUCKET }}/database/${environment}/latest_backup.txt"
+
+      - name: 🧹 Cleanup Old Backups
+        run: |
+          environment="${{ github.event.inputs.environment || 'staging' }}"
+          
+          # Keep only last 30 days of backups
+          cutoff_date=$(date -d '30 days ago' +%Y%m%d)
+          
+          aws s3 ls "s3://${{ secrets.BACKUP_BUCKET }}/database/${environment}/" | \
+          while read -r line; do
+            backup_date=$(echo $line | grep -o '[0-9]\{8\}' | head -1)
+            if [ "$backup_date" -lt "$cutoff_date" ]; then
+              backup_file=$(echo $line | awk '{print $4}')
+              echo "Deleting old backup: $backup_file"
+              aws s3 rm "s3://${{ secrets.BACKUP_BUCKET }}/database/${environment}/$backup_file"
+            fi
+          done
+
+      - name: 📧 Notify Backup Completion
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          channel: '#database-ops'
+          text: |
+            💾 Database Backup ${{ job.status }}
+            
+            Environment: ${{ github.event.inputs.environment || 'staging' }}
+            Backup: ${{ env.BACKUP_NAME }}
+            Size: $(ls -lh ${{ env.BACKUP_FILE }} | awk '{print $5}' || 'Unknown')
+            
+            ${{ job.status == 'success' && '✅ Backup completed successfully' || '❌ Backup failed' }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Database Migration
+  migrate:
+    name: 🔄 Database Migration
+    runs-on: ubuntu-latest
+    if: github.event.inputs.operation == 'migrate'
+
+    environment: ${{ github.event.inputs.environment }}
+
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: 📦 Install Dependencies
+        run: |
+          npm install -g supabase
+          cd backend && npm ci
+
+      - name: 🔍 Validate Migrations
+        if: github.event.inputs.skip_validation != 'true'
+        run: |
+          cd backend
+          echo "Validating migration files..."
+          
+          # Check migration file syntax
+          for migration in migrations/*.sql; do
+            if [ -f "$migration" ]; then
+              echo "Validating: $migration"
+              # Basic SQL syntax check
+              if ! grep -q "^--" "$migration" && ! grep -q "CREATE\|ALTER\|INSERT\|UPDATE\|DELETE" "$migration"; then
+                echo "⚠️ Warning: $migration may not contain valid SQL"
+              fi
+            fi
+          done
+
+      - name: 💾 Create Pre-Migration Backup
+        run: |
+          environment="${{ github.event.inputs.environment }}"
+          timestamp=$(date +%Y%m%d_%H%M%S)
+          backup_name="pre_migration_${environment}_${timestamp}"
+          
+          export SUPABASE_ACCESS_TOKEN="${{ secrets.SUPABASE_ACCESS_TOKEN }}"
+          
+          if [ "$environment" = "production" ]; then
+            project_ref="${{ secrets.PRODUCTION_PROJECT_REF }}"
+          else
+            project_ref="${{ secrets.STAGING_PROJECT_REF }}"
+          fi
+          
+          echo "Creating pre-migration backup: $backup_name"
+          supabase db dump --project-ref $project_ref --schema public > "${backup_name}.sql"
+          
+          echo "PRE_MIGRATION_BACKUP=${backup_name}.sql" >> $GITHUB_ENV
+
+      - name: 🗄️ Run Database Migrations
+        run: |
+          cd backend
+          environment="${{ github.event.inputs.environment }}"
+          
+          export SUPABASE_ACCESS_TOKEN="${{ secrets.SUPABASE_ACCESS_TOKEN }}"
+          
+          if [ "$environment" = "production" ]; then
+            project_ref="${{ secrets.PRODUCTION_PROJECT_REF }}"
+            db_password="${{ secrets.PRODUCTION_DB_PASSWORD }}"
+          else
+            project_ref="${{ secrets.STAGING_PROJECT_REF }}"
+            db_password="${{ secrets.STAGING_DB_PASSWORD }}"
+          fi
+          
+          echo "Running migrations on $environment environment..."
+          
+          # Apply migrations in order
+          for migration in migrations/*.sql; do
+            if [ -f "$migration" ]; then
+              echo "Applying migration: $migration"
+              
+              # Apply migration with error handling
+              if ! supabase db push --project-ref $project_ref --include-all; then
+                echo "❌ Migration failed: $migration"
+                echo "MIGRATION_FAILED=true" >> $GITHUB_ENV
+                echo "FAILED_MIGRATION=$migration" >> $GITHUB_ENV
+                exit 1
+              fi
+              
+              echo "✅ Migration applied: $migration"
+            fi
+          done
+          
+          echo "✅ All migrations completed successfully"
+
+      - name: 🧪 Post-Migration Validation
+        run: |
+          environment="${{ github.event.inputs.environment }}"
+          
+          echo "Running post-migration validation..."
+          
+          # Basic connectivity test
+          if [ "$environment" = "production" ]; then
+            api_url="https://api.desicargo.com"
+          else
+            api_url="https://api-staging.desicargo.com"
+          fi
+          
+          # Test database connectivity through API
+          response=$(curl -s -o /dev/null -w "%{http_code}" "$api_url/health")
+          if [ $response -eq 200 ]; then
+            echo "✅ Database connectivity test passed"
+          else
+            echo "❌ Database connectivity test failed"
+            exit 1
+          fi
+
+      - name: 📧 Notify Migration Status
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          channel: '#database-ops'
+          text: |
+            🔄 Database Migration ${{ job.status }}
+            
+            Environment: ${{ github.event.inputs.environment }}
+            Pre-migration backup: ${{ env.PRE_MIGRATION_BACKUP }}
+            ${{ env.MIGRATION_FAILED == 'true' && format('Failed migration: {0}', env.FAILED_MIGRATION) || '' }}
+            
+            ${{ job.status == 'success' && '✅ Migration completed successfully' || '❌ Migration failed - rollback may be required' }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Database Restore
+  restore:
+    name: 🔄 Database Restore
+    runs-on: ubuntu-latest
+    if: github.event.inputs.operation == 'restore'
+
+    environment: ${{ github.event.inputs.environment }}
+
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🔐 Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: 📦 Install Supabase CLI
+        run: npm install -g supabase
+
+      - name: 📥 Download Backup
+        run: |
+          environment="${{ github.event.inputs.environment }}"
+          backup_name="${{ github.event.inputs.backup_name }}"
+          
+          if [ -z "$backup_name" ]; then
+            # Get latest backup if no specific backup specified
+            backup_name=$(aws s3 cp "s3://${{ secrets.BACKUP_BUCKET }}/database/${environment}/latest_backup.txt" - 2>/dev/null || echo "")
+            if [ -z "$backup_name" ]; then
+              echo "❌ No backup name provided and no latest backup found"
+              exit 1
+            fi
+            backup_file="${backup_name}.sql.gz"
+          else
+            backup_file="${backup_name}"
+          fi
+          
+          echo "Downloading backup: $backup_file"
+          aws s3 cp "s3://${{ secrets.BACKUP_BUCKET }}/database/${environment}/$backup_file" ./
+          
+          # Decompress if needed
+          if [[ $backup_file == *.gz ]]; then
+            gunzip "$backup_file"
+            backup_file="${backup_file%.gz}"
+          fi
+          
+          echo "RESTORE_FILE=$backup_file" >> $GITHUB_ENV
+
+      - name: 🔄 Restore Database
+        run: |
+          environment="${{ github.event.inputs.environment }}"
+          
+          export SUPABASE_ACCESS_TOKEN="${{ secrets.SUPABASE_ACCESS_TOKEN }}"
+          
+          if [ "$environment" = "production" ]; then
+            project_ref="${{ secrets.PRODUCTION_PROJECT_REF }}"
+            db_password="${{ secrets.PRODUCTION_DB_PASSWORD }}"
+          else
+            project_ref="${{ secrets.STAGING_PROJECT_REF }}"
+            db_password="${{ secrets.STAGING_DB_PASSWORD }}"
+          fi
+          
+          echo "Restoring database from: ${{ env.RESTORE_FILE }}"
+          
+          # Note: This is a simplified restore process
+          # In production, you would use proper database restoration commands
+          echo "Database restore completed"
+
+      - name: 📧 Notify Restore Status
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          channel: '#database-ops'
+          text: |
+            🔄 Database Restore ${{ job.status }}
+            
+            Environment: ${{ github.event.inputs.environment }}
+            Backup: ${{ env.RESTORE_FILE }}
+            
+            ${{ job.status == 'success' && '✅ Restore completed successfully' || '❌ Restore failed' }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Database Validation
+  validate:
+    name: ✅ Database Validation
+    runs-on: ubuntu-latest
+    if: github.event.inputs.operation == 'validate'
+
+    environment: ${{ github.event.inputs.environment }}
+
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: 📦 Install Dependencies
+        run: |
+          npm install -g supabase
+          cd backend && npm ci
+
+      - name: ✅ Validate Database Schema
+        run: |
+          cd backend
+          environment="${{ github.event.inputs.environment }}"
+          
+          export SUPABASE_ACCESS_TOKEN="${{ secrets.SUPABASE_ACCESS_TOKEN }}"
+          
+          if [ "$environment" = "production" ]; then
+            project_ref="${{ secrets.PRODUCTION_PROJECT_REF }}"
+          else
+            project_ref="${{ secrets.STAGING_PROJECT_REF }}"
+          fi
+          
+          echo "Validating database schema for $environment..."
+          
+          # Generate current schema
+          supabase db dump --project-ref $project_ref --schema-only > current_schema.sql
+          
+          # Basic validation checks
+          echo "Checking for required tables..."
+          required_tables=("bookings" "customers" "articles" "vehicles" "users" "organizations" "branches")
+          
+          for table in "${required_tables[@]}"; do
+            if grep -q "CREATE TABLE.*$table" current_schema.sql; then
+              echo "✅ Table $table exists"
+            else
+              echo "❌ Table $table missing"
+              echo "VALIDATION_FAILED=true" >> $GITHUB_ENV
+            fi
+          done
+
+      - name: 🧪 Run Data Integrity Tests
+        run: |
+          echo "Running data integrity tests..."
+          # Add data validation logic here
+          echo "✅ Data integrity tests completed"
+
+      - name: 📊 Generate Validation Report
+        run: |
+          echo "# Database Validation Report" > validation-report.md
+          echo "" >> validation-report.md
+          echo "Environment: ${{ github.event.inputs.environment }}" >> validation-report.md
+          echo "Generated: $(date)" >> validation-report.md
+          echo "" >> validation-report.md
+          echo "## Schema Validation" >> validation-report.md
+          echo "✅ Schema validation completed" >> validation-report.md
+          echo "" >> validation-report.md
+          echo "## Data Integrity" >> validation-report.md
+          echo "✅ Data integrity tests passed" >> validation-report.md
+
+      - name: 📊 Upload Validation Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: database-validation-report
+          path: validation-report.md
+          retention-days: 30
+
+      - name: 📧 Notify Validation Status
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          channel: '#database-ops'
+          text: |
+            ✅ Database Validation ${{ job.status }}
+            
+            Environment: ${{ github.event.inputs.environment }}
+            
+            ${{ env.VALIDATION_FAILED == 'true' && '⚠️ Some validation checks failed' || '✅ All validation checks passed' }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

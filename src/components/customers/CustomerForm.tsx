@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Building2, User, Phone, FileText, Mail, MapPin, IndianRupee, Clock, Loader2, AlertTriangle } from 'lucide-react';
+import { Building2, User, Phone, FileText, Mail, MapPin, IndianRupee, Clock, Loader2, AlertTriangle, Shield, CreditCard, Calendar, Percent, FileSignature } from 'lucide-react';
 import type { Customer } from '@/types';
 import { useBranches } from '@/hooks/useBranches';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -29,8 +29,18 @@ const formSchema = z.object({
   city: z.string().optional(),
   state: z.string().optional(),
   pincode: z.string().optional(),
+  // Credit management fields
+  category: z.enum(['Regular', 'Premium', 'Corporate']).default('Regular'),
   credit_limit: z.number().min(0).optional(),
   payment_terms: z.string().optional(),
+  credit_status: z.enum(['Active', 'On Hold', 'Blocked', 'Suspended']).default('Active'),
+  billing_cycle: z.enum(['Weekly', 'Biweekly', 'Monthly', 'Quarterly']).default('Monthly'),
+  auto_invoice: z.boolean().default(false),
+  portal_access: z.boolean().default(false),
+  discount_percentage: z.number().min(0).max(100).default(0),
+  sla_delivery_hours: z.number().min(0).default(48),
+  sla_complaint_hours: z.number().min(0).default(24),
+  notes: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -43,7 +53,7 @@ interface Props {
 
 const CustomerForm = memo(function CustomerForm({ onSubmit, onCancel, initialData }: Props) {
   const { branches } = useBranches();
-  const [activeTab, setActiveTab] = useState<'basic' | 'contact' | 'financial'>('basic');
+  const [activeTab, setActiveTab] = useState<'basic' | 'contact' | 'financial' | 'credit'>('basic');
   const [formData] = useState<FormValues | null>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -71,6 +81,14 @@ const CustomerForm = memo(function CustomerForm({ onSubmit, onCancel, initialDat
       type: (initialData?.type as FormValues['type']) || formData?.type || 'individual',
       branch_id: initialData?.branch_id || formData?.branch_id || branches[0]?.id,
       credit_limit: initialData?.credit_limit || formData?.credit_limit || 0,
+      category: (initialData?.category as FormValues['category']) || formData?.category || 'Regular',
+      credit_status: (initialData?.credit_status as FormValues['credit_status']) || formData?.credit_status || 'Active',
+      billing_cycle: (initialData?.billing_cycle as FormValues['billing_cycle']) || formData?.billing_cycle || 'Monthly',
+      auto_invoice: initialData?.auto_invoice || formData?.auto_invoice || false,
+      portal_access: initialData?.portal_access || formData?.portal_access || false,
+      discount_percentage: initialData?.discount_percentage || formData?.discount_percentage || 0,
+      sla_delivery_hours: initialData?.sla_delivery_hours || formData?.sla_delivery_hours || 48,
+      sla_complaint_hours: initialData?.sla_complaint_hours || formData?.sla_complaint_hours || 24,
     },
     mode: 'onChange'
   });
@@ -185,18 +203,22 @@ const CustomerForm = memo(function CustomerForm({ onSubmit, onCancel, initialDat
       fieldsToValidate = ['name', 'mobile', 'type', 'branch_id', 'gst'];
     } else if (activeTab === 'contact') {
       fieldsToValidate = ['email', 'address', 'city', 'state', 'pincode'];
+    } else if (activeTab === 'financial') {
+      fieldsToValidate = ['credit_limit', 'payment_terms'];
     }
     
     const isValid = await trigger(fieldsToValidate);
     if (isValid && !validationError) {
       if (activeTab === 'basic') setActiveTab('contact');
       else if (activeTab === 'contact') setActiveTab('financial');
+      else if (activeTab === 'financial') setActiveTab('credit');
     }
   }, [activeTab, trigger, validationError]);
 
   const goToPrevTab = useCallback(() => {
     if (activeTab === 'contact') setActiveTab('basic');
     else if (activeTab === 'financial') setActiveTab('contact');
+    else if (activeTab === 'credit') setActiveTab('financial');
   }, [activeTab]);
 
   return (
@@ -220,11 +242,12 @@ const CustomerForm = memo(function CustomerForm({ onSubmit, onCancel, initialDat
         </div>
       )}
 
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'basic' | 'contact' | 'financial')}>
-        <TabsList className="grid grid-cols-3 mb-6">
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'basic' | 'contact' | 'financial' | 'credit')}>
+        <TabsList className="grid grid-cols-4 mb-6">
           <TabsTrigger value="basic">Basic Info</TabsTrigger>
           <TabsTrigger value="contact">Contact Details</TabsTrigger>
           <TabsTrigger value="financial">Financial Info</TabsTrigger>
+          <TabsTrigger value="credit">Credit Management</TabsTrigger>
         </TabsList>
 
         <TabsContent value="basic" className="space-y-6">
@@ -427,9 +450,173 @@ const CustomerForm = memo(function CustomerForm({ onSubmit, onCancel, initialDat
             </div>
           </div>
 
-          <div className="flex justify-between gap-4 mt-8">
+          <div className="flex justify-between">
             <Button type="button" variant="outline" onClick={goToPrevTab}>
               Back: Contact Details
+            </Button>
+            <Button type="button" onClick={() => setActiveTab('credit')}>
+              Next: Credit Management
+            </Button>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="credit" className="space-y-6">
+          <FormSection title="Customer Category & Status">
+            <div className="grid grid-cols-2 gap-4">
+              <FormSelect
+                label="Customer Category"
+                error={errors.category}
+                required
+              >
+                <Select
+                  defaultValue={initialData?.category || 'Regular'}
+                  onValueChange={(value) => setValue('category', value as FormValues['category'])}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Regular">Regular</SelectItem>
+                    <SelectItem value="Premium">Premium</SelectItem>
+                    <SelectItem value="Corporate">Corporate</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FormSelect>
+
+              <FormSelect
+                label="Credit Status"
+                error={errors.credit_status}
+                required
+              >
+                <Select
+                  defaultValue={initialData?.credit_status || 'Active'}
+                  onValueChange={(value) => setValue('credit_status', value as FormValues['credit_status'])}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Active">Active</SelectItem>
+                    <SelectItem value="On Hold">On Hold</SelectItem>
+                    <SelectItem value="Blocked">Blocked</SelectItem>
+                    <SelectItem value="Suspended">Suspended</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FormSelect>
+            </div>
+          </FormSection>
+
+          <FormSection title="Billing Configuration">
+            <div className="grid grid-cols-2 gap-4">
+              <FormSelect
+                label="Billing Cycle"
+                error={errors.billing_cycle}
+                required
+              >
+                <Select
+                  defaultValue={initialData?.billing_cycle || 'Monthly'}
+                  onValueChange={(value) => setValue('billing_cycle', value as FormValues['billing_cycle'])}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select billing cycle" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Weekly">Weekly</SelectItem>
+                    <SelectItem value="Biweekly">Biweekly</SelectItem>
+                    <SelectItem value="Monthly">Monthly</SelectItem>
+                    <SelectItem value="Quarterly">Quarterly</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FormSelect>
+
+              <FormField
+                label="Discount Percentage"
+                error={errors.discount_percentage}
+                icon={<Percent className="h-5 w-5" />}
+              >
+                <Input
+                  {...register('discount_percentage', { valueAsNumber: true })}
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  placeholder="0"
+                />
+              </FormField>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="auto_invoice"
+                  {...register('auto_invoice')}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <Label htmlFor="auto_invoice" className="text-sm font-medium text-gray-700">
+                  Enable Automated Invoicing
+                </Label>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="portal_access"
+                  {...register('portal_access')}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <Label htmlFor="portal_access" className="text-sm font-medium text-gray-700">
+                  Enable Customer Portal Access
+                </Label>
+              </div>
+            </div>
+          </FormSection>
+
+          <FormSection title="Service Level Agreement (SLA)">
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                label="Delivery SLA (hours)"
+                error={errors.sla_delivery_hours}
+                icon={<Clock className="h-5 w-5" />}
+              >
+                <Input
+                  {...register('sla_delivery_hours', { valueAsNumber: true })}
+                  type="number"
+                  min="0"
+                  placeholder="48"
+                />
+              </FormField>
+
+              <FormField
+                label="Complaint Resolution SLA (hours)"
+                error={errors.sla_complaint_hours}
+                icon={<Clock className="h-5 w-5" />}
+              >
+                <Input
+                  {...register('sla_complaint_hours', { valueAsNumber: true })}
+                  type="number"
+                  min="0"
+                  placeholder="24"
+                />
+              </FormField>
+            </div>
+          </FormSection>
+
+          <FormField
+            label="Internal Notes (Optional)"
+            error={errors.notes}
+            icon={<FileSignature className="h-5 w-5" />}
+          >
+            <textarea
+              {...register('notes')}
+              className="w-full min-h-[100px] px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Enter any internal notes about this customer..."
+            />
+          </FormField>
+
+          <div className="flex justify-between gap-4 mt-8">
+            <Button type="button" variant="outline" onClick={() => setActiveTab('financial')}>
+              Back: Financial Info
             </Button>
             <div className="flex gap-3">
               <Button type="button" variant="outline" onClick={handleCancel}>

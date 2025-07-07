@@ -6,6 +6,17 @@
 @tailwind utilities;
  
 @layer base {
+  /* Hide number input spinners/scrollers */
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+
   :root {
     --background: 0 0% 100%;
     --foreground: 224 71.4% 4.1%;
@@ -275,6 +286,14 @@
     border: 1px solid rgba(var(--glass-border) / 0.3);
   }
   
+  .glass-card {
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    background-color: rgba(var(--glass-bg) / 0.7);
+    border: 1px solid rgba(var(--glass-border) / 0.15);
+    @apply shadow-sm;
+  }
+  
   /* Glow effects */
   .glow {
     box-shadow: 0 0 20px rgba(var(--brand-500) / 0.5),
@@ -492,6 +511,125 @@
 
 .hover-scale {
   @apply transition-transform duration-200 hover:scale-105;
+}
+
+/* Premium Navigation Enhancements */
+.nav-header-premium {
+  background: hsl(var(--background) / 0.8);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-bottom: 1px solid hsl(var(--border) / 0.5);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.nav-header-premium.scrolled {
+  background: hsl(var(--background) / 0.95);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+}
+
+/* Premium Sidebar Enhancements */
+.sidebar-premium {
+  background: hsl(var(--background) / 0.5);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-right: 1px solid hsl(var(--border) / 0.5);
+}
+
+.sidebar-item-hover {
+  position: relative;
+  overflow: hidden;
+}
+
+.sidebar-item-hover::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, hsl(var(--brand-500) / 0.1), transparent);
+  transition: left 0.5s ease;
+}
+
+.sidebar-item-hover:hover::before {
+  left: 100%;
+}
+
+/* Premium Search Input */
+.search-premium {
+  background: hsl(var(--accent) / 0.5);
+  border: 1px solid hsl(var(--border) / 0.5);
+  transition: all 0.3s ease;
+}
+
+.search-premium:focus {
+  background: hsl(var(--background));
+  border-color: hsl(var(--brand-500) / 0.5);
+  box-shadow: 0 0 0 3px hsl(var(--brand-500) / 0.1);
+}
+
+/* Premium Badge Animations */
+@keyframes badge-bounce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+.badge-animate {
+  animation: badge-bounce 2s ease-in-out infinite;
+}
+
+/* Premium Loading States */
+.loading-shimmer {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--muted) / 0.5) 0%,
+    hsl(var(--muted) / 0.3) 20%,
+    hsl(var(--muted) / 0.5) 40%,
+    hsl(var(--muted) / 0.5) 100%
+  );
+  background-size: 1000px 100%;
+  animation: loading-shimmer 2s linear infinite;
+}
+
+@keyframes loading-shimmer {
+  0% { background-position: -1000px 0; }
+  100% { background-position: 1000px 0; }
+}
+
+/* Premium Transitions */
+.transition-premium {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.transition-premium-fast {
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Premium Focus Rings */
+.focus-ring-premium:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--brand-500));
+}
+
+/* Premium Hover States */
+.hover-glow:hover {
+  box-shadow: 0 0 20px hsl(var(--brand-500) / 0.3);
+}
+
+/* Premium Active States */
+.active-scale:active {
+  transform: scale(0.98);
+}
+
+/* Smooth Scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Premium Selection */
+::selection {
+  background: hsl(var(--brand-500) / 0.3);
+  color: hsl(var(--foreground));
 }
 
 .hover-glow {

@@ -1,0 +1,50 @@
+# Dependencies
+node_modules
+npm-debug.log*
+
+# Environment files
+.env
+.env.local
+.env.production
+.env.staging
+
+# Logs
+logs
+*.log
+
+# Source maps
+*.map
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Git
+.git
+.gitignore
+
+# Docker
+Dockerfile*
+docker-compose*
+.dockerignore
+
+# Documentation
+README.md
+*.md
+
+# Tests
+tests/
+**/*.test.*
+**/*.spec.*
+
+# Development files
+.eslintrc*
+.prettierrc*
+tsconfig.json
+nodemon.json

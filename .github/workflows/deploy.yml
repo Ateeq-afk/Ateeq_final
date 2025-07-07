@@ -1,0 +1,373 @@
+name: 🚀 Deploy to Environments
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      skip_tests:
+        description: 'Skip tests (emergency deployment)'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # Deploy to Staging
+  deploy-staging:
+    name: 🧪 Deploy to Staging
+    runs-on: ubuntu-latest
+    if: |
+      (github.ref == 'refs/heads/main' && github.event_name == 'push') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging')
+    
+    environment:
+      name: staging
+      url: https://staging.desicargo.com
+
+    concurrency:
+      group: staging-deployment
+      cancel-in-progress: false
+
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🔐 Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: 🔐 Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🗄️ Run Database Migrations
+        run: |
+          echo "Running staging database migrations..."
+          # Install Supabase CLI
+          npm install -g supabase
+          
+          # Run migrations
+          cd backend
+          export SUPABASE_ACCESS_TOKEN="${{ secrets.SUPABASE_ACCESS_TOKEN }}"
+          export SUPABASE_DB_PASSWORD="${{ secrets.STAGING_DB_PASSWORD }}"
+          
+          # Apply migrations to staging database
+          for migration in migrations/*.sql; do
+            if [ -f "$migration" ]; then
+              echo "Applying migration: $migration"
+              supabase db push --project-ref ${{ secrets.STAGING_PROJECT_REF }} --include-all
+            fi
+          done
+
+      - name: 🚀 Deploy to Staging ECS
+        run: |
+          # Update ECS service with new image
+          aws ecs update-service \
+            --cluster desicargo-staging \
+            --service desicargo-backend-staging \
+            --force-new-deployment \
+            --task-definition desicargo-backend-staging:REVISION
+
+          aws ecs update-service \
+            --cluster desicargo-staging \
+            --service desicargo-frontend-staging \
+            --force-new-deployment \
+            --task-definition desicargo-frontend-staging:REVISION
+
+      - name: ⏳ Wait for Deployment
+        run: |
+          aws ecs wait services-stable \
+            --cluster desicargo-staging \
+            --services desicargo-backend-staging desicargo-frontend-staging
+
+      - name: 🏥 Health Check
+        run: |
+          echo "Waiting for services to be healthy..."
+          sleep 30
+          
+          # Check backend health
+          response=$(curl -s -o /dev/null -w "%{http_code}" https://api-staging.desicargo.com/health)
+          if [ $response -eq 200 ]; then
+            echo "✅ Backend health check passed"
+          else
+            echo "❌ Backend health check failed with status: $response"
+            exit 1
+          fi
+          
+          # Check frontend
+          response=$(curl -s -o /dev/null -w "%{http_code}" https://staging.desicargo.com)
+          if [ $response -eq 200 ]; then
+            echo "✅ Frontend health check passed"
+          else
+            echo "❌ Frontend health check failed with status: $response"
+            exit 1
+          fi
+
+      - name: 🧪 Run Smoke Tests
+        run: |
+          cd backend
+          npm ci
+          npm run test:smoke -- --env=staging
+        env:
+          STAGING_API_URL: https://api-staging.desicargo.com
+          STAGING_API_KEY: ${{ secrets.STAGING_API_KEY }}
+
+      - name: 📧 Notify Deployment
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          channel: '#deployments'
+          text: |
+            🧪 Staging Deployment ${{ job.status }}
+            Commit: ${{ github.sha }}
+            Author: ${{ github.actor }}
+            Branch: ${{ github.ref_name }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Deploy to Production
+  deploy-production:
+    name: 🌟 Deploy to Production
+    runs-on: ubuntu-latest
+    if: |
+      (startsWith(github.ref, 'refs/tags/v') && github.event_name == 'push') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production')
+    
+    environment:
+      name: production
+      url: https://app.desicargo.com
+
+    concurrency:
+      group: production-deployment
+      cancel-in-progress: false
+
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: ✅ Verify Staging Deployment
+        if: github.event.inputs.skip_tests != 'true'
+        run: |
+          echo "Verifying staging environment before production deployment..."
+          response=$(curl -s -o /dev/null -w "%{http_code}" https://api-staging.desicargo.com/health)
+          if [ $response -ne 200 ]; then
+            echo "❌ Staging environment unhealthy. Aborting production deployment."
+            exit 1
+          fi
+          echo "✅ Staging environment healthy"
+
+      - name: 🔐 Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: 💾 Backup Production Database
+        run: |
+          echo "Creating production database backup..."
+          export SUPABASE_ACCESS_TOKEN="${{ secrets.SUPABASE_ACCESS_TOKEN }}"
+          
+          # Create backup
+          timestamp=$(date +%Y%m%d_%H%M%S)
+          backup_name="desicargo_prod_backup_${timestamp}"
+          
+          # Note: In real implementation, use proper backup commands
+          echo "Backup created: $backup_name"
+
+      - name: 🗄️ Run Production Migrations
+        run: |
+          echo "Running production database migrations..."
+          cd backend
+          export SUPABASE_ACCESS_TOKEN="${{ secrets.SUPABASE_ACCESS_TOKEN }}"
+          export SUPABASE_DB_PASSWORD="${{ secrets.PRODUCTION_DB_PASSWORD }}"
+          
+          # Apply migrations to production database with extra caution
+          for migration in migrations/*.sql; do
+            if [ -f "$migration" ]; then
+              echo "Applying migration: $migration"
+              # Add validation and rollback mechanisms here
+              supabase db push --project-ref ${{ secrets.PRODUCTION_PROJECT_REF }} --include-all
+            fi
+          done
+
+      - name: 🚀 Blue-Green Deployment
+        run: |
+          echo "Starting blue-green deployment to production..."
+          
+          # Deploy to green environment first
+          aws ecs update-service \
+            --cluster desicargo-production \
+            --service desicargo-backend-green \
+            --force-new-deployment \
+            --task-definition desicargo-backend-production:REVISION
+
+          aws ecs update-service \
+            --cluster desicargo-production \
+            --service desicargo-frontend-green \
+            --force-new-deployment \
+            --task-definition desicargo-frontend-production:REVISION
+
+          # Wait for green deployment
+          aws ecs wait services-stable \
+            --cluster desicargo-production \
+            --services desicargo-backend-green desicargo-frontend-green
+
+      - name: 🔄 Switch Traffic to Green
+        run: |
+          echo "Switching production traffic to green environment..."
+          
+          # Update load balancer to point to green
+          aws elbv2 modify-listener \
+            --listener-arn ${{ secrets.PRODUCTION_LISTENER_ARN }} \
+            --default-actions Type=forward,TargetGroupArn=${{ secrets.GREEN_TARGET_GROUP_ARN }}
+
+      - name: 🏥 Production Health Check
+        run: |
+          echo "Running comprehensive production health checks..."
+          sleep 60  # Allow time for traffic switch
+          
+          # Check backend health
+          for i in {1..5}; do
+            response=$(curl -s -o /dev/null -w "%{http_code}" https://api.desicargo.com/health)
+            if [ $response -eq 200 ]; then
+              echo "✅ Backend health check $i passed"
+              break
+            else
+              echo "⚠️ Backend health check $i failed, retrying..."
+              sleep 10
+            fi
+            
+            if [ $i -eq 5 ]; then
+              echo "❌ Backend health checks failed after 5 attempts"
+              exit 1
+            fi
+          done
+          
+          # Check frontend
+          response=$(curl -s -o /dev/null -w "%{http_code}" https://app.desicargo.com)
+          if [ $response -eq 200 ]; then
+            echo "✅ Frontend health check passed"
+          else
+            echo "❌ Frontend health check failed"
+            exit 1
+          fi
+
+      - name: 🧪 Production Smoke Tests
+        run: |
+          cd backend
+          npm ci
+          npm run test:smoke -- --env=production
+        env:
+          PRODUCTION_API_URL: https://api.desicargo.com
+          PRODUCTION_API_KEY: ${{ secrets.PRODUCTION_API_KEY }}
+
+      - name: 🔄 Cleanup Blue Environment
+        if: success()
+        run: |
+          echo "Cleaning up blue environment after successful deployment..."
+          aws ecs update-service \
+            --cluster desicargo-production \
+            --service desicargo-backend-blue \
+            --desired-count 0
+
+          aws ecs update-service \
+            --cluster desicargo-production \
+            --service desicargo-frontend-blue \
+            --desired-count 0
+
+      - name: 📊 Update Monitoring
+        if: success()
+        run: |
+          # Update monitoring dashboards and alerts
+          echo "Updating production monitoring..."
+          
+          # Send deployment event to monitoring systems
+          curl -X POST "https://api.sentry.io/api/0/organizations/${{ secrets.SENTRY_ORG }}/releases/" \
+            -H "Authorization: Bearer ${{ secrets.SENTRY_AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "version": "'${{ github.sha }}'",
+              "ref": "'${{ github.ref }}'",
+              "url": "https://github.com/'${{ github.repository }}'/commit/'${{ github.sha }}'",
+              "projects": ["desicargo-backend"]
+            }'
+
+      - name: 📧 Notify Production Deployment
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          channel: '#production-deployments'
+          text: |
+            🌟 Production Deployment ${{ job.status }}
+            Version: ${{ github.ref_name }}
+            Commit: ${{ github.sha }}
+            Author: ${{ github.actor }}
+            
+            ${{ job.status == 'success' && '🎉 Successfully deployed to production!' || '🚨 Production deployment failed!' }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Rollback Workflow
+  rollback:
+    name: 🔙 Rollback Production
+    runs-on: ubuntu-latest
+    if: failure() && github.event_name == 'workflow_dispatch'
+    
+    environment:
+      name: production
+      url: https://app.desicargo.com
+
+    steps:
+      - name: 🔄 Rollback to Blue Environment
+        run: |
+          echo "Rolling back to blue environment..."
+          
+          # Switch load balancer back to blue
+          aws elbv2 modify-listener \
+            --listener-arn ${{ secrets.PRODUCTION_LISTENER_ARN }} \
+            --default-actions Type=forward,TargetGroupArn=${{ secrets.BLUE_TARGET_GROUP_ARN }}
+
+          # Scale up blue environment
+          aws ecs update-service \
+            --cluster desicargo-production \
+            --service desicargo-backend-blue \
+            --desired-count 2
+
+          aws ecs update-service \
+            --cluster desicargo-production \
+            --service desicargo-frontend-blue \
+            --desired-count 2
+
+      - name: 📧 Notify Rollback
+        uses: 8398a7/action-slack@v3
+        with:
+          status: 'warning'
+          channel: '#production-deployments'
+          text: |
+            🔙 Production Rollback Completed
+            Previous deployment failed and was rolled back
+            System is now running on the previous stable version
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

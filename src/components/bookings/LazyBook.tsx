@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import SinglePageBookingForm from './SinglePageBookingForm';
+import SinglePageBookingForm from './NewBookingForm';
 import BookingFormSkeleton from './BookingFormSkeleton';
 import { useNotificationSystem } from '@/hooks/useNotificationSystem';
 

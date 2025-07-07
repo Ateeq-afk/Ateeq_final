@@ -11,12 +11,19 @@ import {
   CheckCircle2,
   ArrowLeft,
   ArrowRight,
-  Info
+  Info,
+  Sparkles,
+  TrendingUp,
+  Package,
+  Zap,
+  BarChart3
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { motion } from 'framer-motion';
 import LoadingSpinner from '@/components/ui/loading-spinner';
 
@@ -45,18 +52,23 @@ export default function LoadingOptimizer({
   onOptimize, 
   onClose 
 }: LoadingOptimizerProps) {
-  const [optimizationStrategy, setOptimizationStrategy] = useState<'route' | 'weight' | 'value' | 'capacity'>('route');
+  const [optimizationStrategy, setOptimizationStrategy] = useState<'route' | 'weight' | 'value' | 'capacity' | 'ai'>('ai');
   const [optimizedGroups, setOptimizedGroups] = useState<OptimizedGroup[]>([]);
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
   const [isOptimizing, setIsOptimizing] = useState(false);
+  const [optimizationProgress, setOptimizationProgress] = useState(0);
+  const [optimizationStats, setOptimizationStats] = useState<any>(null);
 
   // Optimize loading based on selected strategy
   const optimizeLoading = async () => {
     setIsOptimizing(true);
+    setOptimizationProgress(0);
     
     try {
-      // Simulate processing time
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Simulate processing with progress updates
+      const progressInterval = setInterval(() => {
+        setOptimizationProgress(prev => Math.min(prev + 10, 90));
+      }, 100);
       
       let groups: OptimizedGroup[] = [];
       
@@ -73,7 +85,17 @@ export default function LoadingOptimizer({
         case 'capacity':
           groups = optimizeByCapacity();
           break;
+        case 'ai':
+          groups = await optimizeWithAI();
+          break;
       }
+      
+      clearInterval(progressInterval);
+      setOptimizationProgress(100);
+      
+      // Calculate optimization statistics
+      const stats = calculateOptimizationStats(groups);
+      setOptimizationStats(stats);
       
       setOptimizedGroups(groups);
     } finally {
@@ -194,6 +216,149 @@ export default function LoadingOptimizer({
     }
 
     return groups;
+  };
+
+  // AI-powered optimization
+  const optimizeWithAI = async (): OptimizedGroup[] => {
+    // Simulate AI processing delay
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    // Calculate booking features for AI optimization
+    const bookingFeatures = bookings.map(booking => ({
+      booking,
+      priority: booking.priority === 'Urgent' ? 3 : booking.priority === 'High' ? 2 : 1,
+      weight: booking.actual_weight || 0,
+      value: booking.total_amount || 0,
+      age: getBookingAge(booking.created_at),
+      fragile: booking.fragile ? 2 : 1,
+      route: `${booking.from_branch}-${booking.to_branch}`,
+      destination: booking.to_branch_details?.city || 'Unknown'
+    }));
+
+    // Sort vehicles by capacity for optimal assignment
+    const sortedVehicles = [...vehicles].sort((a, b) => 
+      (b.max_weight || 1000) - (a.max_weight || 1000)
+    );
+
+    const groups: OptimizedGroup[] = [];
+    const assignedBookings = new Set<string>();
+
+    // Multi-factor optimization algorithm
+    for (const vehicle of sortedVehicles) {
+      if (assignedBookings.size >= bookings.length) break;
+
+      const maxWeight = vehicle.max_weight || 1000;
+      const maxCapacity = vehicle.max_capacity || 50;
+      let currentWeight = 0;
+      let currentCount = 0;
+      const vehicleBookings: any[] = [];
+
+      // Score and rank unassigned bookings for this vehicle
+      const availableBookings = bookingFeatures
+        .filter(bf => !assignedBookings.has(bf.booking.id))
+        .map(bf => ({
+          ...bf,
+          score: calculateAIScore(bf, vehicle, groups)
+        }))
+        .sort((a, b) => b.score - a.score);
+
+      // Fill vehicle using AI-optimized selection
+      for (const { booking, weight } of availableBookings) {
+        if (currentCount >= maxCapacity) break;
+        if (currentWeight + weight > maxWeight) continue;
+
+        vehicleBookings.push(booking);
+        currentWeight += weight;
+        currentCount++;
+        assignedBookings.add(booking.id);
+      }
+
+      if (vehicleBookings.length > 0) {
+        groups.push(createOptimizedGroup(vehicleBookings, vehicle, groups.length));
+      }
+    }
+
+    // Handle any remaining bookings
+    const remainingBookings = bookings.filter(b => !assignedBookings.has(b.id));
+    if (remainingBookings.length > 0) {
+      const overflow = createOptimizedGroup(
+        remainingBookings, 
+        sortedVehicles[0], 
+        groups.length
+      );
+      overflow.warnings.push('Overflow group - additional vehicle needed');
+      groups.push(overflow);
+    }
+
+    return groups;
+  };
+
+  // Calculate AI optimization score
+  const calculateAIScore = (bookingFeature: any, vehicle: any, existingGroups: OptimizedGroup[]): number => {
+    let score = 0;
+
+    // Priority score (30%)
+    score += bookingFeature.priority * 30;
+
+    // Weight efficiency score (20%)
+    const weightRatio = bookingFeature.weight / (vehicle.max_weight || 1000);
+    score += (1 - Math.abs(weightRatio - 0.1)) * 20; // Prefer 10% of vehicle capacity per booking
+
+    // Value score (15%)
+    score += Math.min(bookingFeature.value / 1000, 15);
+
+    // Age score (15%) - older bookings get higher priority
+    score += Math.min(bookingFeature.age / 24, 15); // Max 15 points for 24+ hour old bookings
+
+    // Route consolidation score (20%)
+    const routeCount = existingGroups.reduce((count, group) => {
+      const hasRoute = group.bookings.some(b => 
+        `${b.from_branch}-${b.to_branch}` === bookingFeature.route
+      );
+      return count + (hasRoute ? 1 : 0);
+    }, 0);
+    score += Math.max(20 - routeCount * 5, 0); // Penalize route fragmentation
+
+    return score;
+  };
+
+  // Calculate booking age in hours
+  const getBookingAge = (createdAt: string): number => {
+    const created = new Date(createdAt);
+    const now = new Date();
+    return (now.getTime() - created.getTime()) / (1000 * 60 * 60);
+  };
+
+  // Calculate optimization statistics
+  const calculateOptimizationStats = (groups: OptimizedGroup[]): any => {
+    const totalBookings = groups.reduce((sum, g) => sum + g.bookings.length, 0);
+    const totalWeight = groups.reduce((sum, g) => sum + g.totalWeight, 0);
+    const totalValue = groups.reduce((sum, g) => sum + g.totalValue, 0);
+    const avgUtilization = groups.length > 0
+      ? groups.reduce((sum, g) => sum + g.utilization, 0) / groups.length
+      : 0;
+    const avgEfficiency = groups.length > 0
+      ? groups.reduce((sum, g) => sum + g.efficiency, 0) / groups.length
+      : 0;
+
+    // Route analysis
+    const uniqueRoutes = new Set(
+      groups.flatMap(g => g.bookings.map(b => 
+        `${b.from_branch_details?.city} → ${b.to_branch_details?.city}`
+      ))
+    );
+
+    return {
+      totalBookings,
+      totalWeight,
+      totalValue,
+      avgUtilization,
+      avgEfficiency,
+      vehiclesUsed: groups.length,
+      uniqueRoutes: uniqueRoutes.size,
+      avgBookingsPerVehicle: totalBookings / groups.length,
+      warnings: groups.reduce((sum, g) => sum + g.warnings.length, 0)
+    };
   };
 
   // Helper functions

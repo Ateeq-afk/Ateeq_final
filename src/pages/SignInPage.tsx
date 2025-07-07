@@ -1,14 +1,14 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Truck, Mail, Lock, Eye, EyeOff, ArrowRight, Loader2, Shield, CheckCircle2, Globe, Users, Package, TrendingUp, Github, Chrome } from 'lucide-react';
+import { Truck, Mail, Lock, Eye, EyeOff, ArrowRight, Loader2, Shield, CheckCircle2, Globe, Users, Package, TrendingUp, Chrome } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Link, useNavigate } from 'react-router-dom';
-import { supabase } from '@/lib/supabaseClient';
+import { authService } from '@/services/auth';
 import { useTheme } from '@/contexts/ThemeContext';
 
 const formSchema = z.object({
@@ -42,18 +42,31 @@ export default function SignInPage() {
       setIsLoading(true);
       setError(null);
       
-      const { error } = await supabase.auth.signInWithPassword({
-        email: data.email,
-        password: data.password,
-      });
+      const response = await authService.emailLogin(data.email, data.password);
       
-      if (error) throw error;
-      
-      navigate('/dashboard');
+      if (response.user) {
+        localStorage.setItem('authToken', response.session?.access_token || '');
+        localStorage.setItem('userData', JSON.stringify(response.user));
+        navigate('/dashboard');
+      }
     } catch (err) {
       console.error('Sign in failed', err);
       setError(err instanceof Error ? err.message : 'Failed to sign in');
     } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      await authService.googleLogin();
+      // Redirect will be handled by Supabase
+    } catch (err) {
+      console.error('Google login failed', err);
+      setError(err instanceof Error ? err.message : 'Failed to sign in with Google');
       setIsLoading(false);
     }
   };
@@ -223,9 +236,9 @@ export default function SignInPage() {
             </div>
           </div>
           
-          {/* Social Login Buttons */}
+          {/* Google Login Button */}
           <motion.div 
-            className="grid grid-cols-2 gap-3"
+            className="w-full"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.6, duration: 0.5 }}
@@ -233,18 +246,12 @@ export default function SignInPage() {
             <Button 
               type="button" 
               variant="outline" 
-              className="h-11 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors rounded-xl"
+              className="w-full h-11 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors rounded-xl"
+              onClick={handleGoogleLogin}
+              disabled={isLoading}
             >
               <Chrome className="mr-2 h-4 w-4" />
-              Google
-            </Button>
-            <Button 
-              type="button" 
-              variant="outline" 
-              className="h-11 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors rounded-xl"
-            >
-              <Github className="mr-2 h-4 w-4" />
-              GitHub
+              Continue with Google
             </Button>
           </motion.div>
           

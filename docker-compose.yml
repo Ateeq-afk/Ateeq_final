@@ -1,0 +1,106 @@
+version: '3.8'
+
+services:
+  # Backend API Service
+  backend:
+    build:
+      context: ./backend
+      target: production
+    container_name: desicargo-backend
+    restart: unless-stopped
+    ports:
+      - "${BACKEND_PORT:-4000}:4000"
+    environment:
+      - NODE_ENV=production
+      - PORT=4000
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - JWT_SECRET=${JWT_SECRET}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+      - LOG_LEVEL=info
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+      - CACHE_PREFIX=desicargo
+      - SENTRY_DSN=${SENTRY_DSN}
+      - SENTRY_RELEASE=${SENTRY_RELEASE}
+    volumes:
+      - ./backend/logs:/app/logs
+    networks:
+      - desicargo-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      - redis
+
+  # Frontend Service
+  frontend:
+    build:
+      context: .
+      target: production
+    container_name: desicargo-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+    networks:
+      - desicargo-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    depends_on:
+      - backend
+
+  # Redis for caching and sessions
+  redis:
+    image: redis:7-alpine
+    container_name: desicargo-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+      - ./redis.conf:/usr/local/etc/redis/redis.conf
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    networks:
+      - desicargo-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Nginx Load Balancer (for multi-instance deployment)
+  nginx:
+    image: nginx:alpine
+    container_name: desicargo-nginx
+    restart: unless-stopped
+    ports:
+      - "${NGINX_PORT:-443}:443"
+      - "80:80"
+    volumes:
+      - ./nginx-production.conf:/etc/nginx/nginx.conf
+      - ./ssl:/etc/nginx/ssl
+      - nginx_logs:/var/log/nginx
+    networks:
+      - desicargo-network
+    depends_on:
+      - frontend
+      - backend
+    profiles:
+      - production
+
+volumes:
+  redis_data:
+    driver: local
+  nginx_logs:
+    driver: local
+
+networks:
+  desicargo-network:
+    driver: bridge
