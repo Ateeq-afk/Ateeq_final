@@ -11,6 +11,18 @@ import { responseMiddleware, sendServerError, sendNotFound } from './utils/apiRe
 import { sanitizeInput, validateRateLimit, securityHeaders } from './middleware/validation';
 import { log, morganStream, timer } from './utils/logger';
 import { initializeDatabase, databaseMiddleware, databaseErrorMiddleware, closeDatabaseConnections } from './middleware/database';
+import { 
+  performanceMonitoring, 
+  compressionMiddleware, 
+  smartRateLimit, 
+  requestSizeLimit, 
+  queryOptimization, 
+  connectionHealth, 
+  memoryMonitoring, 
+  responseOptimization 
+} from './middleware/performance';
+import { databasePoolMiddleware, createHealthCheckEndpoint } from './config/database-pool';
+import { cacheMiddleware, branchCache, dashboardCache, searchCache } from './middleware/cache';
 // import { sentryRequestHandler, sentryTracingHandler, sentryErrorHandler, captureUserContext, performanceBreadcrumbs } from './middleware/sentry';
 // import RedisConfig from './config/redis';
 
@@ -24,7 +36,7 @@ import dashboardRoutes from './routes/dashboard';
 import articleTrackingEnhancedRoutes from './routes/article-tracking-enhanced';
 // Temporarily commenting other routes to debug startup issues
 // import organizationRoutes from './routes/organizations';
-// import branchRoutes from './routes/branches';
+import branchRoutes from './routes/branches';
 // import customerRoutes from './routes/customers';
 // import vehicleRoutes from './routes/vehicles';
 // import driverRoutes from './routes/drivers';
@@ -38,6 +50,9 @@ import articleTrackingEnhancedRoutes from './routes/article-tracking-enhanced';
 // import creditManagementRoutes from './routes/creditManagement';
 // import billingTestRoutes from './routes/billing-test';
 import paymentRoutes from './routes/payments';
+import smsMonitoringRoutes from './routes/sms-monitoring';
+import paymentGatewayRoutes from './routes/payment-gateway';
+import invoiceRoutes from './routes/invoices';
 // import oauthAdminRoutes from './routes/oauth-admin';
 // import monitoringRoutes from './routes/monitoring';
 // import expenseRoutes from './routes/expenses';
@@ -52,7 +67,16 @@ const app = express();
 
 // Security middleware
 app.use(securityHeaders);
-app.use(validateRateLimit(100, 15 * 60 * 1000)); // 100 requests per 15 minutes
+
+// Performance middleware - must be early in the pipeline
+app.use(performanceMonitoring());
+app.use(compressionMiddleware());
+app.use(connectionHealth());
+app.use(memoryMonitoring());
+app.use(requestSizeLimit());
+
+// Smart rate limiting (replaces the simple rate limit)
+app.use(smartRateLimit());
 
 // CORS configuration based on environment
 const getCorsOrigins = () => {
@@ -139,10 +163,13 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Custom middleware
 app.use(sanitizeInput);
+app.use(queryOptimization());
+app.use(responseOptimization());
 app.use(responseMiddleware);
 
 // Database middleware
 app.use(databaseMiddleware);
+app.use(databasePoolMiddleware());
 
 // Performance monitoring - temporarily disabled
 // app.use(performanceBreadcrumbs);
@@ -150,6 +177,7 @@ app.use(databaseMiddleware);
 
 // Health checks (mounted early, before auth)
 app.use('/health', healthRoutes);
+app.get('/health/db', createHealthCheckEndpoint());
 
 // Basic health check
 app.get('/', (req, res) => {
@@ -173,30 +201,34 @@ app.get('/test', (req, res) => {
   });
 });
 
-// API Routes - essential ones only for debugging
+// API Routes - with caching middleware applied selectively
 app.use('/api/auth', authRoutes);
 app.use('/auth/org', authOrgRoutes);
-app.use('/api/bookings', bookingRoutes);
-app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/loading', loadingRoutes);
-app.use('/loading', loadingRoutes); // Backwards compatibility
-app.use('/api/article-tracking', articleTrackingEnhancedRoutes);
+app.use('/api/bookings', branchCache(300), bookingRoutes); // 5-minute cache for bookings
+app.use('/api/dashboard', dashboardCache(300), dashboardRoutes); // 5-minute cache for dashboard
+app.use('/api/loading', branchCache(600), loadingRoutes); // 10-minute cache for loading
+app.use('/loading', branchCache(600), loadingRoutes); // Backwards compatibility
+app.use('/api/article-tracking', searchCache(300), articleTrackingEnhancedRoutes); // 5-minute search cache
 // Temporarily commenting other routes
 // app.use('/api/organizations', organizationRoutes);
-// app.use('/api/branches', branchRoutes);
+app.use('/api/branches', branchRoutes);
 // app.use('/api/customers', customerRoutes);
 // app.use('/api/vehicles', vehicleRoutes);
 // app.use('/api/drivers', driverRoutes);
 // app.use('/api/fleet', fleetRoutes);
 // app.use('/api/articles', articleRoutes);
 // app.use('/api/pod', podRoutes);
-// app.use('/api/warehouses', warehouseRoutes);
+import warehouseRoutes from './routes/warehouses';
+app.use('/api/warehouses', branchCache(300), warehouseRoutes); // 5-minute cache for warehouses
 // app.use('/api/article-tracking', articleTrackingRoutes);
 // app.use('/api/rates', rateRoutes);
 // app.use('/api/quotes', quoteRoutes);
 // app.use('/api', creditManagementRoutes);
 // app.use('/api/billing', billingTestRoutes);
-app.use('/api/payments', paymentRoutes);
+app.use('/api/payments', branchCache(180), paymentRoutes); // 3-minute cache for payments
+app.use('/api/sms', smsMonitoringRoutes); // SMS monitoring and testing
+app.use('/api/payment-gateway', paymentGatewayRoutes); // Online payment gateway
+app.use('/api/invoices', branchCache(180), invoiceRoutes); // Invoice generation and management
 // app.use('/api/oauth-admin', oauthAdminRoutes);
 // app.use('/api/monitoring', monitoringRoutes);
 // app.use('/api/expenses', expenseRoutes);

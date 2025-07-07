@@ -7,12 +7,13 @@ interface BranchSelectionContextType {
   setSelectedBranch: React.Dispatch<React.SetStateAction<string | null>>;
   userBranches: Array<{ id: string; name: string }>;
   canSwitchBranch: boolean;
+  userAssignedBranch: { id: string } | null;
 }
 
 const BranchSelectionContext = createContext<BranchSelectionContextType | undefined>(undefined);
 
 export function BranchSelectionProvider({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
+  const { user, getCurrentUserBranch } = useAuth();
   const [selectedBranch, setSelectedBranch] = useState<string | null>(() => {
     // Initialize from sessionStorage if available
     try {
@@ -21,11 +22,14 @@ export function BranchSelectionProvider({ children }: { children: React.ReactNod
       return null;
     }
   });
-  const { branches } = useBranches();
+  const { branches, loading: branchesLoading, error: branchesError } = useBranches();
+  
+  // Get user's assigned branch from AuthContext
+  const userAssignedBranch = getCurrentUserBranch();
   
   // Determine user's role and available branches
   const userRole = user?.user_metadata?.role || user?.role;
-  const userBranchId = user?.user_metadata?.branch_id || user?.branch_id;
+  const userBranchId = userAssignedBranch?.id || user?.user_metadata?.branch_id || user?.branch_id;
   const userOrganizationId = user?.user_metadata?.organization_id || user?.organization_id;
   
   // For demo: treat users with admin email as admin or if they have no branch assignment
@@ -40,8 +44,12 @@ export function BranchSelectionProvider({ children }: { children: React.ReactNod
     userRole,
     effectiveRole,
     finalEffectiveRole,
+    userAssignedBranch,
     userBranchId,
-    userOrganizationId
+    userOrganizationId,
+    branchesLoading,
+    branchesCount: branches.length,
+    branchesError: branchesError?.message
   });
   
   // Admins can switch branches, others are locked to their branch
@@ -63,11 +71,12 @@ export function BranchSelectionProvider({ children }: { children: React.ReactNod
         id: branch.id,
         name: branch.name
       }));
-    } else if (userBranchId) {
+    } else if (userAssignedBranch && userBranchId) {
       // Regular users only see their assigned branch
+      const assignedBranchFromData = branches.find(b => b.id === userBranchId);
       return [{
         id: userBranchId,
-        name: user?.user_metadata?.branch_name || 'Main Branch'
+        name: assignedBranchFromData?.name || user?.user_metadata?.branch_name || 'Assigned Branch'
       }];
     } else if (branches.length > 0) {
       // Fallback: if user has no branch assigned, show all branches for demo
@@ -78,39 +87,53 @@ export function BranchSelectionProvider({ children }: { children: React.ReactNod
       }));
     }
     return [];
-  }, [canSwitchBranch, branches, userBranchId, user]);
+  }, [canSwitchBranch, branches, userAssignedBranch, userBranchId, user]);
   
   // Sync selectedBranch with user's branch when user changes
   useEffect(() => {
-    if (user) {
+    if (user && !branchesLoading) {
+      console.log('BranchSelection: Syncing branch selection...', {
+        user: user.email,
+        selectedBranch,
+        userBranchId,
+        canSwitchBranch,
+        branchesCount: branches.length,
+        firstBranch: branches[0]?.id
+      });
+      
       if (!selectedBranch) {
-        // No branch selected, auto-select user's branch or first available for admins
-        if (userBranchId) {
+        // No branch selected, auto-select user's assigned branch first
+        if (userAssignedBranch && userBranchId) {
+          console.log('BranchSelection: Auto-selecting user assigned branch:', userBranchId);
           setSelectedBranch(userBranchId);
           sessionStorage.setItem('selectedBranch', userBranchId);
         } else if (canSwitchBranch && branches.length > 0) {
           // Admin without assigned branch: select first available
+          console.log('BranchSelection: Auto-selecting first available branch for admin:', branches[0].id);
           setSelectedBranch(branches[0].id);
           sessionStorage.setItem('selectedBranch', branches[0].id);
         } else if (branches.length > 0) {
           // Fallback: if user has no branch but branches are available, select first one
-          console.log('User has no branch assigned, selecting first available branch for demo');
+          console.log('BranchSelection: Auto-selecting first available branch for demo:', branches[0].id);
           setSelectedBranch(branches[0].id);
           sessionStorage.setItem('selectedBranch', branches[0].id);
+        } else {
+          console.warn('BranchSelection: No branches available for selection');
         }
-      } else if (!canSwitchBranch && selectedBranch !== userBranchId) {
-        // Non-admin user with different branch selected: reset to their branch
+      } else if (!canSwitchBranch && userAssignedBranch && selectedBranch !== userBranchId) {
+        // Non-admin user with different branch selected: reset to their assigned branch
+        console.log('BranchSelection: Resetting to user assigned branch for non-admin');
         setSelectedBranch(userBranchId);
         if (userBranchId) {
           sessionStorage.setItem('selectedBranch', userBranchId);
         }
       }
-    } else {
+    } else if (!user) {
       // Clear selection when user logs out
       setSelectedBranch(null);
       sessionStorage.removeItem('selectedBranch');
     }
-  }, [user, userBranchId, canSwitchBranch, branches, selectedBranch]);
+  }, [user, userAssignedBranch, userBranchId, canSwitchBranch, branches, selectedBranch, branchesLoading]);
   
   // Security check: prevent non-admins from selecting branches outside their org
   const secureSetSelectedBranch = (branchId: string | null) => {
@@ -130,15 +153,17 @@ export function BranchSelectionProvider({ children }: { children: React.ReactNod
       canSwitch: finalEffectiveRole === 'admin' || finalEffectiveRole === 'superadmin'
     });
     
-    // Non-admins can only select their own branch
-    if (finalEffectiveRole !== 'admin' && finalEffectiveRole !== 'superadmin') {
+    // Non-admins can only select their own assigned branch
+    if (finalEffectiveRole !== 'admin' && finalEffectiveRole !== 'superadmin' && userAssignedBranch) {
       if (branchId !== userBranchId) {
         console.warn('Access denied: User cannot select branch outside their assignment');
-        console.log('Blocked branch switch:', { effectiveRole, finalEffectiveRole, userBranchId, requestedBranchId: branchId });
+        console.log('Blocked branch switch:', { effectiveRole, finalEffectiveRole, userAssignedBranch, userBranchId, requestedBranchId: branchId });
         return;
       }
     }
     
+    // Allow selection if user has no branch assigned (demo mode) or is admin
+    console.log('Branch selection allowed:', { branchId, finalEffectiveRole, userBranchId });
     setSelectedBranch(branchId);
     // Persist to sessionStorage for API interceptor
     sessionStorage.setItem('selectedBranch', branchId);
@@ -149,7 +174,8 @@ export function BranchSelectionProvider({ children }: { children: React.ReactNod
       selectedBranch, 
       setSelectedBranch: secureSetSelectedBranch,
       userBranches,
-      canSwitchBranch
+      canSwitchBranch,
+      userAssignedBranch
     }}>
       {children}
     </BranchSelectionContext.Provider>

@@ -55,6 +55,26 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
+// Debug component to show branch selection state
+const BranchDebugInfo = ({ selectedBranch, userBranch, branches, effectiveBranchId }: any) => {
+  if (process.env.NODE_ENV !== 'development') return null;
+  
+  return (
+    <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-xs">
+      <h4 className="font-semibold text-yellow-800">Branch Debug Info:</h4>
+      <div className="mt-1 space-y-1 text-yellow-700">
+        <div>Selected Branch: {selectedBranch || 'null'}</div>
+        <div>User Branch: {userBranch?.id || 'null'} ({userBranch?.name || 'N/A'})</div>
+        <div>Effective Branch ID: {effectiveBranchId || 'null'}</div>
+        <div>Available Branches: {branches.length}</div>
+        {branches.length > 0 && (
+          <div>First Branch: {branches[0]?.id} ({branches[0]?.name})</div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 export default function LoadingDashboard() {
   const [activeTab, setActiveTab] = useState<'pending' | 'history' | 'analytics'>('pending');
   const [searchQuery, setSearchQuery] = useState('');
@@ -73,6 +93,8 @@ export default function LoadingDashboard() {
   const [showManageBookings, setShowManageBookings] = useState(false);
   const [showLoadingSheet, setShowLoadingSheet] = useState(false);
   const [selectedOGPL, setSelectedOGPL] = useState<any>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const [autoRetrying, setAutoRetrying] = useState(false);
   
   const { getCurrentUserBranch, user } = useAuth();
   const { showSuccess, showError } = useNotificationSystem();
@@ -81,7 +103,7 @@ export default function LoadingDashboard() {
 
   const userBranch = getCurrentUserBranch();
   const userRole = user?.user_metadata?.role || '';
-  const effectiveBranchId = selectedBranch || userBranch?.id;
+  const effectiveBranchId = selectedBranch?.id || selectedBranch || userBranch?.id;
   
   const {
     getPendingBookings,
@@ -102,25 +124,37 @@ export default function LoadingDashboard() {
   const [vehicleUtilization, setVehicleUtilization] = useState<any[]>([]);
 
   useEffect(() => {
-    // Only set branch if none is selected
-    if (!selectedBranch) {
+    // Auto-select branch if none is selected and we have branches available
+    if (!selectedBranch && branches.length > 0) {
+      let branchToSelect = null;
+      
       // First priority: user's assigned branch
       if (userBranch) {
-        setSelectedBranch(userBranch.id);
-      } else if (userRole === 'admin' || userRole === 'superadmin') {
-        // For admins: select first available branch if they don't have a specific assignment
-        if (branches.length > 0) {
-          setSelectedBranch(branches[0].id);
-        }
+        console.log('LoadingDashboard: Auto-selecting user branch:', userBranch);
+        branchToSelect = userBranch.id;
+      } else {
+        // Fallback: select first available branch
+        console.log('LoadingDashboard: Auto-selecting first available branch:', branches[0]);
+        branchToSelect = branches[0].id;
+      }
+      
+      if (branchToSelect) {
+        setSelectedBranch(branchToSelect);
       }
     }
-  }, [userBranch, branches, selectedBranch, userRole]);
+  }, [selectedBranch, userBranch, branches, setSelectedBranch]);
   
   // Load data
   useEffect(() => {
     const loadData = async () => {
       if (!effectiveBranchId) {
-        console.warn('No effective branch ID available for loading data');
+        console.error('LoadingDashboard: No effective branch ID available for loading data. Current state:', {
+          selectedBranch,
+          userBranch,
+          branchesLength: branches.length,
+          firstBranch: branches[0]
+        });
+        showError('Branch Selection Error', 'No branch selected. Please select a branch to continue.');
         return;
       }
       
@@ -144,7 +178,19 @@ export default function LoadingDashboard() {
         }
       } catch (err) {
         console.error('Error loading data:', err);
-        showError('Loading Error', err instanceof Error ? err.message : 'Failed to load data');
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load data';
+        
+        // Auto-retry for network errors
+        if (retryCount < 3 && (errorMessage.includes('network') || errorMessage.includes('fetch'))) {
+          setAutoRetrying(true);
+          setRetryCount(prev => prev + 1);
+          setTimeout(() => {
+            setAutoRetrying(false);
+            loadData();
+          }, 2000 * retryCount + 1000); // Exponential backoff
+        } else {
+          showError('Loading Error', errorMessage);
+        }
       }
     };
     
@@ -336,6 +382,7 @@ export default function LoadingDashboard() {
   
   // Handle refresh
   const handleRefresh = () => {
+    setRetryCount(0); // Reset retry count on manual refresh
     setRefreshTrigger(prev => prev + 1);
   };
   
@@ -351,24 +398,100 @@ export default function LoadingDashboard() {
     }
   };
   
+  // Show auto-retry indicator
+  if (autoRetrying) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+        <div className="max-w-md w-full">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white border border-blue-200 rounded-2xl shadow-lg p-8 text-center"
+          >
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+              className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4"
+            >
+              <RefreshCw className="h-8 w-8 text-blue-600" />
+            </motion.div>
+            
+            <h3 className="text-xl font-bold text-blue-800 mb-2">Retrying Connection</h3>
+            <p className="text-blue-700 mb-1">Attempt {retryCount + 1} of 3</p>
+            <p className="text-gray-600 text-sm">
+              Attempting to reconnect to the server...
+            </p>
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
+
   // Show error state if there's a loading error
   if (loadingError) {
     return (
-      <div className="p-6 bg-red-50 border border-red-200 rounded-xl">
-        <div className="flex items-start gap-3">
-          <AlertCircle className="h-6 w-6 text-red-600 mt-0.5" />
-          <div>
-            <h3 className="font-medium text-red-800">Error Loading Data</h3>
-            <p className="text-red-700 mt-1">{loadingError.message}</p>
-            <Button 
-              onClick={handleRefresh} 
-              variant="outline" 
-              className="mt-4 border-red-300 text-red-700 hover:bg-red-50"
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+        <div className="max-w-md w-full">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white border border-red-200 rounded-2xl shadow-lg p-8 text-center"
+          >
+            <motion.div
+              animate={{ 
+                scale: [1, 1.1, 1],
+                rotate: [0, 5, -5, 0]
+              }}
+              transition={{ 
+                duration: 2,
+                repeat: Infinity,
+                ease: "easeInOut"
+              }}
+              className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4"
             >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Retry
-            </Button>
-          </div>
+              <AlertCircle className="h-8 w-8 text-red-600" />
+            </motion.div>
+            
+            <h3 className="text-xl font-bold text-red-800 mb-2">Error Loading Data</h3>
+            <p className="text-red-700 mb-1">Network Error</p>
+            <p className="text-gray-600 text-sm mb-6">
+              Unable to connect to the server. Please check your internet connection and try again.
+              {retryCount > 0 && (
+                <span className="block mt-2 text-orange-600">
+                  Retried {retryCount} time{retryCount > 1 ? 's' : ''} automatically.
+                </span>
+              )}
+            </p>
+            
+            <div className="space-y-3">
+              <Button 
+                onClick={handleRefresh} 
+                className="w-full bg-red-600 hover:bg-red-700 text-white"
+                disabled={loadingData}
+              >
+                {loadingData ? (
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                )}
+                Retry
+              </Button>
+              
+              <Button 
+                onClick={() => navigate('/dashboard')} 
+                variant="outline"
+                className="w-full"
+              >
+                Go to Dashboard
+              </Button>
+            </div>
+            
+            <div className="mt-6 pt-4 border-t border-gray-100">
+              <p className="text-xs text-gray-500">
+                Error details: {loadingError.message}
+              </p>
+            </div>
+          </motion.div>
         </div>
       </div>
     );
@@ -448,6 +571,12 @@ export default function LoadingDashboard() {
   
   return (
     <div className="space-y-6">
+      <BranchDebugInfo 
+        selectedBranch={selectedBranch}
+        userBranch={userBranch}
+        branches={branches}
+        effectiveBranchId={effectiveBranchId}
+      />
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Loading Management</h2>

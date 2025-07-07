@@ -262,14 +262,14 @@ const CustomerCard: React.FC<{
       variants={itemVariants}
       whileHover="hover"
       className={cn(
-        "group relative bg-white rounded-xl border transition-all duration-200 overflow-hidden",
+        "group relative bg-white rounded-xl border transition-all duration-200 overflow-hidden h-full flex flex-col",
         isSelected 
           ? "border-blue-500 shadow-lg shadow-blue-100 ring-1 ring-blue-500/20" 
           : "border-gray-200 hover:border-gray-300 hover:shadow-md"
       )}
     >
-      <motion.div variants={cardHoverVariants}>
-        <div className="p-6">
+      <motion.div variants={cardHoverVariants} className="h-full flex flex-col">
+        <div className="p-6 flex-1 flex flex-col">
           {/* Header with Selection and Actions */}
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-center gap-3">
@@ -290,7 +290,7 @@ const CustomerCard: React.FC<{
                 )} />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-gray-900 truncate group-hover:text-blue-600 transition-colors">
+                <h3 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors leading-tight break-words">
                   {customer.name}
                 </h3>
                 <div className="flex items-center gap-2 mt-1">
@@ -344,7 +344,7 @@ const CustomerCard: React.FC<{
           </div>
 
           {/* Contact Information */}
-          <div className="space-y-2 mb-4">
+          <div className="space-y-2 mb-4 flex-1">
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <Phone className="h-4 w-4 text-gray-400" />
               <span className="font-medium">{customer.mobile}</span>
@@ -370,7 +370,7 @@ const CustomerCard: React.FC<{
           </div>
 
           {/* Additional Information */}
-          <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-100">
+          <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-100 mt-auto">
             <div className="text-center">
               <p className="text-xs text-gray-500 mb-1">Credit Limit</p>
               <p className="text-sm font-semibold text-gray-900">
@@ -789,7 +789,7 @@ export default function CustomerListEnhanced() {
                 className={cn(
                   "gap-6",
                   viewMode === 'grid' 
-                    ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" 
+                    ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 auto-rows-fr" 
                     : "space-y-4"
                 )}
               >

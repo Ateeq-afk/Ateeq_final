@@ -76,7 +76,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import type { Booking } from '@/types';
 import { useNotificationSystem } from '@/hooks/useNotificationSystem';
 import { validateGSTNumber, validateEwayBill, validateMobileNumber, validateEmail, validatePincode } from '@/utils/validation';
-import BookingArticleManager from './BookingArticleManager';
+import BookingArticleManagerApple from './BookingArticleManagerApple';
 import type { BookingArticle } from '@/services/bookings';
 
 // Animation variants
@@ -1284,7 +1284,7 @@ export default function NewBookingFormEnhanced({ onClose, onBookingCreated }: Ne
                   <div className="space-y-4">
                     {/* BookingArticleManager handles all article details and rate calculations */}
 
-                    <BookingArticleManager
+                    <BookingArticleManagerApple
                       articles={bookingArticles}
                       onArticlesChange={setBookingArticles}
                       branch_id={watchedValues.branch_id}

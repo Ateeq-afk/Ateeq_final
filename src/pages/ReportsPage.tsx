@@ -299,9 +299,5 @@ function ReportsContent() {
 }
 
 export default function ReportsPage() {
-  return (
-    <BranchSelectionProvider>
-      <ReportsContent />
-    </BranchSelectionProvider>
-  );
+  return <ReportsContent />;
 }

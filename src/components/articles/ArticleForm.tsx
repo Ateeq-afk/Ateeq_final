@@ -15,7 +15,7 @@ import {
   Box,
   Shield,
   CheckCircle2,
-  Calculator,
+  DollarSign,
   Eye,
   Plus,
   X,
@@ -726,7 +726,7 @@ export default function ArticleForm({ onSubmit, onCancel, initialData }: Props) 
                   <Card className="md:col-span-2">
                     <CardHeader className="pb-3">
                       <CardTitle className="text-base flex items-center gap-2">
-                        <Calculator className="h-4 w-4" />
+                        <DollarSign className="h-4 w-4" />
                         Pricing Preview
                       </CardTitle>
                     </CardHeader>

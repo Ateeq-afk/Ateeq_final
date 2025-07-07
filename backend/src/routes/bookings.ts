@@ -10,6 +10,8 @@ import { validateCompleteBooking } from '../utils/businessValidations';
 import { branchCache, invalidateCache } from '../middleware/cache';
 import { captureBusinessError } from '../middleware/sentry';
 import SentryManager from '../config/sentry';
+import { bookingSMS } from '../services/smsService';
+import { log } from '../utils/logger';
 
 const router = Router();
 
@@ -142,6 +144,17 @@ router.post('/', requireOrgBranch, invalidateCache((req) => [
       throw bookingError;
     }
 
+    // Send booking confirmation SMS
+    try {
+      await sendBookingConfirmationSMS(booking);
+    } catch (smsError) {
+      log.warn('Failed to send booking confirmation SMS', {
+        bookingId: booking.id,
+        error: smsError instanceof Error ? smsError.message : 'Unknown SMS error'
+      });
+      // Don't fail booking creation if SMS fails
+    }
+    
     // Return success with validation warnings
     res.sendSuccess(booking, 'Booking created successfully', 201, {
       warnings: validation.warnings,
@@ -380,6 +393,18 @@ router.patch('/:id/status', requireOrgBranch, asyncHandler(async (req, res) => {
         changed_by: (req as any).user?.id
       }
     });
+  
+  // Send SMS notifications for relevant status changes
+  try {
+    await sendStatusUpdateSMS(data, booking.status, status);
+  } catch (smsError) {
+    log.warn('Failed to send SMS notification', {
+      bookingId: id,
+      status,
+      error: smsError instanceof Error ? smsError.message : 'Unknown SMS error'
+    });
+    // Don't fail the status update if SMS fails
+  }
   
   res.sendSuccess(data, 'Booking status updated successfully');
 }));

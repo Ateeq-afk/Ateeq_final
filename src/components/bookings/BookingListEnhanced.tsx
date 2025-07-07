@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search,
@@ -20,12 +20,15 @@ import {
   Square,
   ChevronDown,
   Calendar,
-  DollarSign,
+  IndianRupee,
   Truck,
   MapPin,
   Users,
   BarChart3,
   Sparkles,
+  CreditCard,
+  Edit,
+  Activity,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../ui/button';
@@ -65,6 +68,205 @@ import BookingCard from './BookingCard';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { BookingFormWizard } from './BookingFormWizard';
+import { 
+  ActivityIndicator, 
+  MetricCardSkeleton, 
+  NoBookings, 
+  NoSearchResults,
+  LoadingCard,
+  TransactionSkeleton
+} from '../ui/loading-states';
+import { EmptyState } from '../ui/empty-states';
+
+// Stripe-inspired Transaction-style Booking Item
+const TransactionBookingItem: React.FC<{
+  booking: Booking;
+  index: number;
+  isSelected: boolean;
+  onSelect: () => void;
+  onClick: () => void;
+  onModify: () => void;
+  onCancel: () => void;
+  onPOD: () => void;
+}> = ({ booking, index, isSelected, onSelect, onClick, onModify, onCancel, onPOD }) => {
+  const [isHovered, setIsHovered] = useState(false);
+  
+  const getStatusColor = (status: string) => {
+    const colors = {
+      booked: { bg: 'bg-blue-50 dark:bg-blue-950/20', text: 'text-blue-700 dark:text-blue-300', border: 'border-blue-200/50 dark:border-blue-800/30' },
+      in_transit: { bg: 'bg-orange-50 dark:bg-orange-950/20', text: 'text-orange-700 dark:text-orange-300', border: 'border-orange-200/50 dark:border-orange-800/30' },
+      delivered: { bg: 'bg-green-50 dark:bg-green-950/20', text: 'text-green-700 dark:text-green-300', border: 'border-green-200/50 dark:border-green-800/30' },
+      cancelled: { bg: 'bg-red-50 dark:bg-red-950/20', text: 'text-red-700 dark:text-red-300', border: 'border-red-200/50 dark:border-red-800/30' },
+    };
+    return colors[status] || colors.booked;
+  };
+
+  const statusColor = getStatusColor(booking.status);
+  const isIncome = booking.payment_type === 'paid';
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: index * 0.03 }}
+      whileHover={{ x: 4, backgroundColor: 'rgba(0, 0, 0, 0.02)' }}
+      onHoverStart={() => setIsHovered(true)}
+      onHoverEnd={() => setIsHovered(false)}
+      className={cn(
+        "group relative flex items-center justify-between p-5 transition-all duration-300",
+        "hover:bg-gray-50/70 dark:hover:bg-gray-800/30",
+        "hover:shadow-sm hover:border-gray-200/50 dark:hover:border-gray-700/50",
+        "border border-transparent cursor-pointer rounded-xl",
+        "backdrop-blur-sm",
+        isSelected && "bg-blue-50/50 dark:bg-blue-950/20 border-blue-200/50 dark:border-blue-800/30"
+      )}
+      onClick={onClick}
+    >
+      {/* Hover accent line */}
+      <motion.div
+        className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-500 to-purple-500 rounded-r opacity-0 group-hover:opacity-100 transition-all duration-300"
+        initial={{ scaleY: 0 }}
+        whileHover={{ scaleY: 1 }}
+      />
+      
+      <div className="flex items-center gap-4 flex-1 min-w-0">
+        {/* Selection Checkbox */}
+        <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+          <Checkbox
+            checked={isSelected}
+            onCheckedChange={(e) => {
+              e.stopPropagation();
+              onSelect();
+            }}
+            className="haptic-light"
+          />
+        </motion.div>
+
+        {/* Booking Icon & LR Number */}
+        <motion.div 
+          whileHover={{ scale: 1.1, rotate: 5 }}
+          className={cn(
+            "w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300",
+            "shadow-sm border",
+            statusColor.bg, statusColor.border
+          )}
+        >
+          <Package className={cn("h-5 w-5", statusColor.text)} strokeWidth={2} />
+        </motion.div>
+        
+        <div className="min-w-0 flex-1">
+          {/* Main Info */}
+          <div className="flex items-center gap-3 mb-1">
+            <motion.p 
+              className="font-bold text-primary text-body-md tracking-tight"
+              whileHover={{ scale: 1.02 }}
+            >
+              {booking.lr_number}
+            </motion.p>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: index * 0.03 + 0.1 }}
+            >
+              <Badge 
+                className={cn(
+                  "text-xs font-medium border",
+                  statusColor.bg, statusColor.text, statusColor.border
+                )}
+              >
+                {booking.status.replace('_', ' ').toUpperCase()}
+              </Badge>
+            </motion.div>
+          </div>
+          
+          {/* Secondary Info */}
+          <div className="flex items-center gap-2 text-caption text-tertiary">
+            <span>{booking.customer_name}</span>
+            <div className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
+            <span>{booking.from_location} → {booking.to_location}</span>
+            <div className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
+            <span>{new Date(booking.created_at).toLocaleDateString()}</span>
+          </div>
+        </div>
+      </div>
+      
+      {/* Amount & Actions */}
+      <div className="flex items-center gap-4">
+        <div className="text-right">
+          <motion.p 
+            whileHover={{ scale: 1.05 }}
+            className="font-bold text-lg tabular-nums leading-none text-primary"
+          >
+            ₹{booking.total_amount.toLocaleString()}
+          </motion.p>
+          <p className="text-caption text-tertiary mt-1">
+            {booking.payment_type === 'paid' ? 'Paid' : 'To Pay'}
+          </p>
+        </div>
+
+        {/* Quick Actions */}
+        <motion.div
+          className="flex items-center gap-1"
+          initial={{ opacity: 0, x: 10 }}
+          animate={{ 
+            opacity: isHovered ? 1 : 0,
+            x: isHovered ? 0 : 10
+          }}
+          transition={{ duration: 0.2 }}
+        >
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 hover:bg-blue-50 dark:hover:bg-blue-950/20 haptic-light"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onModify();
+                  }}
+                >
+                  <Edit className="h-3 w-3" />
+                </Button>
+              </motion.div>
+            </TooltipTrigger>
+            <TooltipContent>Edit Booking</TooltipContent>
+          </Tooltip>
+
+          {booking.status === 'delivered' && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 hover:bg-green-50 dark:hover:bg-green-950/20 haptic-light"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onPOD();
+                    }}
+                  >
+                    <FileText className="h-3 w-3" />
+                  </Button>
+                </motion.div>
+              </TooltipTrigger>
+              <TooltipContent>Submit POD</TooltipContent>
+            </Tooltip>
+          )}
+        </motion.div>
+        
+        {/* Hover arrow */}
+        <motion.div
+          className="opacity-0 group-hover:opacity-100 transition-all duration-300"
+          initial={{ x: -10 }}
+          whileHover={{ x: 0 }}
+        >
+          <ChevronDown className="h-4 w-4 text-gray-400 -rotate-90" />
+        </motion.div>
+      </div>
+    </motion.div>
+  );
+};
 
 const DEFAULT_FILTERS: Filters = {
   search: '',
@@ -107,12 +309,12 @@ export default function BookingListEnhanced() {
   const [showCancelId, setShowCancelId] = useState<string | null>(null);
   const [showPODId, setShowPODId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  // Default to grid view on mobile for better UX
-  const [viewMode, setViewMode] = useState<'table' | 'grid'>(() => {
+  // Default to transaction view for better UX with our Apple design system
+  const [viewMode, setViewMode] = useState<'table' | 'grid' | 'transaction'>(() => {
     if (typeof window !== 'undefined') {
-      return window.innerWidth < 768 ? 'grid' : 'table';
+      return window.innerWidth < 768 ? 'transaction' : 'transaction';
     }
-    return 'table';
+    return 'transaction';
   });
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -123,6 +325,28 @@ export default function BookingListEnhanced() {
   const { branches } = useBranches();
   const { submitPOD } = usePOD();
   const { showSuccess, showError } = useNotificationSystem();
+
+  // Real-time updates - temporarily disabled for stability
+  // TODO: Re-enable after fixing import issues
+  // const { useRealtimeBookings } = require('@/hooks/useRealtime');
+  // const { useOptimisticUpdates } = require('@/services/optimisticUpdates');
+
+  // Set up real-time subscriptions - temporarily disabled
+  // useRealtimeBookings({
+  //   onInsert: (booking) => {
+  //     console.log('📦 New booking created:', booking);
+  //     showSuccess(`New booking ${booking.lr_number} created`);
+  //     refresh();
+  //   },
+  //   onUpdate: (booking) => {
+  //     console.log('📝 Booking updated:', booking);
+  //     refresh();
+  //   },
+  //   onStatusChange: (booking, oldStatus, newStatus) => {
+  //     console.log(`📋 Booking ${booking.lr_number} status changed from ${oldStatus} to ${newStatus}`);
+  //     showSuccess(`Booking ${booking.lr_number} status updated to ${newStatus}`);
+  //   }
+  // });
 
   // Filter & Sort
   const filtered = useFilteredSortedBookings(bookings, filters, sortField, sortDirection);
@@ -265,80 +489,182 @@ export default function BookingListEnhanced() {
     [submitPOD, showSuccess, showError, refresh]
   );
 
-  if (isLoading) return <BookingListSkeleton />;
-  if (error) return <div>Error loading bookings.</div>;
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 p-6">
+        <div className="max-w-7xl mx-auto space-y-6">
+          {/* Header Skeleton */}
+          <div className="h-32 bg-white dark:bg-gray-900/50 rounded-2xl animate-pulse" />
+          {/* Stats Skeleton */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <MetricCardSkeleton key={i} />
+            ))}
+          </div>
+          {/* Content Skeleton */}
+          <div className="bg-white dark:bg-gray-900/50 rounded-2xl p-6 space-y-4">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <TransactionSkeleton key={i} />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
+        <EmptyState
+          illustration="error"
+          title="Failed to load bookings"
+          description="There was an error loading your bookings. Please try again."
+          action={{
+            label: 'Retry',
+            onClick: () => refresh()
+          }}
+        />
+      </div>
+    );
+  }
 
   return (
     <TooltipProvider>
-      <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-        className="space-y-6"
-      >
-        {/* Premium Header */}
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className="max-w-7xl mx-auto p-6 space-y-6"
+        >
+        {/* Apple-inspired Header */}
         <motion.div
           variants={itemVariants}
-          className="bg-gradient-to-r from-brand-50 via-blue-50 to-purple-50 p-6 rounded-2xl shadow-sm border border-brand-200/50 backdrop-blur-sm"
+          className="bg-white/70 dark:bg-black/70 backdrop-blur-xl border border-gray-200/50 dark:border-gray-800/50 rounded-2xl shadow-sm p-6"
         >
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="p-2 bg-brand-600 rounded-xl">
+            <motion.div 
+              className="flex-1"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <motion.div 
+                  className="p-3 bg-blue-500 dark:bg-blue-400 rounded-xl"
+                  whileHover={{ scale: 1.05, rotate: 5 }}
+                >
                   <Package className="h-6 w-6 text-white" />
-                </div>
-                <h2 className="text-2xl font-bold text-brand-800">Bookings Hub</h2>
-                <Badge variant="secondary" className="bg-brand-100 text-brand-700">
-                  <Sparkles className="h-3 w-3 mr-1" />
-                  Premium
-                </Badge>
+                </motion.div>
+                <h1 className="text-display-sm font-bold text-primary tracking-tight">Bookings</h1>
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  <Badge className="bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-300 border-blue-200/50 dark:border-blue-800/30">
+                    <Activity className="h-3 w-3 mr-1" />
+                    Live
+                  </Badge>
+                </motion.div>
               </div>
-              <div className="flex flex-wrap items-center gap-4 text-sm">
-                <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
-                  <span className="text-gray-600">{stats.total} Total</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4 text-green-600" />
-                  <span className="text-green-600">{stats.delivered} Delivered</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Truck className="h-4 w-4 text-blue-600" />
-                  <span className="text-blue-600">{stats.inTransit} In Transit</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <DollarSign className="h-4 w-4 text-purple-600" />
-                  <span className="text-purple-600">₹{stats.revenue.toLocaleString()}</span>
-                </div>
-              </div>
-            </div>
+              
+              {/* Enhanced Stats */}
+              <motion.div 
+                className="grid grid-cols-2 lg:grid-cols-4 gap-4"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.3 }}
+              >
+                <motion.div 
+                  className="flex items-center gap-2"
+                  whileHover={{ scale: 1.02 }}
+                >
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                  <span className="text-label-md text-secondary font-medium">{stats.total} Total</span>
+                </motion.div>
+                <motion.div 
+                  className="flex items-center gap-2"
+                  whileHover={{ scale: 1.02 }}
+                >
+                  <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
+                  <span className="text-label-md text-green-600 dark:text-green-400 font-medium">{stats.delivered} Delivered</span>
+                </motion.div>
+                <motion.div 
+                  className="flex items-center gap-2"
+                  whileHover={{ scale: 1.02 }}
+                >
+                  <Truck className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                  <span className="text-label-md text-orange-600 dark:text-orange-400 font-medium">{stats.inTransit} In Transit</span>
+                </motion.div>
+                <motion.div 
+                  className="flex items-center gap-2"
+                  whileHover={{ scale: 1.02 }}
+                >
+                  <IndianRupee className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                  <span className="text-label-md text-purple-600 dark:text-purple-400 font-medium tabular-nums">₹{stats.revenue.toLocaleString()}</span>
+                </motion.div>
+              </motion.div>
+            </motion.div>
 
-            <div className="flex flex-wrap items-center gap-2">
-              {/* View Mode Toggle */}
-              <div className="flex items-center bg-white rounded-lg shadow-sm border border-gray-200 p-1">
+            <motion.div 
+              className="flex flex-wrap items-center gap-3"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.4 }}
+            >
+              {/* Enhanced View Mode Toggle */}
+              <div className="flex items-center bg-white/70 dark:bg-gray-900/50 rounded-xl shadow-sm border border-gray-200/50 dark:border-gray-800/50 p-1 backdrop-blur-sm">
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button
-                      variant={viewMode === 'table' ? 'secondary' : 'ghost'}
-                      size="sm"
-                      onClick={() => setViewMode('table')}
-                      className="rounded-md"
-                    >
-                      <List className="h-4 w-4" />
-                    </Button>
+                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                      <Button
+                        variant={viewMode === 'transaction' ? 'secondary' : 'ghost'}
+                        size="sm"
+                        onClick={() => setViewMode('transaction')}
+                        className={cn(
+                          "rounded-lg h-8 w-8 p-0 haptic-light",
+                          viewMode === 'transaction' && "bg-blue-100 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300"
+                        )}
+                      >
+                        <CreditCard className="h-4 w-4" />
+                      </Button>
+                    </motion.div>
+                  </TooltipTrigger>
+                  <TooltipContent>Transaction View</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                      <Button
+                        variant={viewMode === 'table' ? 'secondary' : 'ghost'}
+                        size="sm"
+                        onClick={() => setViewMode('table')}
+                        className={cn(
+                          "rounded-lg h-8 w-8 p-0 haptic-light",
+                          viewMode === 'table' && "bg-blue-100 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300"
+                        )}
+                      >
+                        <List className="h-4 w-4" />
+                      </Button>
+                    </motion.div>
                   </TooltipTrigger>
                   <TooltipContent>Table View</TooltipContent>
                 </Tooltip>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button
-                      variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
-                      size="sm"
-                      onClick={() => setViewMode('grid')}
-                      className="rounded-md"
-                    >
-                      <Grid3X3 className="h-4 w-4" />
-                    </Button>
+                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                      <Button
+                        variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
+                        size="sm"
+                        onClick={() => setViewMode('grid')}
+                        className={cn(
+                          "rounded-lg h-8 w-8 p-0 haptic-light",
+                          viewMode === 'grid' && "bg-blue-100 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300"
+                        )}
+                      >
+                        <Grid3X3 className="h-4 w-4" />
+                      </Button>
+                    </motion.div>
                   </TooltipTrigger>
                   <TooltipContent>Grid View</TooltipContent>
                 </Tooltip>
@@ -430,7 +756,7 @@ export default function BookingListEnhanced() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-            </div>
+            </motion.div>
           </div>
         </motion.div>
 
@@ -543,7 +869,7 @@ export default function BookingListEnhanced() {
                       onValueChange={(v) => handleFilterChange('paymentType', v)}
                     >
                       <SelectTrigger>
-                        <DollarSign className="h-4 w-4 mr-2 text-gray-500" />
+                        <IndianRupee className="h-4 w-4 mr-2 text-gray-500" />
                         <SelectValue placeholder="Payment Type" />
                       </SelectTrigger>
                       <SelectContent>
@@ -627,7 +953,56 @@ export default function BookingListEnhanced() {
         </AnimatePresence>
 
         {/* Content Area */}
-        {viewMode === 'table' ? (
+        {viewMode === 'transaction' ? (
+          <motion.div
+            variants={itemVariants}
+            className="bg-white dark:bg-gray-900/50 rounded-2xl border border-gray-200/50 dark:border-gray-800/50 shadow-sm overflow-hidden backdrop-blur-sm"
+          >
+            {filtered.length === 0 ? (
+              <div className="p-12">
+                {filters.search ? (
+                  <NoSearchResults
+                    query={filters.search}
+                    onClear={() => handleFilterChange('search', '')}
+                    suggestions={[
+                      'Check LR number spelling',
+                      'Try customer name instead',
+                      'Search by route or location',
+                      'Clear filters and try again'
+                    ]}
+                  />
+                ) : (
+                  <NoBookings
+                    title="No bookings yet"
+                    description="Start by creating your first booking to manage shipments and track deliveries."
+                    action={{
+                      label: 'Create New Booking',
+                      onClick: () => setShowWizard(true)
+                    }}
+                  />
+                )}
+              </div>
+            ) : (
+              <div className="p-6 space-y-1">
+                <AnimatePresence mode="popLayout">
+                  {filtered.map((booking, index) => (
+                    <TransactionBookingItem
+                      key={booking.id}
+                      booking={booking}
+                      index={index}
+                      isSelected={selectedIds.includes(booking.id)}
+                      onSelect={() => toggleSelect(booking.id)}
+                      onClick={() => handleBookingClick(booking)}
+                      onModify={() => setShowModifyId(booking.id)}
+                      onCancel={() => setShowCancelId(booking.id)}
+                      onPOD={() => setShowPODId(booking.id)}
+                    />
+                  ))}
+                </AnimatePresence>
+              </div>
+            )}
+          </motion.div>
+        ) : viewMode === 'table' ? (
           <motion.div
             variants={itemVariants}
             className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden"
@@ -819,18 +1194,28 @@ export default function BookingListEnhanced() {
                   </AnimatePresence>
                   {filtered.length === 0 && (
                     <tr>
-                      <td colSpan={9} className="text-center py-12">
-                        <motion.div
-                          initial={{ opacity: 0, scale: 0.9 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          className="flex flex-col items-center gap-3"
-                        >
-                          <Package className="h-12 w-12 text-gray-300" />
-                          <p className="text-gray-500 font-medium">No bookings found</p>
-                          <p className="text-gray-400 text-sm">
-                            Try adjusting your filters or create a new booking
-                          </p>
-                        </motion.div>
+                      <td colSpan={9} className="py-16">
+                        {filters.search ? (
+                          <NoSearchResults
+                            query={filters.search}
+                            onClear={() => handleFilterChange('search', '')}
+                            suggestions={[
+                              'Check LR number spelling',
+                              'Try customer name instead',
+                              'Search by route or location',
+                              'Clear filters and try again'
+                            ]}
+                          />
+                        ) : (
+                          <NoBookings
+                            title="No bookings yet"
+                            description="Start by creating your first booking to manage shipments and track deliveries."
+                            action={{
+                              label: 'Create New Booking',
+                              onClick: () => setShowWizard(true)
+                            }}
+                          />
+                        )}
                       </td>
                     </tr>
                   )}
@@ -858,13 +1243,29 @@ export default function BookingListEnhanced() {
             {filtered.length === 0 && (
               <motion.div
                 variants={itemVariants}
-                className="col-span-full text-center py-12"
+                className="col-span-full py-12"
               >
-                <Package className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                <p className="text-gray-500 font-medium">No bookings found</p>
-                <p className="text-gray-400 text-sm mt-1">
-                  Try adjusting your filters or create a new booking
-                </p>
+                {filters.search ? (
+                  <NoSearchResults
+                    query={filters.search}
+                    onClear={() => handleFilterChange('search', '')}
+                    suggestions={[
+                      'Check LR number spelling',
+                      'Try customer name instead',
+                      'Search by route or location',
+                      'Clear filters and try again'
+                    ]}
+                  />
+                ) : (
+                  <NoBookings
+                    title="No bookings yet"
+                    description="Start by creating your first booking to manage shipments and track deliveries."
+                    action={{
+                      label: 'Create New Booking',
+                      onClick: () => setShowWizard(true)
+                    }}
+                  />
+                )}
               </motion.div>
             )}
           </motion.div>
@@ -904,7 +1305,8 @@ export default function BookingListEnhanced() {
             />
           )}
         </AnimatePresence>
-      </motion.div>
+        </motion.div>
+      </div>
     </TooltipProvider>
   );
 }

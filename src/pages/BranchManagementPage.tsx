@@ -113,9 +113,5 @@ function BranchManagementContent() {
 }
 
 export default function BranchManagementPage() {
-  return (
-    <BranchSelectionProvider>
-      <BranchManagementContent />
-    </BranchSelectionProvider>
-  );
+  return <BranchManagementContent />;
 }

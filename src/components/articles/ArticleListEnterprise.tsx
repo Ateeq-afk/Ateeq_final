@@ -71,6 +71,7 @@ import { ListEmptyState } from '@/components/ui/empty-state';
 // Hooks and types
 import { useBranches } from '@/hooks/useBranches';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBranchSelection } from '@/contexts/BranchSelectionContext';
 import type { Article } from '@/types';
 import { useArticles } from '@/hooks/useArticles';
 import { useNotificationSystem } from '@/hooks/useNotificationSystem';
@@ -85,6 +86,200 @@ import ArticleBulkRates from './ArticleBulkRates';
 // Design tokens and utils
 import { designTokens } from '@/lib/design-tokens';
 import { cn } from '@/lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  ActivityIndicator, 
+  MetricCardSkeleton, 
+  NoSearchResults,
+  LoadingCard,
+  TransactionSkeleton,
+  NoArticles
+} from '@/components/ui/loading-states';
+import { EmptyState } from '@/components/ui/empty-states';
+
+// Apple-inspired Article Card Component
+const AppleArticleCard: React.FC<{
+  article: Article;
+  index: number;
+  isSelected: boolean;
+  onSelect: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  onViewDetails: () => void;
+  onCopy: () => void;
+}> = ({ article, index, isSelected, onSelect, onEdit, onDelete, onViewDetails, onCopy }) => {
+  const [isHovered, setIsHovered] = useState(false);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.05, duration: 0.3 }}
+      whileHover={{ y: -4, scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
+      onHoverStart={() => setIsHovered(true)}
+      onHoverEnd={() => setIsHovered(false)}
+      className={cn(
+        "group relative bg-white/80 dark:bg-gray-900/80 rounded-3xl transition-all duration-500 overflow-hidden cursor-pointer",
+        "border border-gray-200/60 dark:border-gray-700/60",
+        "shadow-[0_8px_32px_0_rgba(31,38,135,0.12)] dark:shadow-[0_8px_32px_0_rgba(0,0,0,0.3)]",
+        "hover:shadow-[0_16px_64px_0_rgba(31,38,135,0.25)] dark:hover:shadow-[0_16px_64px_0_rgba(0,0,0,0.4)]",
+        "backdrop-blur-xl backdrop-saturate-150 haptic-medium hover-lift-subtle",
+        "hover:bg-white/90 dark:hover:bg-gray-800/90",
+        "transform hover:scale-[1.02] active:scale-[0.98]",
+        isSelected && "border-blue-500/80 dark:border-blue-400/80 shadow-[0_16px_32px_0_rgba(59,130,246,0.25)] dark:shadow-[0_16px_32px_0_rgba(59,130,246,0.4)] ring-2 ring-blue-200/50 dark:ring-blue-800/50"
+      )}
+      onClick={onViewDetails}
+    >
+      {/* Enhanced glass morphism background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-white/40 via-white/20 to-blue-50/30 dark:from-gray-800/40 dark:via-gray-900/20 dark:to-blue-950/30 opacity-60" />
+      <div className="absolute inset-0 bg-gradient-to-t from-transparent to-white/20 dark:to-gray-800/20 opacity-50" />
+      
+      {/* Noise texture for depth */}
+      <div className="absolute inset-0 opacity-[0.02] mix-blend-overlay">
+        <div className="w-full h-full" style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' /%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E")`
+        }} />
+      </div>
+
+      <div className="relative z-10 p-6">
+        {/* Header with selection and actions */}
+        <div className="flex items-start justify-between mb-6">
+          <motion.div 
+            whileHover={{ scale: 1.1, rotate: 5 }}
+            className="p-3 bg-gradient-to-br from-blue-50/80 to-blue-100/60 dark:from-blue-950/40 dark:to-blue-900/30 rounded-2xl border border-blue-200/60 dark:border-blue-800/40 shadow-[0_4px_16px_0_rgba(59,130,246,0.12)] dark:shadow-[0_4px_16px_0_rgba(59,130,246,0.25)]"
+          >
+            <Package className="h-6 w-6 text-blue-600 dark:text-blue-400" strokeWidth={1.5} />
+          </motion.div>
+
+          {/* Quick Actions */}
+          <motion.div
+            className="flex items-center gap-1"
+            initial={{ opacity: 0, x: 10 }}
+            animate={{ 
+              opacity: isHovered ? 1 : 0,
+              x: isHovered ? 0 : 10
+            }}
+            transition={{ duration: 0.2 }}
+          >
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <motion.div whileHover={{ scale: 1.1, transition: { duration: 0.1 } }} whileTap={{ scale: 0.9, transition: { duration: 0.05 } }}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-800 haptic-light transition-all duration-200 ease-out hover:scale-110 active:scale-95"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSelect();
+                    }}
+                  >
+                    {isSelected ? 
+                      <CheckCircle2 className="h-4 w-4 text-blue-600" /> : 
+                      <div className="h-4 w-4 border-2 border-gray-300 rounded" />
+                    }
+                  </Button>
+                </motion.div>
+              </TooltipTrigger>
+              <TooltipContent>{isSelected ? 'Deselect' : 'Select'}</TooltipContent>
+            </Tooltip>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <motion.div whileHover={{ scale: 1.1, transition: { duration: 0.1 } }} whileTap={{ scale: 0.9, transition: { duration: 0.05 } }}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-800 haptic-light transition-all duration-200 ease-out hover:scale-110 active:scale-95"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </motion.div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={onEdit}>
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onCopy}>
+                  <Copy className="h-4 w-4 mr-2" />
+                  Copy Details
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={onDelete} className="text-red-600 dark:text-red-400">
+                  <Trash className="h-4 w-4 mr-2" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </motion.div>
+        </div>
+
+        {/* Article Info */}
+        <div className="space-y-4">
+          <div>
+            <motion.h3 
+              className="font-bold text-xl text-primary leading-tight tracking-tight font-system"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.05 + 0.1, duration: 0.4, type: "spring", stiffness: 200, damping: 25 }}
+            >
+              {article.name}
+            </motion.h3>
+            {article.hsn_code && (
+              <motion.p 
+                className="text-sm text-tertiary mt-1 font-medium"
+                initial={{ opacity: 0, y: 5 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.05 + 0.15, duration: 0.3, type: "spring", stiffness: 300, damping: 30 }}
+              >
+                HSN: {article.hsn_code}
+              </motion.p>
+            )}
+          </div>
+
+          {article.description && (
+            <motion.p 
+              className="text-base text-secondary line-clamp-2 leading-relaxed"
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.05 + 0.2, duration: 0.3, type: "spring", stiffness: 300, damping: 30 }}
+            >
+              {article.description}
+            </motion.p>
+          )}
+
+          {/* Price Badge */}
+          <motion.div
+            className="flex items-center justify-between pt-2"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.05 + 0.25, duration: 0.4, type: "spring", stiffness: 200, damping: 25 }}
+          >
+            <Badge className="bg-gradient-to-r from-green-50/80 to-emerald-50/80 dark:from-green-950/40 dark:to-emerald-950/40 text-green-700 dark:text-green-300 border-green-200/60 dark:border-green-800/40 font-semibold text-sm tabular-nums shadow-[0_2px_8px_0_rgba(34,197,94,0.15)] dark:shadow-[0_2px_8px_0_rgba(34,197,94,0.25)]">
+              ₹{article.base_rate.toFixed(2)}
+            </Badge>
+            <span className="text-sm text-tertiary font-medium">
+              {new Date(article.created_at).toLocaleDateString()}
+            </span>
+          </motion.div>
+        </div>
+
+        {/* Hover indicator */}
+        <motion.div
+          className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-all duration-300"
+          initial={{ x: 10, opacity: 0 }}
+          whileHover={{ x: 0, opacity: 1 }}
+        >
+          <div className="w-8 h-8 rounded-full bg-white/20 dark:bg-black/20 backdrop-blur-md border border-white/30 dark:border-gray-600/30 flex items-center justify-center shadow-[0_4px_16px_0_rgba(0,0,0,0.08)] dark:shadow-[0_4px_16px_0_rgba(0,0,0,0.2)]">
+            <Eye className="h-4 w-4 text-gray-600 dark:text-gray-300" />
+          </div>
+        </motion.div>
+      </div>
+    </motion.div>
+  );
+};
 
 // Constants
 const VIEW_MODES = {
@@ -129,6 +324,7 @@ export default function ArticleListEnterprise() {
   const { branches } = useBranches();
   const { getCurrentUserBranch } = useAuth();
   const userBranch = getCurrentUserBranch();
+  const { selectedBranch, setSelectedBranch } = useBranchSelection();
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // —— Data Hooks ——
@@ -424,35 +620,107 @@ export default function ArticleListEnterprise() {
     },
   ], []);
 
-  // —— Loading State ——
+  // —— Branch Selection Check ——
+  if (!selectedBranch) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50/30 dark:from-gray-950 dark:via-gray-900 dark:to-blue-950/30 flex items-center justify-center p-6">
+        <motion.div 
+          className="max-w-md w-full"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          <div className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-2xl rounded-3xl p-8 border border-orange-200/30 dark:border-orange-800/30 shadow-2xl">
+            <div className="text-center mb-6">
+              <div className="w-20 h-20 bg-orange-100 dark:bg-orange-900/30 rounded-3xl flex items-center justify-center mx-auto mb-4">
+                <AlertCircle className="h-10 w-10 text-orange-600 dark:text-orange-400" />
+              </div>
+              <h3 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Branch Selection Required</h3>
+              <p className="text-gray-500 dark:text-gray-400 mt-2">
+                Please select a branch to view your article catalog.
+              </p>
+            </div>
+            <div className="space-y-4">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Select Branch
+              </label>
+              <Select value={selectedBranch || ''} onValueChange={setSelectedBranch}>
+                <SelectTrigger className="w-full bg-white/50 dark:bg-gray-700/50 border-gray-200/50 dark:border-gray-600/50 h-12">
+                  <SelectValue placeholder="Choose your branch" />
+                </SelectTrigger>
+                <SelectContent>
+                  {branches.map((branch) => (
+                    <SelectItem key={branch.id} value={branch.id}>
+                      <div className="flex items-center gap-2">
+                        <Building2 className="h-4 w-4 text-gray-400" />
+                        <span>{branch.name}</span>
+                        <span className="text-gray-400">•</span>
+                        <span className="text-gray-500">{branch.city}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
+  // —— Enhanced Loading State ——
   if (loading && articles.length === 0) {
     return (
-      <div className="space-y-6" role="status" aria-live="polite">
-        <Skeleton className="h-10 w-48" />
-        <StatsGrid columns={4}>
-          {[...Array(4)].map((_, i) => (
-            <Skeleton key={i} className="h-32" />
-          ))}
-        </StatsGrid>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[...Array(6)].map((_, i) => (
-            <Skeleton key={i} className="h-48" />
-          ))}
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50/30 dark:from-gray-950 dark:via-gray-900 dark:to-blue-950/30 p-6">
+        <div className="max-w-7xl mx-auto space-y-6">
+          {/* Header Skeleton */}
+          <motion.div 
+            className="h-40 bg-white dark:bg-gray-900/50 rounded-2xl animate-pulse"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          />
+          {/* Stats Skeleton */}
+          <motion.div 
+            className="grid grid-cols-1 md:grid-cols-4 gap-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.1 }}
+          >
+            {Array.from({ length: 4 }).map((_, i) => (
+              <MetricCardSkeleton key={i} />
+            ))}
+          </motion.div>
+          {/* Content Skeleton */}
+          <motion.div 
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+          >
+            {Array.from({ length: 8 }).map((_, i) => (
+              <LoadingCard key={i} className="h-64" />
+            ))}
+          </motion.div>
         </div>
         <span className="sr-only">Loading articles...</span>
       </div>
     );
   }
 
-  // —— Error State ——
+  // —— Enhanced Error State ——
   if (error && articles.length === 0) {
     return (
-      <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          Failed to load articles. Please try refreshing the page.
-        </AlertDescription>
-      </Alert>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50/30 dark:from-gray-950 dark:via-gray-900 dark:to-blue-950/30 flex items-center justify-center">
+        <EmptyState
+          illustration="general"
+          title="Failed to load articles"
+          description="There was an error loading your article catalog. Please try again."
+          action={{
+            label: 'Retry',
+            onClick: () => refresh()
+          }}
+        />
+      </div>
     );
   }
 
@@ -475,47 +743,117 @@ export default function ArticleListEnterprise() {
   // —— Main Render ——
   return (
     <TooltipProvider>
-      <div className="space-y-6">
-        {/* Enhanced Header Section */}
-        <div className="bg-gradient-to-r from-primary-50 to-secondary-50 dark:from-primary-950 dark:to-secondary-950 -mx-6 px-6 py-8 border-b border-neutral-200 dark:border-neutral-800">
-          <div className="max-w-7xl mx-auto">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50/30 dark:from-gray-950 dark:via-gray-900 dark:to-blue-950/30">
+        <div className="max-w-7xl mx-auto p-6 space-y-6">
+          {/* Apple-inspired Header Section */}
+          <motion.div 
+            className="bg-white/80 dark:bg-black/80 backdrop-blur-xl border border-gray-200/60 dark:border-gray-700/60 rounded-3xl shadow-[0_8px_32px_0_rgba(31,38,135,0.12)] dark:shadow-[0_8px_32px_0_rgba(0,0,0,0.3)] p-6"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
             <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6">
-              <div>
-                <h1 className="text-4xl font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-3">
-                  <div className="p-3 bg-white dark:bg-neutral-900 rounded-xl shadow-md">
-                    <Package className="h-6 w-6 text-primary-600 dark:text-primary-400" />
-                  </div>
-                  Articles Management
-                </h1>
-                <p className="text-neutral-600 dark:text-neutral-400 mt-2 text-lg">
-                  Manage your article catalog, pricing, and inventory
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.1 }}
+              >
+                <div className="flex items-center gap-3 mb-3">
+                  <motion.div 
+                    className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 dark:from-blue-400 dark:to-blue-500 rounded-2xl shadow-[0_4px_16px_0_rgba(59,130,246,0.25)] dark:shadow-[0_4px_16px_0_rgba(59,130,246,0.4)]"
+                    whileHover={{ scale: 1.05, rotate: 5 }}
+                  >
+                    <Package className="h-6 w-6 text-white" />
+                  </motion.div>
+                  <h1 className="text-4xl font-bold text-primary tracking-tight leading-tight">
+                    Article Catalog
+                  </h1>
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.3 }}
+                  >
+                    <Badge className="bg-gradient-to-r from-blue-50/80 to-indigo-50/80 dark:from-blue-950/40 dark:to-indigo-950/40 text-blue-700 dark:text-blue-300 border-blue-200/60 dark:border-blue-800/40 shadow-[0_2px_8px_0_rgba(59,130,246,0.15)] dark:shadow-[0_2px_8px_0_rgba(59,130,246,0.25)]">
+                      <Package className="h-3 w-3 mr-1" />
+                      Enterprise
+                    </Badge>
+                  </motion.div>
+                </div>
+                <p className="text-lg text-secondary leading-relaxed font-medium">
+                  Manage your product catalog, pricing, and inventory with enterprise-grade controls
                 </p>
-              </div>
+              </motion.div>
               
-              {/* Quick Stats Summary */}
-              <div className="flex items-center gap-6">
-                <MiniStats
-                  title="Total Articles"
-                  value={<AnimatedCounter value={statistics.total} />}
-                  icon={<Package className="h-4 w-4 text-primary-600" />}
-                  trend="neutral"
-                />
-                <MiniStats
-                  title="Avg. Price"
-                  value={`₹${statistics.avgPrice.toFixed(0)}`}
-                  icon={<DollarSign className="h-4 w-4 text-green-600" />}
-                  trend="up"
-                />
-                <MiniStats
-                  title="New This Week"
-                  value={statistics.recentlyAdded}
-                  icon={<TrendingUp className="h-4 w-4 text-blue-600" />}
-                  trend="up"
-                />
-              </div>
+              {/* Enhanced Quick Stats */}
+              <motion.div 
+                className="grid grid-cols-3 gap-4"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.2 }}
+              >
+                <motion.div 
+                  className="text-center"
+                  whileHover={{ scale: 1.05, transition: { duration: 0.2, type: "spring", stiffness: 300, damping: 20 } }}
+                >
+                  <motion.div 
+                    className="w-2 h-2 bg-blue-500 rounded-full mx-auto mb-1"
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ delay: 0.3, duration: 0.3, type: "spring", stiffness: 400, damping: 25 }}
+                  />
+                  <motion.p 
+                    className="text-2xl font-bold text-primary tabular-nums font-system"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.6, duration: 0.3, type: "spring", stiffness: 300, damping: 30 }}
+                  >
+                    {statistics.total}
+                  </motion.p>
+                  <p className="text-sm text-tertiary font-medium tracking-wide">Articles</p>
+                </motion.div>
+                <motion.div 
+                  className="text-center"
+                  whileHover={{ scale: 1.05, transition: { duration: 0.2, type: "spring", stiffness: 300, damping: 20 } }}
+                >
+                  <motion.div 
+                    className="w-2 h-2 bg-green-500 rounded-full mx-auto mb-1"
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ delay: 0.4, duration: 0.3, type: "spring", stiffness: 400, damping: 25 }}
+                  />
+                  <motion.p 
+                    className="text-2xl font-bold text-primary tabular-nums font-system"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.7, duration: 0.3, type: "spring", stiffness: 300, damping: 30 }}
+                  >
+                    ₹{statistics.avgPrice.toFixed(0)}
+                  </motion.p>
+                  <p className="text-sm text-tertiary font-medium tracking-wide">Avg Price</p>
+                </motion.div>
+                <motion.div 
+                  className="text-center"
+                  whileHover={{ scale: 1.05, transition: { duration: 0.2, type: "spring", stiffness: 300, damping: 20 } }}
+                >
+                  <motion.div 
+                    className="w-2 h-2 bg-purple-500 rounded-full mx-auto mb-1"
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ delay: 0.5, duration: 0.3, type: "spring", stiffness: 400, damping: 25 }}
+                  />
+                  <motion.p 
+                    className="text-2xl font-bold text-primary tabular-nums font-system"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.8, duration: 0.3, type: "spring", stiffness: 300, damping: 30 }}
+                  >
+                    {statistics.recentlyAdded}
+                  </motion.p>
+                  <p className="text-sm text-tertiary font-medium tracking-wide">Recent</p>
+                </motion.div>
+              </motion.div>
             </div>
-          </div>
-        </div>
+          </motion.div>
 
         {/* Analytics Overview (shown in analytics view) */}
         {viewMode === VIEW_MODES.ANALYTICS && (
@@ -551,7 +889,7 @@ export default function ArticleListEnterprise() {
         )}
 
         {/* Enhanced Action Bar */}
-        <Card className="p-4">
+        <Card className="p-4 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border border-gray-200/60 dark:border-gray-700/60 shadow-[0_8px_32px_0_rgba(31,38,135,0.12)] dark:shadow-[0_8px_32px_0_rgba(0,0,0,0.3)] rounded-3xl">
           <div className="flex flex-col lg:flex-row gap-4">
             {/* Search with filters */}
             <div className="flex-1 flex gap-2">
@@ -631,7 +969,7 @@ export default function ArticleListEnterprise() {
             {/* Controls */}
             <div className="flex items-center gap-2">
               {/* View Mode Selection */}
-              <div className="flex border rounded-lg p-1 bg-background">
+              <div className="flex border border-gray-200/60 dark:border-gray-700/60 rounded-xl p-1 bg-white/60 dark:bg-gray-800/60 backdrop-blur-md shadow-[0_4px_16px_0_rgba(0,0,0,0.08)] dark:shadow-[0_4px_16px_0_rgba(0,0,0,0.2)]">
                 <Button
                   variant={viewMode === VIEW_MODES.GRID ? "default" : "ghost"}
                   size="sm"
@@ -698,21 +1036,21 @@ export default function ArticleListEnterprise() {
                   variant="outline"
                   onClick={handleRefresh}
                   disabled={isRefreshing}
-                  leftIcon={<RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />}
+                  leftIcon={<RefreshCw className={cn("h-4 w-4 transition-transform duration-200", isRefreshing && "animate-spin")} />}
                 >
                   Refresh
                 </Button>
                 <Button
                   variant="outline"
                   onClick={() => setShowImport(true)}
-                  leftIcon={<Upload className="h-4 w-4" />}
+                  leftIcon={<Upload className="h-4 w-4 transition-transform duration-200 group-hover:scale-110" />}
                 >
                   Import
                 </Button>
                 <Button
                   variant="outline"
                   onClick={() => setShowExport(true)}
-                  leftIcon={<Download className="h-4 w-4" />}
+                  leftIcon={<Download className="h-4 w-4 transition-transform duration-200 group-hover:scale-110" />}
                 >
                   Export
                 </Button>
@@ -721,7 +1059,7 @@ export default function ArticleListEnterprise() {
               <Button
                 variant="outline"
                 onClick={() => setShowBulkRates(true)}
-                leftIcon={<Tag className="h-4 w-4" />}
+                leftIcon={<Tag className="h-4 w-4 transition-transform duration-200 group-hover:scale-110" />}
               >
                 Bulk Rates
               </Button>
@@ -729,7 +1067,7 @@ export default function ArticleListEnterprise() {
               <Button
                 variant="gradient"
                 onClick={() => setShowForm(true)}
-                leftIcon={<Plus className="h-4 w-4" />}
+                leftIcon={<Plus className="h-4 w-4 transition-transform duration-200 group-hover:scale-110" />}
               >
                 Add Article
               </Button>
@@ -739,7 +1077,7 @@ export default function ArticleListEnterprise() {
 
         {/* Selection Bar */}
         {selectedIds.length > 0 && (
-          <Card variant="outlined" className="bg-primary-50 dark:bg-primary-950 border-primary-200 dark:border-primary-800">
+          <Card variant="outlined" className="bg-gradient-to-r from-blue-50/80 to-indigo-50/80 dark:from-blue-950/40 dark:to-indigo-950/40 border-blue-200/60 dark:border-blue-800/40 backdrop-blur-xl shadow-[0_8px_32px_0_rgba(59,130,246,0.15)] dark:shadow-[0_8px_32px_0_rgba(59,130,246,0.25)] rounded-3xl">
             <CardContent className="p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Badge variant="secondary" className="bg-primary-100 dark:bg-primary-900">
@@ -767,211 +1105,164 @@ export default function ArticleListEnterprise() {
           </Card>
         )}
 
-        {/* Content Area */}
+        {/* Enhanced Content Area */}
         {viewMode === VIEW_MODES.GRID && (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+          >
             {pageItems.length ? (
-              pageItems.map(article => (
-                <Card
-                  key={article.id}
-                  variant="elevated"
-                  interactive
-                  className={cn(
-                    selectedIds.includes(article.id) && "ring-2 ring-primary-500"
-                  )}
-                >
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div 
-                        className="flex-1 cursor-pointer"
-                        onClick={() => setDetailsId(article.id)}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className="p-3 bg-gradient-to-br from-primary-100 to-primary-200 dark:from-primary-900/30 dark:to-primary-800/30 rounded-xl">
-                            <Package className="h-5 w-5 text-primary-600 dark:text-primary-400" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <CardTitle size="sm" className="truncate">
-                              {article.name}
-                            </CardTitle>
-                            {article.hsn_code && (
-                              <Badge variant="outline" className="mt-1 text-xs">
-                                <Hash className="h-3 w-3 mr-1" />
-                                {article.hsn_code}
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
+              <motion.div 
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ staggerChildren: 0.05 }}
+              >
+                {pageItems.map((article, index) => (
+                  <AppleArticleCard
+                    key={article.id}
+                    article={article}
+                    index={index}
+                    isSelected={selectedIds.includes(article.id)}
+                    onSelect={() => toggleSelection(article.id)}
+                    onEdit={() => {
+                      setEditArticle(article);
+                      setShowForm(true);
+                    }}
+                    onDelete={() => handleDelete(article.id)}
+                    onViewDetails={() => setDetailsId(article.id)}
+                    onCopy={() => copyToClipboard(article)}
+                  />
+                ))}
+              </motion.div>
+            ) : (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="py-16"
+              >
+                {filters.search ? (
+                  <NoSearchResults
+                    query={filters.search}
+                    onClear={() => setFilters({ search: '' })}
+                    suggestions={[
+                      'Check article name spelling',
+                      'Try searching by HSN code',
+                      'Search for partial matches',
+                      'Clear filters and try again'
+                    ]}
+                  />
+                ) : (
+                  <NoArticles
+                    title="No articles in catalog"
+                    description="Start building your product catalog by adding your first article with pricing and inventory details."
+                    action={{
+                      label: 'Add First Article',
+                      onClick: () => setShowForm(true)
+                    }}
+                  />
+                )}
+              </motion.div>
+            )}
+          </motion.div>
+        )}
+
+        {viewMode === VIEW_MODES.LIST && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+          >
+            {pageItems.length ? (
+              <motion.div 
+                className="bg-white/80 dark:bg-gray-900/80 rounded-3xl border border-gray-200/60 dark:border-gray-700/60 shadow-[0_8px_32px_0_rgba(31,38,135,0.12)] dark:shadow-[0_8px_32px_0_rgba(0,0,0,0.3)] overflow-hidden backdrop-blur-xl"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <DataTable
+                  data={pageItems}
+                  columns={tableColumns}
+                  searchable={false}
+                  selectable
+                  onSelectionChange={(selected) => setSelectedIds(selected.map(item => item.id))}
+                  actions={(row) => (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <motion.div whileHover={{ scale: 1.1, transition: { duration: 0.1 } }} whileTap={{ scale: 0.9, transition: { duration: 0.05 } }}>
                           <IconButton
                             variant="ghost"
                             size="icon-sm"
                             icon={<MoreVertical className="h-4 w-4" />}
                             aria-label="More options"
-                            onClick={(e) => e.stopPropagation()}
+                            className="haptic-light transition-all duration-200 ease-out hover:scale-110 active:scale-95"
                           />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => setDetailsId(article.id)}>
-                            <Eye className="h-4 w-4 mr-2" />
-                            View Details
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => {
-                            setEditArticle(article);
-                            setShowForm(true);
-                          }}>
-                            <Edit className="h-4 w-4 mr-2" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => copyToClipboard(article)}>
-                            <Copy className="h-4 w-4 mr-2" />
-                            Copy Details
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() => toggleSelection(article.id)}
-                            className="font-medium"
-                          >
-                            {selectedIds.includes(article.id) ? (
-                              <>
-                                <XCircle className="h-4 w-4 mr-2" />
-                                Deselect
-                              </>
-                            ) : (
-                              <>
-                                <CheckCircle2 className="h-4 w-4 mr-2" />
-                                Select
-                              </>
-                            )}
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() => handleDelete(article.id)}
-                            className="text-red-600"
-                          >
-                            <Trash className="h-4 w-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    {article.description && (
-                      <CardDescription className="mb-3 line-clamp-2">
-                        {article.description}
-                      </CardDescription>
-                    )}
-                    
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-neutral-600 dark:text-neutral-400">Base Rate</span>
-                        <Badge variant="secondary" className="font-mono text-base">
-                          ₹{article.base_rate.toFixed(2)}
-                        </Badge>
-                      </div>
-                      
-                      {article.tax_rate && (
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-neutral-600 dark:text-neutral-400">Tax Rate</span>
-                          <span className="text-sm font-medium">{article.tax_rate}%</span>
-                        </div>
-                      )}
-                      
-                      <Separator />
-                      
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-neutral-500 dark:text-neutral-500">
-                          Added {new Date(article.created_at).toLocaleDateString()}
-                        </span>
-                        {article.is_fragile && (
-                          <Badge variant="outline" className="text-xs">
-                            Fragile
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
-            ) : (
-              <div className="col-span-full">
-                <Card variant="outlined" className="p-0">
-                  <ListEmptyState
-                    type="articles"
-                    searchQuery={filters.search}
-                    onCreateNew={() => setShowForm(true)}
-                    onClearSearch={() => setFilters({ search: '' })}
-                  />
-                </Card>
-              </div>
-            )}
-          </div>
-        )}
-
-        {viewMode === VIEW_MODES.LIST && (
-          <Card variant="elevated" className="overflow-hidden">
-            <DataTable
-              data={pageItems}
-              columns={tableColumns}
-              searchable={false}
-              selectable
-              onSelectionChange={(selected) => setSelectedIds(selected.map(item => item.id))}
-              actions={(row) => (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <IconButton
-                      variant="ghost"
-                      size="icon-sm"
-                      icon={<MoreVertical className="h-4 w-4" />}
-                      aria-label="More options"
-                    />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => setDetailsId(row.id)}>
-                      <Eye className="h-4 w-4 mr-2" />
-                      View
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => {
-                      setEditArticle(row);
-                      setShowForm(true);
-                    }}>
-                      <Edit className="h-4 w-4 mr-2" />
-                      Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={() => handleDelete(row.id)}
-                      className="text-red-600"
-                    >
-                      <Trash className="h-4 w-4 mr-2" />
-                      Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-              striped
-              hoverable
-              stickyHeader
-              emptyState={
-                <ListEmptyState
-                  type="articles"
-                  searchQuery={filters.search}
-                  onCreateNew={() => setShowForm(true)}
-                  onClearSearch={() => setFilters({ search: '' })}
+                        </motion.div>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setDetailsId(row.id)}>
+                          <Eye className="h-4 w-4 mr-2" />
+                          View
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => {
+                          setEditArticle(row);
+                          setShowForm(true);
+                        }}>
+                          <Edit className="h-4 w-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => handleDelete(row.id)}
+                          className="text-red-600 dark:text-red-400"
+                        >
+                          <Trash className="h-4 w-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                  striped
+                  hoverable
+                  stickyHeader
                 />
-              }
-            />
-          </Card>
+              </motion.div>
+            ) : (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="py-16"
+              >
+                {filters.search ? (
+                  <NoSearchResults
+                    query={filters.search}
+                    onClear={() => setFilters({ search: '' })}
+                    suggestions={[
+                      'Check article name spelling',
+                      'Try searching by HSN code',
+                      'Search for partial matches',
+                      'Clear filters and try again'
+                    ]}
+                  />
+                ) : (
+                  <NoArticles
+                    title="No articles in catalog"
+                    description="Start building your product catalog by adding your first article with pricing and inventory details."
+                    action={{
+                      label: 'Add First Article',
+                      onClick: () => setShowForm(true)
+                    }}
+                  />
+                )}
+              </motion.div>
+            )}
+          </motion.div>
         )}
 
         {viewMode === VIEW_MODES.ANALYTICS && (
           <div className="space-y-6">
             {/* Price Distribution */}
-            <Card>
+            <Card className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border border-gray-200/60 dark:border-gray-700/60 shadow-[0_8px_32px_0_rgba(31,38,135,0.12)] dark:shadow-[0_8px_32px_0_rgba(0,0,0,0.3)] rounded-3xl">
             <CardHeader>
               <CardTitle>Price Distribution</CardTitle>
               <CardDescription>Articles categorized by price ranges</CardDescription>
@@ -1001,7 +1292,7 @@ export default function ArticleListEnterprise() {
           </Card>
 
           {/* Top Articles by Price */}
-          <Card>
+          <Card className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border border-gray-200/60 dark:border-gray-700/60 shadow-[0_8px_32px_0_rgba(31,38,135,0.12)] dark:shadow-[0_8px_32px_0_rgba(0,0,0,0.3)] rounded-3xl">
             <CardHeader>
               <CardTitle>Top Articles by Price</CardTitle>
               <CardDescription>Your highest valued articles</CardDescription>
@@ -1035,7 +1326,7 @@ export default function ArticleListEnterprise() {
 
         {/* Pagination */}
         {totalPages > 1 && viewMode !== VIEW_MODES.ANALYTICS && (
-          <Card className="p-4">
+          <Card className="p-4 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border border-gray-200/60 dark:border-gray-700/60 shadow-[0_8px_32px_0_rgba(31,38,135,0.12)] dark:shadow-[0_8_32px_0_rgba(0,0,0,0.3)] rounded-3xl">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-4">
                 <span className="text-sm text-neutral-600 dark:text-neutral-400">
@@ -1181,19 +1472,32 @@ export default function ArticleListEnterprise() {
 
         <Dialog open={showBulkRates} onOpenChange={setShowBulkRates}>
           <DialogContent className="max-w-4xl max-h-[90vh] p-0 overflow-hidden">
-            <ArticleBulkRates onClose={() => setShowBulkRates(false)} />
+            <ArticleBulkRates articles={filtered} onClose={() => setShowBulkRates(false)} onSuccess={() => {
+              setShowBulkRates(false);
+              refresh();
+              showSuccess('Bulk Rates Updated', 'Article rates have been updated successfully');
+            }} />
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
-      {/* Floating Action Button (Mobile) */}
-      <FAB
-        position="bottom-right"
-        onClick={() => setShowForm(true)}
-        icon={<Plus className="h-6 w-6" />}
-        aria-label="Add new article"
+      {/* Enhanced Floating Action Button (Mobile) */}
+      <motion.div
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ delay: 0.5, type: "spring", stiffness: 200 }}
         className="lg:hidden"
-      />
+      >
+        <FAB
+          position="bottom-right"
+          onClick={() => setShowForm(true)}
+          aria-label="Add new article"
+          className="haptic-medium hover-lift-strong shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 active:scale-95"
+        >
+          <Plus className="h-6 w-6" />
+        </FAB>
+      </motion.div>
     </TooltipProvider>
   );
 }

@@ -2,8 +2,105 @@ import express from 'express';
 import { supabase } from '../supabaseClient';
 import { authenticate } from '../middleware/auth';
 import { requireOrgBranch } from '../middleware/withOrgBranch';
+import { paymentSMS } from '../services/smsService';
+import { log } from '../utils/logger';
 
 const router = express.Router();
+
+/**
+ * Send payment confirmation SMS
+ */
+async function sendPaymentConfirmationSMS(payment: any) {
+  if (!payment) return;
+  
+  try {
+    // Get booking and customer info if payment is allocated to bookings
+    const { data: allocations } = await supabase
+      .from('payment_allocations')
+      .select(`
+        booking_id,
+        amount,
+        bookings!inner (
+          lr_number,
+          sender:customers!sender_id(phone)
+        )
+      `)
+      .eq('payment_id', payment.id);
+      
+    if (!allocations || allocations.length === 0) {
+      log.debug('No booking allocations found for payment', { paymentId: payment.id });
+      return;
+    }
+    
+    // Send SMS for each booking
+    for (const allocation of allocations) {
+      const customerPhone = allocation.bookings?.sender?.phone;
+      if (!customerPhone) continue;
+      
+      const paymentData = {
+        amount: allocation.amount.toString(),
+        lr_number: allocation.bookings.lr_number,
+        receipt_url: `${process.env.FRONTEND_URL || 'https://app.desicargo.com'}/receipt/${payment.payment_number}`
+      };
+      
+      await paymentSMS.sendPaymentConfirmation(customerPhone, paymentData);
+      
+      log.info('Payment confirmation SMS sent', {
+        paymentId: payment.id,
+        bookingLR: allocation.bookings.lr_number,
+        phone: customerPhone.slice(-4) // Log only last 4 digits for privacy
+      });
+    }
+  } catch (error) {
+    log.error('Failed to send payment confirmation SMS', {
+      paymentId: payment.id,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+}
+
+/**
+ * Send payment reminder SMS
+ */
+export async function sendPaymentReminderSMS(bookingId: string, amount: number) {
+  try {
+    // Get booking and customer info
+    const { data: booking } = await supabase
+      .from('bookings')
+      .select(`
+        lr_number,
+        sender:customers!sender_id(phone)
+      `)
+      .eq('id', bookingId)
+      .single();
+      
+    if (!booking?.sender?.phone) {
+      log.info('No customer phone found for payment reminder', { bookingId });
+      return;
+    }
+    
+    const paymentData = {
+      amount: amount.toString(),
+      lr_number: booking.lr_number,
+      payment_url: `${process.env.FRONTEND_URL || 'https://app.desicargo.com'}/pay/${bookingId}`,
+      contact_number: process.env.PAYMENT_CONTACT_NUMBER || '+91-9999999999'
+    };
+    
+    await paymentSMS.sendPaymentReminder(booking.sender.phone, paymentData);
+    
+    log.info('Payment reminder SMS sent', {
+      bookingId,
+      lrNumber: booking.lr_number,
+      amount,
+      phone: booking.sender.phone.slice(-4)
+    });
+  } catch (error) {
+    log.error('Failed to send payment reminder SMS', {
+      bookingId,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+}
 
 // Apply auth middleware to all routes
 router.use(authenticate);
@@ -184,6 +281,17 @@ router.post('/', async (req: any, res) => {
         .insert(allocations);
 
       if (allocationError) throw allocationError;
+    }
+
+    // Send payment confirmation SMS if payment is for bookings
+    try {
+      await sendPaymentConfirmationSMS(data);
+    } catch (smsError) {
+      log.warn('Failed to send payment confirmation SMS', {
+        paymentId: data.id,
+        error: smsError instanceof Error ? smsError.message : 'Unknown SMS error'
+      });
+      // Don't fail payment creation if SMS fails
     }
 
     res.status(201).json({ success: true, data });
@@ -625,6 +733,99 @@ router.get('/analytics/dashboard', async (req: any, res) => {
   } catch (error) {
     console.error('Error fetching payment analytics:', error);
     res.status(500).json({ success: false, error: 'Failed to fetch payment analytics' });
+  }
+});
+
+// Manual SMS endpoints for admin use
+router.post('/send-reminder/:bookingId', async (req: any, res) => {
+  try {
+    const { bookingId } = req.params;
+    const { amount } = req.body;
+    const { role } = req;
+    
+    // Only admins can manually send payment reminders
+    if (role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'Admin access required' });
+    }
+    
+    await sendPaymentReminderSMS(bookingId, amount);
+    
+    res.json({ success: true, message: 'Payment reminder SMS sent' });
+  } catch (error) {
+    console.error('Error sending payment reminder:', error);
+    res.status(500).json({ success: false, error: 'Failed to send payment reminder' });
+  }
+});
+
+// Bulk payment reminder for overdue bookings
+router.post('/send-bulk-reminders', async (req: any, res) => {
+  try {
+    const { orgId, branchId, role } = req;
+    const { days_overdue = 7 } = req.body;
+    
+    // Only admins can send bulk reminders
+    if (role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'Admin access required' });
+    }
+    
+    // Get overdue bookings
+    const overdueDate = new Date();
+    overdueDate.setDate(overdueDate.getDate() - days_overdue);
+    
+    const { data: overdueBookings } = await supabase
+      .from('bookings')
+      .select(`
+        id,
+        lr_number,
+        freight_amount,
+        payment_mode,
+        created_at,
+        sender:customers!sender_id(phone)
+      `)
+      .eq('organization_id', orgId)
+      .eq('payment_mode', 'to_pay') // Only to-pay bookings
+      .eq('payment_status', 'pending')
+      .lt('created_at', overdueDate.toISOString())
+      .not('sender.phone', 'is', null);
+    
+    if (!overdueBookings || overdueBookings.length === 0) {
+      return res.json({ 
+        success: true, 
+        message: 'No overdue bookings found',
+        count: 0 
+      });
+    }
+    
+    let sentCount = 0;
+    let failedCount = 0;
+    
+    // Send reminders in batches to avoid overwhelming the SMS service
+    for (const booking of overdueBookings) {
+      try {
+        await sendPaymentReminderSMS(booking.id, booking.freight_amount);
+        sentCount++;
+        
+        // Add delay between SMS to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      } catch (error) {
+        failedCount++;
+        log.warn('Failed to send reminder for booking', {
+          bookingId: booking.id,
+          lrNumber: booking.lr_number
+        });
+      }
+    }
+    
+    res.json({ 
+      success: true, 
+      message: `Payment reminders processed`,
+      total: overdueBookings.length,
+      sent: sentCount,
+      failed: failedCount
+    });
+  } catch (error) {
+    console.error('Error sending bulk payment reminders:', error);
+    res.status(500).json({ success: false, error: 'Failed to send bulk payment reminders' });
   }
 });
 

@@ -4,7 +4,7 @@ import {
   Package,
   X,
   Loader2,
-  Calculator,
+  DollarSign,
   Percent,
   IndianRupee,
   Building2,
@@ -605,7 +605,7 @@ export default function ArticleBulkRates({ articles, onClose, onSuccess }: Props
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Calculator className="h-5 w-5" />
+                    <DollarSign className="h-5 w-5" />
                     Rate Calculation
                   </CardTitle>
                   <CardDescription>

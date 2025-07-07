@@ -47,7 +47,7 @@ import { useCustomers } from '@/hooks/useCustomers';
 import { bookingService } from '@/services/bookings';
 import { useBranchSelection } from '@/contexts/BranchSelectionContext';
 import { useAuth } from '@/contexts/AuthContext';
-import BookingArticleManager, { BookingArticle } from './BookingArticleManager';
+import BookingArticleManagerApple, { BookingArticle } from './BookingArticleManagerApple';
 
 // Form validation schema
 const bookingFormSchema = z.object({
@@ -642,7 +642,7 @@ export default function PremiumBookingForm() {
               {/* Step 3: Articles & Pricing */}
               {currentStep === 3 && (
                 <div className="space-y-6">
-                  <BookingArticleManager
+                  <BookingArticleManagerApple
                     articles={bookingArticles}
                     onArticlesChange={setBookingArticles}
                     selectedCustomerId={form.watch('sender_id')}

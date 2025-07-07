@@ -48,7 +48,7 @@ import { motion } from 'framer-motion';
 import type { Booking } from '@/types';
 import { useNotificationSystem } from '@/hooks/useNotificationSystem';
 import { validateGSTNumber, validateEwayBill, validateMobileNumber, validateEmail, validatePincode } from '@/utils/validation';
-import BookingArticleManager from './BookingArticleManager';
+import BookingArticleManagerApple from './BookingArticleManagerApple';
 import type { BookingArticle } from '@/services/bookings';
 
 const bookingSchema = z.object({
@@ -859,7 +859,7 @@ export default function SinglePageBookingForm({ onClose, onBookingCreated }: Sin
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <BookingArticleManager
+                <BookingArticleManagerApple
                   articles={bookingArticles}
                   onArticlesChange={setBookingArticles}
                   selectedCustomerId={form.watch('sender_id')}

@@ -1,0 +1,29 @@
+<svg viewBox="0 0 200 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- DesiCargo Modern Logo -->
+  <defs>
+    <linearGradient id="packageGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#007AFF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0051D5;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Package icon with depth and motion -->
+  <g>
+    <!-- Package base -->
+    <path d="M8 16 L24 8 L40 16 L40 32 L24 40 L8 32 Z" fill="url(#packageGradient)" opacity="0.9"/>
+    
+    <!-- Package top -->
+    <path d="M8 16 L24 8 L40 16 L24 24 Z" fill="#007AFF"/>
+    
+    <!-- Speed lines -->
+    <path d="M0 20 L6 20 M0 24 L4 24 M0 28 L6 28" stroke="#007AFF" stroke-width="2" stroke-linecap="round"/>
+    
+    <!-- Package detail lines -->
+    <path d="M24 8 L24 24 M24 24 L8 16 M24 24 L40 16" stroke="#1a1a1a" stroke-width="1" opacity="0.2"/>
+  </g>
+  
+  <!-- Typography -->
+  <text x="52" y="30" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif" font-size="24" font-weight="600" fill="#1a1a1a" letter-spacing="-0.5">
+    DesiCargo
+  </text>
+</svg>

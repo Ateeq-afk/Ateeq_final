@@ -51,7 +51,15 @@ export function useLoading() {
       
       if (fetchError) {
         console.error('Error fetching pending bookings:', fetchError);
-        const errorMessage = `Failed to fetch pending bookings: ${fetchError.message} (Code: ${fetchError.code})`;
+        // Provide more user-friendly error messages
+        let errorMessage = 'Failed to fetch pending bookings';
+        if (fetchError.message?.includes('fetch') || fetchError.message?.includes('network')) {
+          errorMessage = 'Network connection failed. Please check your internet connection.';
+        } else if (fetchError.code === 'PGRST301') {
+          errorMessage = 'Database connection error. Please try again.';
+        } else {
+          errorMessage = `${errorMessage}: ${fetchError.message}`;
+        }
         throw new Error(errorMessage);
       }
       
@@ -59,7 +67,14 @@ export function useLoading() {
       return data || [];
     } catch (err) {
       console.error('Failed to get pending bookings for loading:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to get pending bookings';
+      let errorMessage = 'Failed to get pending bookings';
+      if (err instanceof Error) {
+        if (err.message.includes('fetch') || err.message.includes('network')) {
+          errorMessage = 'Network connection failed. Please check your internet connection.';
+        } else {
+          errorMessage = err.message;
+        }
+      }
       setError(new Error(errorMessage));
       return [];
     } finally {

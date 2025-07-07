@@ -15,11 +15,13 @@ import {
   Wallet,
   Receipt,
   CreditCard,
+  FileText,
   Plus,
   ChevronLeft,
   Activity,
   Scan
 } from 'lucide-react';
+import { Logo, LogoIcon } from '@/components/ui/logo';
 import { cn } from "@/lib/utils";
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -63,38 +65,37 @@ function Sidebar({ onNavigate, currentPage, isCollapsed = false, onToggleCollaps
   return (
     <TooltipProvider delayDuration={0}>
       <motion.aside 
-        initial={{ x: -300 }}
-        animate={{ x: 0 }}
-        transition={{ duration: 0.3, ease: "easeOut" }}
+        initial={{ x: -300, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        transition={{ duration: 0.5, ease: [0.32, 0.72, 0, 1] }}
         className={cn(
-          "flex flex-col h-full",
-          "bg-background border-r border-border/50",
+          "flex flex-col h-full relative",
+          "bg-gray-50/80 dark:bg-gray-900/80",
+          "backdrop-blur-xl backdrop-saturate-150",
+          "border-r border-gray-200/50 dark:border-gray-800/50",
           "transition-all duration-300 ease-in-out",
           isCollapsed ? "w-[60px]" : "w-[240px]"
         )}
       >
         {/* Logo Section */}
         <div className={cn(
-          "h-16 flex items-center",
-          "border-b border-border/50",
-          isCollapsed ? "justify-center px-2" : "justify-between px-5"
+          "h-14 flex items-center",
+          "border-b border-gray-200/50 dark:border-gray-800/50",
+          isCollapsed ? "justify-center px-2" : "justify-between px-4"
         )}>
           {!isCollapsed ? (
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="flex items-center gap-3"
+              transition={{ delay: 0.1 }}
             >
-              <div className="h-8 w-8 rounded-lg bg-brand-500 flex items-center justify-center text-white">
-                <Truck className="h-4 w-4" />
-              </div>
-              <span className="font-semibold text-lg">DesiCargo</span>
+              <Logo className="h-7" />
             </motion.div>
           ) : (
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="h-8 w-8 rounded-lg bg-brand-500 flex items-center justify-center text-white cursor-pointer">
-                  <Truck className="h-4 w-4" />
+                <div className="cursor-pointer">
+                  <LogoIcon className="h-8 w-8" />
                 </div>
               </TooltipTrigger>
               <TooltipContent side="right">
@@ -106,9 +107,9 @@ function Sidebar({ onNavigate, currentPage, isCollapsed = false, onToggleCollaps
           {onToggleCollapse && !isCollapsed && (
             <button
               onClick={onToggleCollapse}
-              className="p-1.5 hover:bg-accent rounded-lg transition-colors"
+              className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
             >
-              <ChevronLeft className="h-4 w-4" />
+              <ChevronLeft className="h-4 w-4 text-gray-500" strokeWidth={1.5} />
             </button>
           )}
         </div>
@@ -116,8 +117,8 @@ function Sidebar({ onNavigate, currentPage, isCollapsed = false, onToggleCollaps
         {/* Navigation */}
         <nav 
           className={cn(
-            "flex-1 overflow-y-auto",
-            isCollapsed ? "px-2 py-2" : "px-3 py-4"
+            "flex-1 overflow-y-auto scrollbar-thin",
+            isCollapsed ? "px-1.5 py-2" : "px-3 py-3"
           )} 
         >
           {/* Quick Action */}
@@ -126,11 +127,12 @@ function Sidebar({ onNavigate, currentPage, isCollapsed = false, onToggleCollaps
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             className={cn(
-              "w-full mb-4 rounded-lg",
-              "bg-brand-500 hover:bg-brand-600",
+              "w-full mb-4 rounded-xl shadow-sm",
+              "bg-gradient-to-r from-blue-500 to-blue-600",
+              "hover:from-blue-600 hover:to-blue-700",
               "text-white font-medium",
-              "transition-all duration-200",
-              isCollapsed ? "p-2.5" : "px-4 py-2.5 flex items-center gap-2"
+              "transition-all duration-300",
+              isCollapsed ? "p-3" : "px-4 py-2.5 flex items-center gap-2"
             )}
           >
             {isCollapsed ? (
@@ -144,8 +146,8 @@ function Sidebar({ onNavigate, currentPage, isCollapsed = false, onToggleCollaps
               </Tooltip>
             ) : (
               <>
-                <Plus className="h-4 w-4" />
-                <span className="text-sm">New Booking</span>
+                <Plus className="h-4 w-4" strokeWidth={2.5} />
+                <span className="text-sm font-semibold">New Booking</span>
               </>
             )}
           </motion.button>
@@ -170,10 +172,16 @@ function Sidebar({ onNavigate, currentPage, isCollapsed = false, onToggleCollaps
 
             {/* Spacer */}
             {!isCollapsed && (
-              <div className="my-3 px-3">
-                <div className="text-xs font-medium text-muted-foreground">OPERATIONS</div>
-              </div>
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.2 }}
+                className="mt-6 mb-3 px-3"
+              >
+                <div className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 tracking-wider uppercase">Operations</div>
+              </motion.div>
             )}
+            {isCollapsed && <div className="mt-4 mb-2 mx-auto w-8 h-[1px] bg-gray-200 dark:bg-gray-800" />}
             
             {/* Operations Items */}
             <NavItem 
@@ -229,10 +237,16 @@ function Sidebar({ onNavigate, currentPage, isCollapsed = false, onToggleCollaps
 
             {/* Management */}
             {!isCollapsed && (
-              <div className="my-3 px-3">
-                <div className="text-xs font-medium text-muted-foreground">MANAGEMENT</div>
-              </div>
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.3 }}
+                className="mt-6 mb-3 px-3"
+              >
+                <div className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 tracking-wider uppercase">Management</div>
+              </motion.div>
             )}
+            {isCollapsed && <div className="mt-4 mb-2 mx-auto w-8 h-[1px] bg-gray-200 dark:bg-gray-800" />}
             
             <NavItem 
               icon={Users} 
@@ -274,10 +288,16 @@ function Sidebar({ onNavigate, currentPage, isCollapsed = false, onToggleCollaps
 
             {/* Finance */}
             {!isCollapsed && (
-              <div className="my-3 px-3">
-                <div className="text-xs font-medium text-muted-foreground">FINANCE</div>
-              </div>
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.4 }}
+                className="mt-6 mb-3 px-3"
+              >
+                <div className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 tracking-wider uppercase">Finance</div>
+              </motion.div>
             )}
+            {isCollapsed && <div className="mt-4 mb-2 mx-auto w-8 h-[1px] bg-gray-200 dark:bg-gray-800" />}
             
             <NavItem 
               icon={Wallet} 
@@ -329,6 +349,13 @@ function Sidebar({ onNavigate, currentPage, isCollapsed = false, onToggleCollaps
               sidebarCollapsed={isCollapsed}
             />
             <NavItem 
+              icon={FileText} 
+              text="Invoices"
+              active={currentPage === 'invoices'}
+              onClick={() => handleNavigate('invoices')}
+              sidebarCollapsed={isCollapsed}
+            />
+            <NavItem 
               icon={BarChart3} 
               text="Reports"
               active={currentPage === 'reports'}
@@ -340,8 +367,8 @@ function Sidebar({ onNavigate, currentPage, isCollapsed = false, onToggleCollaps
 
         {/* Settings at Bottom */}
         <div className={cn(
-          "mt-auto border-t border-border/50",
-          isCollapsed ? "p-2" : "p-3"
+          "mt-auto border-t border-gray-200/50 dark:border-gray-800/50",
+          isCollapsed ? "p-1.5" : "p-3"
         )}>
           <NavItem 
             icon={Settings} 
@@ -358,39 +385,58 @@ function Sidebar({ onNavigate, currentPage, isCollapsed = false, onToggleCollaps
 
 function NavItem({ icon: Icon, text, active = false, onClick, badge, sidebarCollapsed = false }: NavItemProps) {
   const itemContent = (
-    <button
+    <motion.button
       onClick={onClick}
+      whileHover={{ x: sidebarCollapsed ? 0 : 2 }}
+      whileTap={{ scale: 0.98 }}
       className={cn(
-        "w-full flex items-center relative",
-        "text-sm transition-all duration-200",
-        sidebarCollapsed ? "justify-center p-2 rounded-lg" : "gap-3 px-3 py-2 rounded-lg",
+        "w-full flex items-center relative group",
+        "text-sm transition-all duration-300",
+        sidebarCollapsed ? "justify-center p-3 rounded-xl" : "gap-3 px-3 py-2.5 rounded-xl",
         active 
-          ? "bg-accent text-foreground font-medium" 
-          : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+          ? "bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 font-medium shadow-sm" 
+          : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-white/50 dark:hover:bg-gray-800/50"
       )}
     >
-      <Icon className="h-4 w-4" />
+      <motion.div
+        animate={{ rotate: active ? 0 : 0 }}
+        className="relative"
+      >
+        <Icon className={cn(
+          "h-4 w-4 flex-shrink-0 transition-colors duration-300",
+          active ? "text-blue-500" : "text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-300"
+        )} strokeWidth={1.5} />
+      </motion.div>
       {!sidebarCollapsed && (
-        <>
-          <span>{text}</span>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.1 }}
+          className="flex items-center flex-1 min-w-0"
+        >
+          <span className="truncate flex-1">{text}</span>
           {badge && badge > 0 && (
-            <span className={cn(
-              "ml-auto px-2 py-0.5 text-xs rounded-full font-medium",
-              active ? "bg-foreground/10" : "bg-muted"
-            )}>
+            <motion.span 
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              className={cn(
+                "ml-2 px-2 py-0.5 text-[10px] rounded-full font-semibold",
+                active ? "bg-blue-500 text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300"
+              )}
+            >
               {badge}
-            </span>
+            </motion.span>
           )}
-        </>
+        </motion.div>
       )}
-      {active && (
+      {active && !sidebarCollapsed && (
         <motion.div
           layoutId="activeNav"
-          className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-brand-500 rounded-r"
+          className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-blue-500 rounded-r-full"
           transition={{ type: "spring", stiffness: 400, damping: 30 }}
         />
       )}
-    </button>
+    </motion.button>
   );
 
   if (sidebarCollapsed) {

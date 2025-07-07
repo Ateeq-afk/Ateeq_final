@@ -1,5 +1,7 @@
 import api from './api';
 import type { Booking } from '@/types';
+import { bookingUpdates, createOptimisticId } from './optimisticUpdates';
+import { toast } from 'react-hot-toast';
 
 export interface BookingFilters {
   branch_id?: string;
@@ -75,41 +77,98 @@ class BookingService {
     return response.data.data || response.data;
   }
 
-  // Create new booking (updated to support multi-article)
+  // Create new booking with optimistic updates
   async createBooking(data: CreateBookingData | Omit<Booking, 'id' | 'created_at' | 'updated_at'>): Promise<Booking> {
-    // If the data has 'articles' array, it's the new format
-    if ('articles' in data && Array.isArray(data.articles)) {
-      const response = await api.post('/bookings', data);
-      return response.data.data || response.data;
-    }
-    
-    // Otherwise, it's the old format - convert to new format if needed
-    const response = await api.post('/bookings', data);
-    return response.data.data || response.data;
-  }
+    const optimisticId = createOptimisticId();
+    const optimisticBooking: Booking = {
+      id: optimisticId,
+      lr_number: `OPT-${Date.now()}`,
+      status: 'booked',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      ...data
+    } as Booking;
 
-  // Update booking
-  async updateBooking(id: string, data: Partial<Booking>): Promise<Booking> {
-    const response = await api.put(`/bookings/${id}`, data);
-    return response.data.data || response.data;
-  }
-
-  // Update booking status
-  async updateBookingStatus(id: string, status: Booking['status'], pod_required?: boolean): Promise<Booking> {
-    try {
-      const response = await api.patch(`/bookings/${id}/status`, { status, pod_required });
-      return response.data.data || response.data;
-    } catch (error: any) {
-      // Handle POD-specific errors
-      if (error.response?.data?.details?.action_required === 'complete_pod') {
-        // Re-throw with a more specific error
-        const podError = new Error(error.response.data.error);
-        (podError as any).requiresPOD = true;
-        (podError as any).details = error.response.data.details;
-        throw podError;
+    // Apply optimistic update
+    bookingUpdates.applyUpdate(
+      optimisticId,
+      'create',
+      optimisticBooking,
+      undefined,
+      async () => {
+        // If the data has 'articles' array, it's the new format
+        if ('articles' in data && Array.isArray(data.articles)) {
+          const response = await api.post('/bookings', data);
+          return response.data.data || response.data;
+        }
+        
+        // Otherwise, it's the old format - convert to new format if needed
+        const response = await api.post('/bookings', data);
+        return response.data.data || response.data;
       }
-      throw error;
-    }
+    );
+
+    toast.success('Booking created! Syncing with server...');
+    return optimisticBooking;
+  }
+
+  // Update booking with optimistic updates
+  async updateBooking(id: string, data: Partial<Booking>, originalBooking?: Booking): Promise<Booking> {
+    const optimisticData = {
+      ...originalBooking,
+      ...data,
+      updated_at: new Date().toISOString()
+    } as Booking;
+
+    // Apply optimistic update
+    bookingUpdates.applyUpdate(
+      id,
+      'update',
+      optimisticData,
+      originalBooking,
+      async () => {
+        const response = await api.put(`/bookings/${id}`, data);
+        return response.data.data || response.data;
+      }
+    );
+
+    return optimisticData;
+  }
+
+  // Update booking status with optimistic updates
+  async updateBookingStatus(id: string, status: Booking['status'], pod_required?: boolean, originalBooking?: Booking): Promise<Booking> {
+    const optimisticData = {
+      ...originalBooking,
+      status,
+      updated_at: new Date().toISOString()
+    } as Booking;
+
+    // Apply optimistic update
+    bookingUpdates.applyUpdate(
+      id,
+      'update',
+      optimisticData,
+      originalBooking,
+      async () => {
+        try {
+          const response = await api.patch(`/bookings/${id}/status`, { status, pod_required });
+          return response.data.data || response.data;
+        } catch (error: any) {
+          // Handle POD-specific errors
+          if (error.response?.data?.details?.action_required === 'complete_pod') {
+            // Re-throw with a more specific error
+            const podError = new Error(error.response.data.error);
+            (podError as any).requiresPOD = true;
+            (podError as any).details = error.response.data.details;
+            throw podError;
+          }
+          throw error;
+        }
+      }
+    );
+
+    toast.success(`Booking status updated to ${status}`);
+    return optimisticData;
   }
 
   // Delete booking

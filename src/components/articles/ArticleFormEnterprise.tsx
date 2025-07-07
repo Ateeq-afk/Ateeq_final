@@ -15,7 +15,7 @@ import {
   Box,
   Shield,
   CheckCircle2,
-  Calculator,
+  IndianRupee,
   Eye,
   Plus,
   X,
@@ -29,7 +29,6 @@ import {
   FileText,
   Zap,
   BarChart3,
-  DollarSign,
   ShieldCheck,
   AlertTriangle,
   Lightbulb,
@@ -447,7 +446,7 @@ export default function ArticleFormEnterprise({ onSubmit, onCancel, initialData 
             <MiniStats
               title="Current Price"
               value={`₹${initialData.base_rate?.toFixed(2)}`}
-              icon={<DollarSign className="h-4 w-4 text-green-600" />}
+              icon={<IndianRupee className="h-4 w-4 text-green-600" />}
             />
             <MiniStats
               title="Tax Rate"
@@ -939,7 +938,7 @@ export default function ArticleFormEnterprise({ onSubmit, onCancel, initialData 
                   <Card variant="elevated" className="h-fit">
                     <CardHeader>
                       <CardTitle size="sm" className="flex items-center gap-2">
-                        <Calculator className="h-5 w-5" />
+                        <IndianRupee className="h-5 w-5" />
                         Live Pricing Calculator
                       </CardTitle>
                       <CardDescription>
