@@ -150,4 +150,7 @@ export function useAsyncError() {
   );
 }
 
+// Global error boundary export for app-level usage
+export const GlobalErrorBoundary = ErrorBoundary;
+
 export default ErrorBoundary;

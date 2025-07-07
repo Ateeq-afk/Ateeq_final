@@ -25,11 +25,11 @@ createRoot(document.getElementById('root')!).render(
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <ThemeProvider>
-            <BranchSelectionProvider>
-              <NotificationProvider>
+            <NotificationProvider>
+              <BranchSelectionProvider>
                 <App />
-              </NotificationProvider>
-            </BranchSelectionProvider>
+              </BranchSelectionProvider>
+            </NotificationProvider>
           </ThemeProvider>
         </AuthProvider>
       </QueryClientProvider>
