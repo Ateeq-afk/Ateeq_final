@@ -20,10 +20,7 @@ npm run dev
 # Mock backend server (for local development)
 npm run start:server
 
-# Production backend (with Supabase) 
-cd backend && npm run dev
-
-# Backend development with auto-reload
+# Backend development with auto-reload (using tsx)
 cd backend && npm run dev
 
 # Build for production
@@ -129,8 +126,9 @@ All data is scoped by branch/organization. Users can only access data within the
 
 ### API Integration
 
-- Frontend expects backend at `http://localhost:4000`
-- Mock server runs on `http://localhost:3000` 
+- Frontend development proxy configured to `http://localhost:3000` (mock server)
+- Production backend runs on `http://localhost:4000`
+- Mock server runs on `http://localhost:3000`
 - All API endpoints require JWT token in Authorization header
 - Response format: `{ success: boolean, data?: any, error?: string }`
 
@@ -180,10 +178,12 @@ const data = await service.getAll({ branch_id: selectedBranch?.id })
 
 ## Testing
 
-- Backend tests in `/tests/` directory
-- Run with `npm run test`
-- Tests cover OGPL, warehouse, bookings, and billing logic
-- No frontend testing framework configured
+- Frontend tests in `/tests/` directory (Node.js .cjs files)
+- Backend tests in `/backend/tests/` directory (Jest with TypeScript)
+- Run frontend tests: `npm run test` (from root)
+- Run backend tests: `cd backend && npm test`
+- Backend tests include unit, integration, and e2e tests
+- Tests cover OGPL, warehouse, bookings, billing, and more
 
 ## Environment Variables
 
@@ -207,7 +207,24 @@ PORT=4000
 - Always test migrations before committing
 - Include RLS policies for multi-tenant data isolation
 
-### New Feature Development
+## Additional Features
+
+The codebase includes several advanced features not detailed above:
+
+1. **Mobile-Optimized Components**
+   - Mobile-specific wrappers and responsive layouts
+   - Touch-optimized UI elements
+   - Mobile navigation patterns
+
+2. **Apple Design System**
+   - AppleBookingWizard for streamlined booking creation
+   - AppleExecutiveDashboard for high-level insights
+   - Native iOS-inspired UI components
+
+3. **Enterprise Features**
+   - Multi-branch management
+   - Advanced reporting and analytics
+   - Bulk operations support
 
 4. **Billing & Financial Systems**
    - Credit limit management per customer

@@ -5,6 +5,7 @@ import RouteErrorBoundary from './components/RouteErrorBoundary';
 import { SearchProvider } from './contexts/SearchContext';
 import { RealtimeProvider } from './contexts/RealtimeContext';
 import AppleCommandPalette from './components/search/AppleCommandPalette';
+import { setupGlobalErrorHandlers } from './utils/errorHandler';
 
 // Lazy load components for code splitting
 const Dashboard = lazy(() => import('./components/Dashboard'));
@@ -38,6 +39,11 @@ const PageLoader = () => (
 
 function App() {
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+
+  // Set up global error handlers on mount
+  useEffect(() => {
+    setupGlobalErrorHandlers();
+  }, []);
 
   // Global keyboard shortcut for command palette
   useEffect(() => {

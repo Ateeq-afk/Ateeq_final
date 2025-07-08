@@ -10,7 +10,9 @@ import 'dotenv/config';
 import { responseMiddleware, sendServerError, sendNotFound } from './utils/apiResponse';
 import { sanitizeInput, validateRateLimit, securityHeaders } from './middleware/validation';
 import { log, morganStream, timer } from './utils/logger';
+import { errorHandler, notFoundHandler, asyncHandler, AppError } from './middleware/errorHandler';
 import { initializeDatabase, databaseMiddleware, databaseErrorMiddleware, closeDatabaseConnections } from './middleware/database';
+import { requestLoggingMiddleware, businessEventLogger } from './middleware/logging';
 import { 
   performanceMonitoring, 
   compressionMiddleware, 
@@ -34,6 +36,7 @@ import authOrgRoutes from './routes/auth-org';
 import bookingRoutes from './routes/bookings';
 import dashboardRoutes from './routes/dashboard';
 import articleTrackingEnhancedRoutes from './routes/article-tracking-enhanced';
+import errorLogRoutes from './routes/error-logs';
 // Temporarily commenting other routes to debug startup issues
 // import organizationRoutes from './routes/organizations';
 import branchRoutes from './routes/branches';
@@ -165,6 +168,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(sanitizeInput);
 app.use(queryOptimization());
 app.use(responseOptimization());
+app.use(requestLoggingMiddleware());
 app.use(responseMiddleware);
 
 // Database middleware
@@ -178,6 +182,9 @@ app.use(databasePoolMiddleware());
 // Health checks (mounted early, before auth)
 app.use('/health', healthRoutes);
 app.get('/health/db', createHealthCheckEndpoint());
+
+// Error logging routes (needs auth but should be early)
+app.use('/api/error-logs', errorLogRoutes);
 
 // Basic health check
 app.get('/', (req, res) => {
@@ -241,15 +248,11 @@ app.use('/api/invoices', branchCache(180), invoiceRoutes); // Invoice generation
 // Database error handling middleware
 app.use(databaseErrorMiddleware);
 
-// Error handling middleware
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  sendServerError(res, err);
-});
+// 404 handler - must be before the error handler
+app.use(notFoundHandler);
 
-// 404 handler
-app.use('*', (req, res) => {
-  sendNotFound(res, 'Route');
-});
+// Comprehensive error handling middleware (must be last)
+app.use(errorHandler);
 
 const port = process.env.PORT || 4000;
 

@@ -1,5 +1,6 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
+import { logErrorToService } from '@/utils/errorHandler';
 
 interface Props {
   children: ReactNode;
@@ -33,8 +34,8 @@ export class ErrorBoundary extends Component<Props, State> {
       errorInfo
     });
 
-    // In production, you would send this to your error reporting service
-    // Example: Sentry.captureException(error, { extra: errorInfo });
+    // Log error to our error logging service
+    logErrorToService(error, errorInfo);
   }
 
   handleReset = () => {
