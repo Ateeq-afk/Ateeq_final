@@ -17,12 +17,9 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey, {
 });
 
 async function createBookingArticlesTable() {
-  console.log('🔨 Creating booking_articles junction table...');
-  console.log('=' .repeat(50));
 
   try {
     // Step 1: Create the booking_articles table
-    console.log('\n1. Creating booking_articles table...');
     
     const createTableSQL = `
       CREATE TABLE IF NOT EXISTS booking_articles (
@@ -115,18 +112,12 @@ async function createBookingArticlesTable() {
         .limit(1);
       
       if (testError && testError.code === '42P01') {
-        console.log('⚠️  Table does not exist. Creating manually...');
-        console.log('\n📋 Please run this SQL in your Supabase SQL editor:');
-        console.log(createTableSQL);
       } else if (!testError) {
-        console.log('✅ Table booking_articles already exists!');
       }
     } else {
-      console.log('✅ Table created successfully');
     }
 
     // Step 2: Create indexes
-    console.log('\n2. Creating indexes...');
     const indexes = [
       'CREATE INDEX IF NOT EXISTS idx_booking_articles_booking_id ON booking_articles(booking_id);',
       'CREATE INDEX IF NOT EXISTS idx_booking_articles_article_id ON booking_articles(article_id);',
@@ -134,11 +125,8 @@ async function createBookingArticlesTable() {
       'CREATE INDEX IF NOT EXISTS idx_booking_articles_ogpl_id ON booking_articles(ogpl_id) WHERE ogpl_id IS NOT NULL;'
     ];
     
-    console.log('📋 Indexes to create:');
-    indexes.forEach(idx => console.log(`   ${idx}`));
 
     // Step 3: Create update trigger
-    console.log('\n3. Creating update trigger...');
     const triggerSQL = `
       CREATE OR REPLACE FUNCTION update_booking_articles_updated_at()
       RETURNS TRIGGER AS $$
@@ -153,10 +141,8 @@ async function createBookingArticlesTable() {
           FOR EACH ROW
           EXECUTE FUNCTION update_booking_articles_updated_at();
     `;
-    console.log('📋 Trigger SQL ready');
 
     // Step 4: Create RLS policies
-    console.log('\n4. RLS Policies to apply...');
     const policies = [
       {
         name: 'booking_articles_org_select',
@@ -181,11 +167,9 @@ async function createBookingArticlesTable() {
     ];
     
     policies.forEach(policy => {
-      console.log(`   ✓ ${policy.name}: ${policy.description}`);
     });
 
     // Step 5: Create helper functions
-    console.log('\n5. Helper functions...');
     const helperFunctions = `
       -- Function to calculate booking total
       CREATE OR REPLACE FUNCTION calculate_booking_total(booking_uuid UUID)
@@ -231,47 +215,18 @@ async function createBookingArticlesTable() {
           FOR EACH ROW
           EXECUTE FUNCTION update_booking_total_on_article_change();
     `;
-    console.log('📋 Helper functions ready');
 
     // Step 6: Test the table
-    console.log('\n6. Testing booking_articles table...');
     const { data: testData, error: testError } = await supabase
       .from('booking_articles')
       .select('*')
       .limit(1);
     
     if (testError && testError.code === '42P01') {
-      console.log('\n❌ Table creation incomplete');
-      console.log('\n📝 MANUAL STEPS REQUIRED:');
-      console.log('1. Go to your Supabase dashboard');
-      console.log('2. Navigate to SQL Editor');
-      console.log('3. Run the following SQL commands:');
-      console.log('\n--- COPY FROM HERE ---');
-      console.log(createTableSQL);
-      console.log('\n-- Indexes');
-      indexes.forEach(idx => console.log(idx));
-      console.log('\n-- Trigger');
-      console.log(triggerSQL);
-      console.log('\n-- Helper Functions');
-      console.log(helperFunctions);
-      console.log('\n-- Enable RLS');
-      console.log('ALTER TABLE booking_articles ENABLE ROW LEVEL SECURITY;');
-      console.log('\n--- COPY TO HERE ---');
     } else if (!testError) {
-      console.log('✅ Table is accessible and ready!');
-      console.log(`📊 Current records: ${testData?.length || 0}`);
     } else {
-      console.log('⚠️  Unexpected error:', testError.message);
     }
 
-    console.log('\n✨ Summary:');
-    console.log('The booking_articles table structure has been prepared.');
-    console.log('This enables:');
-    console.log('  • Multiple articles per booking');
-    console.log('  • Per-kg vs per-quantity rate calculations');
-    console.log('  • Automatic total calculations');
-    console.log('  • Article-level status tracking');
-    console.log('  • Loading/unloading charge multiplication');
 
   } catch (error) {
     console.error('❌ Error:', error.message);

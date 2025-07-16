@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -15,7 +15,6 @@ import {
   Box,
   Shield,
   CheckCircle2,
-  IndianRupee,
   Eye,
   Plus,
   X,

@@ -25,28 +25,23 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey, {
 });
 
 async function runMigrations() {
-  console.log('🚀 Starting database migrations...\n');
   
   const migrationsDir = join(__dirname, 'migrations');
   const files = readdirSync(migrationsDir)
     .filter(f => f.endsWith('.sql'))
     .sort();
 
-  console.log(`📁 Found ${files.length} migration files\n`);
 
   let successCount = 0;
   let errorCount = 0;
   
   for (const file of files) {
-    console.log(`\n📄 Running migration: ${file}`);
-    console.log('─'.repeat(60));
     
     try {
       const sqlContent = readFileSync(join(migrationsDir, file), 'utf8');
       
       // Skip empty files
       if (!sqlContent.trim()) {
-        console.log('⏭️  Skipped (empty file)');
         continue;
       }
       
@@ -61,7 +56,6 @@ async function runMigrations() {
         
         if (directError) {
           // If we can't even query, try a different approach
-          console.log('⚠️  Cannot execute via RPC, trying direct query approach...');
           
           // Split by semicolons and execute individually
           const statements = sqlContent
@@ -73,17 +67,14 @@ async function runMigrations() {
           for (const statement of statements) {
             try {
               // For now, we'll just log that we would execute this
-              console.log(`   → Statement: ${statement.substring(0, 50)}...`);
             } catch (e) {
               statementErrors++;
             }
           }
           
           if (statementErrors === 0) {
-            console.log('✅ Migration completed (simulated)');
             successCount++;
           } else {
-            console.log(`⚠️  Migration had ${statementErrors} errors`);
             errorCount++;
           }
         } else {
@@ -91,7 +82,6 @@ async function runMigrations() {
           errorCount++;
         }
       } else {
-        console.log('✅ Migration completed successfully');
         successCount++;
       }
       
@@ -101,18 +91,10 @@ async function runMigrations() {
     }
   }
   
-  console.log('\n' + '='.repeat(60));
-  console.log('📊 Migration Summary:');
-  console.log(`   ✅ Successful: ${successCount}`);
-  console.log(`   ❌ Failed: ${errorCount}`);
-  console.log(`   📄 Total: ${files.length}`);
-  console.log('='.repeat(60));
   
   if (errorCount > 0) {
-    console.log('\n⚠️  Some migrations failed. Please check the errors above.');
     process.exit(1);
   } else {
-    console.log('\n🎉 All migrations completed successfully!');
   }
 }
 

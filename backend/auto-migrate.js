@@ -23,7 +23,6 @@ async function prompt(question) {
 }
 
 async function main() {
-  console.log('🚀 Supabase Auto-Migration Tool\n');
   
   try {
     const runner = new MigrationRunner();
@@ -33,13 +32,6 @@ async function main() {
     
     if (args.length === 0) {
       // Interactive mode
-      console.log('Available commands:');
-      console.log('  1. Execute SQL migration');
-      console.log('  2. Create table');
-      console.log('  3. Add column');
-      console.log('  4. Create index');
-      console.log('  5. List migrations');
-      console.log('  6. Exit\n');
       
       const choice = await prompt('Select an option (1-6): ');
       
@@ -60,10 +52,8 @@ async function main() {
           await runner.listMigrations();
           break;
         case '6':
-          console.log('Goodbye!');
           process.exit(0);
         default:
-          console.log('Invalid option');
       }
     } else {
       // Command line mode
@@ -82,17 +72,11 @@ async function main() {
         }
         
         const result = await runner.executeMigration(sql, name);
-        console.log(result.success ? '✓ Success' : `✗ Failed: ${result.error}`);
         
       } else if (command === 'list') {
         await runner.listMigrations();
         
       } else {
-        console.log('Usage:');
-        console.log('  node auto-migrate.js                    # Interactive mode');
-        console.log('  node auto-migrate.js sql "<SQL>" [name] # Execute SQL');
-        console.log('  node auto-migrate.js sql file.sql [name]# Execute SQL from file');
-        console.log('  node auto-migrate.js list               # List migrations');
       }
     }
     
@@ -106,7 +90,6 @@ async function main() {
 
 async function executeSQLMigration() {
   const name = await prompt('Migration name: ');
-  console.log('Enter SQL (type "END" on a new line when done):');
   
   let sql = '';
   let line;
@@ -118,14 +101,12 @@ async function executeSQLMigration() {
   const runner = new MigrationRunner();
   const result = await runner.executeMigration(sql.trim(), name);
   
-  console.log(result.success ? '\n✓ Migration completed!' : `\n✗ Migration failed: ${result.error}`);
 }
 
 async function createTableInteractive() {
   const tableName = await prompt('Table name: ');
   const columns = [];
   
-  console.log('Define columns (leave name empty to finish):');
   
   while (true) {
     const name = await prompt('Column name: ');
@@ -151,7 +132,6 @@ async function createTableInteractive() {
     includeBranchId
   });
   
-  console.log(result.success ? '\n✓ Table created!' : `\n✗ Failed: ${result.error}`);
 }
 
 async function addColumnInteractive() {
@@ -170,7 +150,6 @@ async function addColumnInteractive() {
     index: createIndex
   });
   
-  console.log(result.success ? '\n✓ Column added!' : `\n✗ Failed: ${result.error}`);
 }
 
 async function createIndexInteractive() {
@@ -180,7 +159,6 @@ async function createIndexInteractive() {
   
   const result = await helpers.createIndex(tableName, columns, { unique });
   
-  console.log(result.success ? '\n✓ Index created!' : `\n✗ Failed: ${result.error}`);
 }
 
 // Run if called directly

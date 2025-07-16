@@ -20,14 +20,12 @@ process.env.SENTRY_DSN = '';
 // Console log suppression for cleaner test output
 const originalConsoleError = console.error;
 const originalConsoleWarn = console.warn;
-const originalConsoleLog = console.log;
 
 beforeAll(() => {
   // Suppress console outputs during tests unless debugging
   if (!process.env.DEBUG_TESTS) {
     console.error = jest.fn();
     console.warn = jest.fn();
-    console.log = jest.fn();
   }
 });
 
@@ -35,7 +33,6 @@ afterAll(() => {
   // Restore console outputs
   console.error = originalConsoleError;
   console.warn = originalConsoleWarn;
-  console.log = originalConsoleLog;
 });
 
 // Global test utilities

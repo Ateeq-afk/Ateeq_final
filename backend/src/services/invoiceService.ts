@@ -437,7 +437,6 @@ class InvoiceService {
       await smsService.sendSMS(invoiceData.customer_phone, smsMessage);
 
       // Log notification
-      console.log(`Invoice ${invoiceData.invoice_number} notification sent to ${invoiceData.customer_phone}`);
       
       // TODO: Implement email sending with PDF attachment
       // This would require email service integration
@@ -456,23 +455,18 @@ class InvoiceService {
     grand_total: number;
   }> {
     try {
-      console.log('Starting invoice generation for filters:', filters);
 
       // 1. Compile invoice data
       const invoiceData = await this.compileInvoiceData(filters);
-      console.log(`Compiled invoice data for ${invoiceData.items.length} bookings`);
 
       // 2. Generate PDF
       const pdfPath = await this.generatePDFInvoice(invoiceData);
-      console.log(`Generated PDF at: ${pdfPath}`);
 
       // 3. Save to database
       const invoiceId = await this.saveInvoiceToDatabase(invoiceData, pdfPath, filters);
-      console.log(`Saved invoice to database with ID: ${invoiceId}`);
 
       // 4. Send notifications
       await this.sendInvoice(invoiceData, pdfPath);
-      console.log(`Sent invoice notifications`);
 
       return {
         invoice_id: invoiceId,

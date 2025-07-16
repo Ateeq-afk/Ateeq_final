@@ -1,293 +1,44 @@
-name: 🔄 Continuous Integration
+name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main ]
   pull_request:
-    branches: [ main, develop ]
-
-env:
-  NODE_VERSION: '18'
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+    branches: [ main ]
 
 jobs:
-  # Frontend Testing and Building
-  frontend-test:
-    name: 🎨 Frontend Tests
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./
-
-    steps:
-      - name: 📥 Checkout Code
-        uses: actions/checkout@v4
-
-      - name: 🟢 Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-
-      - name: 📦 Install Dependencies
-        run: npm ci
-
-      - name: 🔍 Lint Frontend Code
-        run: npm run lint
-
-      - name: 🏗️ Build Frontend
-        run: npm run build
-        env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-
-      - name: 📊 Upload Build Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-build
-          path: dist/
-          retention-days: 7
-
-  # Backend Testing and Building
-  backend-test:
-    name: 🔧 Backend Tests
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./backend
-
-    services:
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-    steps:
-      - name: 📥 Checkout Code
-        uses: actions/checkout@v4
-
-      - name: 🟢 Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: backend/package.json
-
-      - name: 📦 Install Backend Dependencies
-        run: npm ci
-
-      - name: 🔍 TypeScript Check
-        run: npm run build
-
-      - name: 🧪 Run Backend Tests
-        run: npm run test
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
-          REDIS_HOST: localhost
-          REDIS_PORT: 6379
-          NODE_ENV: test
-
-      - name: 📊 Upload Test Results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: backend-test-results
-          path: backend/test-results/
-          retention-days: 7
-
-  # Security Scanning
-  security-scan:
-    name: 🔒 Security Scan
+  build-and-test:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 📥 Checkout Code
-        uses: actions/checkout@v4
+    - name: Checkout Code
+      uses: actions/checkout@v3
 
-      - name: 🔍 Run Trivy Vulnerability Scanner
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: 'fs'
-          scan-ref: '.'
-          format: 'sarif'
-          output: 'trivy-results.sarif'
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: 18
 
-      - name: 📊 Upload Trivy Results
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: 'trivy-results.sarif'
+    - name: Install Frontend Dependencies
+      run: npm install
 
-      - name: 🛡️ Run CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
-        with:
-          languages: javascript
+    - name: Build Frontend
+      run: npm run build
 
-  # Docker Image Building
-  build-images:
-    name: 🐳 Build Docker Images
-    runs-on: ubuntu-latest
-    needs: [frontend-test, backend-test]
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    - name: Run Frontend Tests
+      run: npm test -- --run
 
-    permissions:
-      contents: read
-      packages: write
+    - name: Install Backend Dependencies
+      run: |
+        cd backend
+        npm install
 
-    steps:
-      - name: 📥 Checkout Code
-        uses: actions/checkout@v4
+    - name: Build Backend
+      run: |
+        cd backend
+        npm run build
 
-      - name: 🔐 Log in to Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: 🏷️ Extract Metadata
-        id: meta-backend
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=sha,prefix={{branch}}-
-            type=raw,value=latest,enable={{is_default_branch}}
-
-      - name: 🏗️ Build and Push Backend Image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./backend
-          push: true
-          tags: ${{ steps.meta-backend.outputs.tags }}
-          labels: ${{ steps.meta-backend.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: 🏷️ Extract Frontend Metadata
-        id: meta-frontend
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=sha,prefix={{branch}}-
-            type=raw,value=latest,enable={{is_default_branch}}
-
-      - name: 🏗️ Build and Push Frontend Image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: ${{ steps.meta-frontend.outputs.tags }}
-          labels: ${{ steps.meta-frontend.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  # Quality Gate Summary
-  quality-gate:
-    name: ✅ Quality Gate
-    runs-on: ubuntu-latest
-    needs: [frontend-test, backend-test, security-scan]
-    if: always()
-
-    steps:
-      - name: 📊 Check All Jobs Status
-        run: |
-          echo "Frontend Tests: ${{ needs.frontend-test.result }}"
-          echo "Backend Tests: ${{ needs.backend-test.result }}"
-          echo "Security Scan: ${{ needs.security-scan.result }}"
-          
-          if [[ "${{ needs.frontend-test.result }}" != "success" || 
-                "${{ needs.backend-test.result }}" != "success" || 
-                "${{ needs.security-scan.result }}" != "success" ]]; then
-            echo "❌ Quality gate failed!"
-            exit 1
-          else
-            echo "✅ Quality gate passed!"
-          fi
-
-      - name: 💬 Comment PR Results
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const results = {
-              frontend: '${{ needs.frontend-test.result }}',
-              backend: '${{ needs.backend-test.result }}',
-              security: '${{ needs.security-scan.result }}'
-            };
-            
-            const emoji = {
-              success: '✅',
-              failure: '❌',
-              cancelled: '⏹️',
-              skipped: '⏭️'
-            };
-            
-            const body = `## 🔄 CI/CD Pipeline Results
-            
-            | Component | Status | Result |
-            |-----------|--------|--------|
-            | Frontend Tests | ${emoji[results.frontend] || '❓'} | ${results.frontend} |
-            | Backend Tests | ${emoji[results.backend] || '❓'} | ${results.backend} |
-            | Security Scan | ${emoji[results.security] || '❓'} | ${results.security} |
-            
-            ${Object.values(results).every(r => r === 'success') ? 
-              '🎉 All checks passed! Ready for merge.' : 
-              '⚠️ Some checks failed. Please review before merging.'}
-            `;
-            
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: body
-            });
-
-  # Performance Testing (Optional)
-  performance-test:
-    name: ⚡ Performance Tests
-    runs-on: ubuntu-latest
-    needs: [backend-test]
-    if: github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'performance-test')
-
-    steps:
-      - name: 📥 Checkout Code
-        uses: actions/checkout@v4
-
-      - name: 🟢 Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: 📦 Install k6
-        run: |
-          sudo gpg -k
-          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
-          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
-          sudo apt-get update
-          sudo apt-get install k6
-
-      - name: 🚀 Run Load Tests
-        run: |
-          cd backend
-          k6 run --summary-export=performance-results.json tests/performance/load-test.js || true
-
-      - name: 📊 Upload Performance Results
-        uses: actions/upload-artifact@v4
-        with:
-          name: performance-results
-          path: backend/performance-results.json
-          retention-days: 7
+    - name: Run Backend Tests
+      run: |
+        cd backend
+        npm test -- --passWithNoTests

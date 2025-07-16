@@ -19,11 +19,8 @@ if (!supabaseUrl || !supabaseServiceKey) {
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-console.log('🚀 DesiCargo Financial System Migration Status\n');
-console.log('='.repeat(60));
 
 async function checkTables() {
-  console.log('\n📊 Checking database tables...\n');
   
   const tables = [
     // Core tables
@@ -87,17 +84,11 @@ async function checkTables() {
   
   // Display results
   for (const [category, status] of Object.entries(results)) {
-    console.log(`\n${category} Tables:`);
-    console.log('─'.repeat(40));
     
     if (status.exists.length > 0) {
-      console.log(`✅ Existing (${status.exists.length}):`);
-      status.exists.forEach(t => console.log(`   - ${t}`));
     }
     
     if (status.missing.length > 0) {
-      console.log(`❌ Missing (${status.missing.length}):`);
-      status.missing.forEach(t => console.log(`   - ${t}`));
     }
   }
   
@@ -105,7 +96,6 @@ async function checkTables() {
 }
 
 async function checkFunctions() {
-  console.log('\n\n🔧 Checking database functions...\n');
   
   const functions = [
     'create_booking_with_articles',
@@ -121,25 +111,17 @@ async function checkFunctions() {
   // Note: We can't directly query functions via Supabase client
   // So we'll test by trying to call them
   
-  console.log('✅ Functions (assumed to exist if migrations ran):');
-  functions.forEach(f => console.log(`   - ${f}`));
   
   return { existing, missing: functions };
 }
 
 async function generateMigrationCommands() {
-  console.log('\n\n📝 Migration Instructions:\n');
-  console.log('='.repeat(60));
   
   const migrationsDir = join(__dirname, 'migrations');
   const files = readdirSync(migrationsDir)
     .filter(f => f.endsWith('.sql'))
     .sort();
   
-  console.log('\n🔹 Option 1: Using Supabase Dashboard\n');
-  console.log('1. Go to: https://pgdssjfgfbvkgbzumtzm.supabase.co');
-  console.log('2. Navigate to SQL Editor');
-  console.log('3. Run these migrations in order:\n');
   
   const importantMigrations = [
     '008_enhanced_revenue_model_fixed.sql',
@@ -153,26 +135,12 @@ async function generateMigrationCommands() {
   
   importantMigrations.forEach((file, index) => {
     if (files.includes(file)) {
-      console.log(`   ${index + 1}. ${file}`);
     }
   });
   
-  console.log('\n\n🔹 Option 2: Using psql\n');
-  console.log('1. Get connection string from Supabase dashboard > Settings > Database');
-  console.log('2. Connect using psql:');
-  console.log('   psql "postgresql://postgres:[YOUR-PASSWORD]@db.pgdssjfgfbvkgbzumtzm.supabase.co:5432/postgres"');
-  console.log('3. Run migrations:');
-  console.log('   \\i migrations/008_enhanced_revenue_model_fixed.sql');
-  console.log('   \\i migrations/020_credit_limit_management.sql');
-  console.log('   ... (continue with other files)');
   
-  console.log('\n\n🔹 Option 3: Create a Migration Script\n');
-  console.log('Create a file `run-all-migrations.sql` that includes all migrations:');
-  console.log('\n   -- run-all-migrations.sql');
   importantMigrations.forEach(file => {
-    console.log(`   \\i migrations/${file}`);
   });
-  console.log('\nThen run: psql -f run-all-migrations.sql [CONNECTION_STRING]');
 }
 
 // Run all checks
@@ -183,23 +151,14 @@ async function main() {
     
     await generateMigrationCommands();
     
-    console.log('\n\n📊 Summary:\n');
-    console.log('='.repeat(60));
     
     const totalMissing = Object.values(tableResults)
       .reduce((sum, cat) => sum + cat.missing.length, 0);
     
     if (totalMissing === 0) {
-      console.log('✅ All tables exist! The financial system is ready.');
     } else {
-      console.log(`⚠️  ${totalMissing} tables are missing.`);
-      console.log('   Please run the migrations using one of the options above.');
     }
     
-    console.log('\n💡 Next Steps:');
-    console.log('1. If tables are missing, run the migrations');
-    console.log('2. Restart the backend server');
-    console.log('3. The financial system will be fully operational');
     
   } catch (error) {
     console.error('❌ Error:', error.message);

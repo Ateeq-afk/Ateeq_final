@@ -115,39 +115,29 @@ const AppleArticleCard: React.FC<{
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05, duration: 0.3 }}
-      whileHover={{ y: -4, scale: 1.02 }}
+      whileHover={{ y: -2 }}
       whileTap={{ scale: 0.98 }}
       onHoverStart={() => setIsHovered(true)}
       onHoverEnd={() => setIsHovered(false)}
       className={cn(
-        "group relative bg-white/80 dark:bg-gray-900/80 rounded-3xl transition-all duration-500 overflow-hidden cursor-pointer",
-        "border border-gray-200/60 dark:border-gray-700/60",
-        "shadow-[0_8px_32px_0_rgba(31,38,135,0.12)] dark:shadow-[0_8px_32px_0_rgba(0,0,0,0.3)]",
-        "hover:shadow-[0_16px_64px_0_rgba(31,38,135,0.25)] dark:hover:shadow-[0_16px_64px_0_rgba(0,0,0,0.4)]",
-        "backdrop-blur-xl backdrop-saturate-150 haptic-medium hover-lift-subtle",
+        "group relative bg-white/80 dark:bg-gray-900/80 rounded-2xl transition-all duration-300 overflow-hidden cursor-pointer",
+        "border-0",
+        "shadow-lg hover:shadow-xl",
+        "backdrop-blur-xl",
         "hover:bg-white/90 dark:hover:bg-gray-800/90",
-        "transform hover:scale-[1.02] active:scale-[0.98]",
-        isSelected && "border-blue-500/80 dark:border-blue-400/80 shadow-[0_16px_32px_0_rgba(59,130,246,0.25)] dark:shadow-[0_16px_32px_0_rgba(59,130,246,0.4)] ring-2 ring-blue-200/50 dark:ring-blue-800/50"
+        isSelected && "ring-2 ring-blue-500 dark:ring-blue-400"
       )}
       onClick={onViewDetails}
     >
       {/* Enhanced glass morphism background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-white/40 via-white/20 to-blue-50/30 dark:from-gray-800/40 dark:via-gray-900/20 dark:to-blue-950/30 opacity-60" />
-      <div className="absolute inset-0 bg-gradient-to-t from-transparent to-white/20 dark:to-gray-800/20 opacity-50" />
-      
-      {/* Noise texture for depth */}
-      <div className="absolute inset-0 opacity-[0.02] mix-blend-overlay">
-        <div className="w-full h-full" style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' /%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E")`
-        }} />
-      </div>
+      <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent" />
 
       <div className="relative z-10 p-6">
         {/* Header with selection and actions */}
         <div className="flex items-start justify-between mb-6">
           <motion.div 
-            whileHover={{ scale: 1.1, rotate: 5 }}
-            className="p-3 bg-gradient-to-br from-blue-50/80 to-blue-100/60 dark:from-blue-950/40 dark:to-blue-900/30 rounded-2xl border border-blue-200/60 dark:border-blue-800/40 shadow-[0_4px_16px_0_rgba(59,130,246,0.12)] dark:shadow-[0_4px_16px_0_rgba(59,130,246,0.25)]"
+            whileHover={{ scale: 1.05 }}
+            className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-xl"
           >
             <Package className="h-6 w-6 text-blue-600 dark:text-blue-400" strokeWidth={1.5} />
           </motion.div>
@@ -164,11 +154,11 @@ const AppleArticleCard: React.FC<{
           >
             <Tooltip>
               <TooltipTrigger asChild>
-                <motion.div whileHover={{ scale: 1.1, transition: { duration: 0.1 } }} whileTap={{ scale: 0.9, transition: { duration: 0.05 } }}>
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-800 haptic-light transition-all duration-200 ease-out hover:scale-110 active:scale-95"
+                    className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-800"
                     onClick={(e) => {
                       e.stopPropagation();
                       onSelect();
@@ -186,11 +176,11 @@ const AppleArticleCard: React.FC<{
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <motion.div whileHover={{ scale: 1.1, transition: { duration: 0.1 } }} whileTap={{ scale: 0.9, transition: { duration: 0.05 } }}>
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-800 haptic-light transition-all duration-200 ease-out hover:scale-110 active:scale-95"
+                    className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-800"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <MoreVertical className="h-4 w-4" />
@@ -220,7 +210,7 @@ const AppleArticleCard: React.FC<{
         <div className="space-y-4">
           <div>
             <motion.h3 
-              className="font-bold text-xl text-primary leading-tight tracking-tight font-system"
+              className="font-bold text-xl text-gray-900 dark:text-white leading-tight"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 + 0.1, duration: 0.4, type: "spring", stiffness: 200, damping: 25 }}
@@ -229,7 +219,7 @@ const AppleArticleCard: React.FC<{
             </motion.h3>
             {article.hsn_code && (
               <motion.p 
-                className="text-sm text-tertiary mt-1 font-medium"
+                className="text-sm text-gray-600 dark:text-gray-400 mt-1"
                 initial={{ opacity: 0, y: 5 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 + 0.15, duration: 0.3, type: "spring", stiffness: 300, damping: 30 }}
@@ -241,7 +231,7 @@ const AppleArticleCard: React.FC<{
 
           {article.description && (
             <motion.p 
-              className="text-base text-secondary line-clamp-2 leading-relaxed"
+              className="text-base text-gray-600 dark:text-gray-400 line-clamp-2 leading-relaxed"
               initial={{ opacity: 0, y: 5 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 + 0.2, duration: 0.3, type: "spring", stiffness: 300, damping: 30 }}
@@ -257,10 +247,10 @@ const AppleArticleCard: React.FC<{
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.05 + 0.25, duration: 0.4, type: "spring", stiffness: 200, damping: 25 }}
           >
-            <Badge className="bg-gradient-to-r from-green-50/80 to-emerald-50/80 dark:from-green-950/40 dark:to-emerald-950/40 text-green-700 dark:text-green-300 border-green-200/60 dark:border-green-800/40 font-semibold text-sm tabular-nums shadow-[0_2px_8px_0_rgba(34,197,94,0.15)] dark:shadow-[0_2px_8px_0_rgba(34,197,94,0.25)]">
+            <Badge className="bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-300 font-semibold text-sm tabular-nums">
               ₹{article.base_rate.toFixed(2)}
             </Badge>
-            <span className="text-sm text-tertiary font-medium">
+            <span className="text-sm text-gray-600 dark:text-gray-400">
               {new Date(article.created_at).toLocaleDateString()}
             </span>
           </motion.div>
@@ -272,9 +262,7 @@ const AppleArticleCard: React.FC<{
           initial={{ x: 10, opacity: 0 }}
           whileHover={{ x: 0, opacity: 1 }}
         >
-          <div className="w-8 h-8 rounded-full bg-white/20 dark:bg-black/20 backdrop-blur-md border border-white/30 dark:border-gray-600/30 flex items-center justify-center shadow-[0_4px_16px_0_rgba(0,0,0,0.08)] dark:shadow-[0_4px_16px_0_rgba(0,0,0,0.2)]">
-            <Eye className="h-4 w-4 text-gray-600 dark:text-gray-300" />
-          </div>
+          <Eye className="h-5 w-5 text-gray-400" />
         </motion.div>
       </div>
     </motion.div>
@@ -744,10 +732,10 @@ export default function ArticleListEnterprise() {
   return (
     <TooltipProvider>
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50/30 dark:from-gray-950 dark:via-gray-900 dark:to-blue-950/30">
-        <div className="max-w-7xl mx-auto p-6 space-y-6">
+        <div className="max-w-[1600px] xl:max-w-[1920px] 2xl:max-w-full mx-auto p-6 space-y-6">
           {/* Apple-inspired Header Section */}
           <motion.div 
-            className="bg-white/80 dark:bg-black/80 backdrop-blur-xl border border-gray-200/60 dark:border-gray-700/60 rounded-3xl shadow-[0_8px_32px_0_rgba(31,38,135,0.12)] dark:shadow-[0_8px_32px_0_rgba(0,0,0,0.3)] p-6"
+            className="bg-white/80 dark:bg-black/80 backdrop-blur-xl border border-gray-200/60 dark:border-gray-700/60 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 p-6"
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
@@ -760,12 +748,12 @@ export default function ArticleListEnterprise() {
               >
                 <div className="flex items-center gap-3 mb-3">
                   <motion.div 
-                    className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 dark:from-blue-400 dark:to-blue-500 rounded-2xl shadow-[0_4px_16px_0_rgba(59,130,246,0.25)] dark:shadow-[0_4px_16px_0_rgba(59,130,246,0.4)]"
+                    className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 dark:from-blue-400 dark:to-blue-500 rounded-xl shadow-lg"
                     whileHover={{ scale: 1.05, rotate: 5 }}
                   >
                     <Package className="h-6 w-6 text-white" />
                   </motion.div>
-                  <h1 className="text-4xl font-bold text-primary tracking-tight leading-tight">
+                  <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
                     Article Catalog
                   </h1>
                   <motion.div
@@ -773,20 +761,20 @@ export default function ArticleListEnterprise() {
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.3 }}
                   >
-                    <Badge className="bg-gradient-to-r from-blue-50/80 to-indigo-50/80 dark:from-blue-950/40 dark:to-indigo-950/40 text-blue-700 dark:text-blue-300 border-blue-200/60 dark:border-blue-800/40 shadow-[0_2px_8px_0_rgba(59,130,246,0.15)] dark:shadow-[0_2px_8px_0_rgba(59,130,246,0.25)]">
+                      <Badge className="bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-300">
                       <Package className="h-3 w-3 mr-1" />
                       Enterprise
                     </Badge>
                   </motion.div>
                 </div>
-                <p className="text-lg text-secondary leading-relaxed font-medium">
+                <p className="text-gray-600 dark:text-gray-400 mt-1">
                   Manage your product catalog, pricing, and inventory with enterprise-grade controls
                 </p>
               </motion.div>
               
               {/* Enhanced Quick Stats */}
               <motion.div 
-                className="grid grid-cols-3 gap-4"
+                className="grid grid-cols-3 gap-3"
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.2 }}
@@ -802,14 +790,14 @@ export default function ArticleListEnterprise() {
                     transition={{ delay: 0.3, duration: 0.3, type: "spring", stiffness: 400, damping: 25 }}
                   />
                   <motion.p 
-                    className="text-2xl font-bold text-primary tabular-nums font-system"
+                    className="text-2xl font-bold text-gray-900 dark:text-white tabular-nums"
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.6, duration: 0.3, type: "spring", stiffness: 300, damping: 30 }}
                   >
                     {statistics.total}
                   </motion.p>
-                  <p className="text-sm text-tertiary font-medium tracking-wide">Articles</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Articles</p>
                 </motion.div>
                 <motion.div 
                   className="text-center"
@@ -822,14 +810,14 @@ export default function ArticleListEnterprise() {
                     transition={{ delay: 0.4, duration: 0.3, type: "spring", stiffness: 400, damping: 25 }}
                   />
                   <motion.p 
-                    className="text-2xl font-bold text-primary tabular-nums font-system"
+                    className="text-2xl font-bold text-gray-900 dark:text-white tabular-nums"
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.7, duration: 0.3, type: "spring", stiffness: 300, damping: 30 }}
                   >
                     ₹{statistics.avgPrice.toFixed(0)}
                   </motion.p>
-                  <p className="text-sm text-tertiary font-medium tracking-wide">Avg Price</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Avg Price</p>
                 </motion.div>
                 <motion.div 
                   className="text-center"
@@ -842,14 +830,14 @@ export default function ArticleListEnterprise() {
                     transition={{ delay: 0.5, duration: 0.3, type: "spring", stiffness: 400, damping: 25 }}
                   />
                   <motion.p 
-                    className="text-2xl font-bold text-primary tabular-nums font-system"
+                    className="text-2xl font-bold text-gray-900 dark:text-white tabular-nums"
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.8, duration: 0.3, type: "spring", stiffness: 300, damping: 30 }}
                   >
                     {statistics.recentlyAdded}
                   </motion.p>
-                  <p className="text-sm text-tertiary font-medium tracking-wide">Recent</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Recent</p>
                 </motion.div>
               </motion.div>
             </div>
@@ -857,7 +845,7 @@ export default function ArticleListEnterprise() {
 
         {/* Analytics Overview (shown in analytics view) */}
         {viewMode === VIEW_MODES.ANALYTICS && (
-          <StatsGrid columns={4}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <StatsCard
               title="Total Articles"
               value={statistics.total}
@@ -885,11 +873,11 @@ export default function ArticleListEnterprise() {
               actionLabel="View all"
               onClick={() => setViewMode(VIEW_MODES.LIST)}
             />
-          </StatsGrid>
+          </div>
         )}
 
         {/* Enhanced Action Bar */}
-        <Card className="p-4 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border border-gray-200/60 dark:border-gray-700/60 shadow-[0_8px_32px_0_rgba(31,38,135,0.12)] dark:shadow-[0_8px_32px_0_rgba(0,0,0,0.3)] rounded-3xl">
+        <Card className="p-4 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-0 shadow-lg rounded-2xl">
           <div className="flex flex-col lg:flex-row gap-4">
             {/* Search with filters */}
             <div className="flex-1 flex gap-2">
@@ -969,7 +957,7 @@ export default function ArticleListEnterprise() {
             {/* Controls */}
             <div className="flex items-center gap-2">
               {/* View Mode Selection */}
-              <div className="flex border border-gray-200/60 dark:border-gray-700/60 rounded-xl p-1 bg-white/60 dark:bg-gray-800/60 backdrop-blur-md shadow-[0_4px_16px_0_rgba(0,0,0,0.08)] dark:shadow-[0_4px_16px_0_rgba(0,0,0,0.2)]">
+              <div className="flex border border-gray-200 dark:border-gray-700 rounded-lg p-1 bg-white/60 dark:bg-gray-800/60 backdrop-blur-md">
                 <Button
                   variant={viewMode === VIEW_MODES.GRID ? "default" : "ghost"}
                   size="sm"
@@ -1077,7 +1065,7 @@ export default function ArticleListEnterprise() {
 
         {/* Selection Bar */}
         {selectedIds.length > 0 && (
-          <Card variant="outlined" className="bg-gradient-to-r from-blue-50/80 to-indigo-50/80 dark:from-blue-950/40 dark:to-indigo-950/40 border-blue-200/60 dark:border-blue-800/40 backdrop-blur-xl shadow-[0_8px_32px_0_rgba(59,130,246,0.15)] dark:shadow-[0_8px_32px_0_rgba(59,130,246,0.25)] rounded-3xl">
+          <Card className="bg-blue-50 dark:bg-blue-950/20 border-0 shadow-lg rounded-2xl">
             <CardContent className="p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Badge variant="secondary" className="bg-primary-100 dark:bg-primary-900">
@@ -1114,7 +1102,7 @@ export default function ArticleListEnterprise() {
           >
             {pageItems.length ? (
               <motion.div 
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4 gap-4 lg:gap-6"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ staggerChildren: 0.05 }}
@@ -1176,7 +1164,7 @@ export default function ArticleListEnterprise() {
           >
             {pageItems.length ? (
               <motion.div 
-                className="bg-white/80 dark:bg-gray-900/80 rounded-3xl border border-gray-200/60 dark:border-gray-700/60 shadow-[0_8px_32px_0_rgba(31,38,135,0.12)] dark:shadow-[0_8px_32px_0_rgba(0,0,0,0.3)] overflow-hidden backdrop-blur-xl"
+                className="bg-white/80 dark:bg-gray-900/80 rounded-2xl border-0 shadow-lg overflow-hidden backdrop-blur-xl"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
               >
@@ -1262,7 +1250,7 @@ export default function ArticleListEnterprise() {
         {viewMode === VIEW_MODES.ANALYTICS && (
           <div className="space-y-6">
             {/* Price Distribution */}
-            <Card className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border border-gray-200/60 dark:border-gray-700/60 shadow-[0_8px_32px_0_rgba(31,38,135,0.12)] dark:shadow-[0_8px_32px_0_rgba(0,0,0,0.3)] rounded-3xl">
+            <Card className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-0 shadow-lg rounded-2xl">
             <CardHeader>
               <CardTitle>Price Distribution</CardTitle>
               <CardDescription>Articles categorized by price ranges</CardDescription>
@@ -1292,7 +1280,7 @@ export default function ArticleListEnterprise() {
           </Card>
 
           {/* Top Articles by Price */}
-          <Card className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border border-gray-200/60 dark:border-gray-700/60 shadow-[0_8px_32px_0_rgba(31,38,135,0.12)] dark:shadow-[0_8px_32px_0_rgba(0,0,0,0.3)] rounded-3xl">
+          <Card className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-0 shadow-lg rounded-2xl">
             <CardHeader>
               <CardTitle>Top Articles by Price</CardTitle>
               <CardDescription>Your highest valued articles</CardDescription>
@@ -1326,7 +1314,7 @@ export default function ArticleListEnterprise() {
 
         {/* Pagination */}
         {totalPages > 1 && viewMode !== VIEW_MODES.ANALYTICS && (
-          <Card className="p-4 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border border-gray-200/60 dark:border-gray-700/60 shadow-[0_8px_32px_0_rgba(31,38,135,0.12)] dark:shadow-[0_8_32px_0_rgba(0,0,0,0.3)] rounded-3xl">
+          <Card className="p-4 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-0 shadow-lg rounded-2xl">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-4">
                 <span className="text-sm text-neutral-600 dark:text-neutral-400">

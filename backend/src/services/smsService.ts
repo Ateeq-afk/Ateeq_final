@@ -1,4 +1,6 @@
 import { log } from '../utils/logger';
+import axios from 'axios';
+import twilio from 'twilio';
 
 /**
  * SMS Service for customer notifications
@@ -60,35 +62,46 @@ class MockSMSProvider implements SMSProvider {
  * Twilio SMS Provider
  */
 class TwilioSMSProvider implements SMSProvider {
-  private accountSid: string;
-  private authToken: string;
+  private client: any;
   private fromNumber: string;
+  private isConfigured: boolean;
 
   constructor() {
-    this.accountSid = process.env.TWILIO_ACCOUNT_SID || '';
-    this.authToken = process.env.TWILIO_AUTH_TOKEN || '';
+    const accountSid = process.env.TWILIO_ACCOUNT_SID;
+    const authToken = process.env.TWILIO_AUTH_TOKEN;
     this.fromNumber = process.env.TWILIO_FROM_NUMBER || '';
+    
+    if (accountSid && authToken && this.fromNumber) {
+      this.client = twilio(accountSid, authToken);
+      this.isConfigured = true;
+    } else {
+      this.isConfigured = false;
+      log.warn('Twilio SMS provider not fully configured');
+    }
   }
 
   async send(to: string, message: string): Promise<SMSResult> {
     try {
-      // Mock Twilio implementation (replace with actual Twilio SDK)
-      if (!this.accountSid || !this.authToken) {
+      if (!this.isConfigured) {
         throw new Error('Twilio credentials not configured');
       }
 
       log.info('Sending SMS via Twilio', { to, messageLength: message.length });
 
-      // Simulate Twilio API call
-      await this.delay(500); // Simulate network delay
+      const result = await this.client.messages.create({
+        body: message,
+        to: to,
+        from: this.fromNumber
+      });
 
       return {
         success: true,
-        messageId: `twilio_${Date.now()}`,
-        cost: 0.08,
+        messageId: result.sid,
+        cost: parseFloat(result.price || '0.08'),
         provider: 'twilio'
       };
     } catch (error) {
+      log.error('Twilio SMS error', { error: error.message });
       return {
         success: false,
         error: error.message,
@@ -102,46 +115,120 @@ class TwilioSMSProvider implements SMSProvider {
     return cleanNumber.length >= 10 && cleanNumber.length <= 15;
   }
 
-  private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+  async getBalance(): Promise<number> {
+    if (!this.isConfigured) return 0;
+    
+    try {
+      const account = await this.client.api.accounts(process.env.TWILIO_ACCOUNT_SID).fetch();
+      return parseFloat(account.balance || '0');
+    } catch (error) {
+      log.error('Failed to fetch Twilio balance', { error });
+      return 0;
+    }
   }
 }
 
 /**
- * TextLocal SMS Provider (for Indian numbers)
+ * MSG91 SMS Provider (for Indian numbers)
  */
-class TextLocalProvider implements SMSProvider {
+class MSG91Provider implements SMSProvider {
   private apiKey: string;
-  private sender: string;
+  private senderId: string;
+  private templateId: string;
+  private isConfigured: boolean;
+  private baseUrl = 'https://control.msg91.com/api/v5';
 
   constructor() {
-    this.apiKey = process.env.TEXTLOCAL_API_KEY || '';
-    this.sender = process.env.TEXTLOCAL_SENDER || 'DESICARGO';
+    this.apiKey = process.env.MSG91_API_KEY || '';
+    this.senderId = process.env.MSG91_SENDER_ID || 'DSCRGO';
+    this.templateId = process.env.MSG91_OTP_TEMPLATE_ID || '';
+    
+    this.isConfigured = !!(this.apiKey && this.senderId);
+    if (!this.isConfigured) {
+      log.warn('MSG91 SMS provider not fully configured');
+    }
   }
 
-  async send(to: string, message: string): Promise<SMSResult> {
+  async send(to: string, message: string, options?: any): Promise<SMSResult> {
     try {
-      if (!this.apiKey) {
-        throw new Error('TextLocal API key not configured');
+      if (!this.isConfigured) {
+        throw new Error('MSG91 credentials not configured');
       }
 
-      log.info('Sending SMS via TextLocal', { to, messageLength: message.length });
+      log.info('Sending SMS via MSG91', { to, messageLength: message.length });
 
-      // Mock TextLocal API call
-      await this.delay(300);
+      // For OTP messages, use OTP API
+      if (options?.isOtp) {
+        return await this.sendOtp(to, options.otp);
+      }
 
-      return {
-        success: true,
-        messageId: `textlocal_${Date.now()}`,
-        cost: 0.03, // Lower cost for Indian provider
-        provider: 'textlocal'
-      };
+      // For regular SMS
+      const response = await axios.post(
+        `${this.baseUrl}/flow/`,
+        {
+          sender: this.senderId,
+          mobiles: to.replace(/\+/g, ''),
+          sms: message,
+          authkey: this.apiKey
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'authkey': this.apiKey
+          }
+        }
+      );
+
+      if (response.data.type === 'success') {
+        return {
+          success: true,
+          messageId: response.data.request_id,
+          cost: 0.03,
+          provider: 'msg91'
+        };
+      } else {
+        throw new Error(response.data.message || 'SMS sending failed');
+      }
     } catch (error) {
+      log.error('MSG91 SMS error', { error: error.message });
       return {
         success: false,
         error: error.message,
-        provider: 'textlocal'
+        provider: 'msg91'
       };
+    }
+  }
+
+  private async sendOtp(to: string, otp: string): Promise<SMSResult> {
+    try {
+      const response = await axios.post(
+        `${this.baseUrl}/otp`,
+        {
+          mobile: to.replace(/\+/g, ''),
+          otp: otp,
+          authkey: this.apiKey,
+          template_id: this.templateId || undefined
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'authkey': this.apiKey
+          }
+        }
+      );
+
+      if (response.data.type === 'success') {
+        return {
+          success: true,
+          messageId: response.data.request_id,
+          cost: 0.03,
+          provider: 'msg91'
+        };
+      } else {
+        throw new Error(response.data.message || 'OTP sending failed');
+      }
+    } catch (error) {
+      throw error;
     }
   }
 
@@ -151,8 +238,24 @@ class TextLocalProvider implements SMSProvider {
     return cleanNumber.length === 10 || (cleanNumber.length === 12 && cleanNumber.startsWith('91'));
   }
 
-  private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+  async getBalance(): Promise<number> {
+    if (!this.isConfigured) return 0;
+    
+    try {
+      const response = await axios.get(
+        `${this.baseUrl}/balance`,
+        {
+          headers: {
+            'authkey': this.apiKey
+          }
+        }
+      );
+      
+      return parseFloat(response.data.balance || '0');
+    } catch (error) {
+      log.error('Failed to fetch MSG91 balance', { error });
+      return 0;
+    }
   }
 }
 
@@ -173,12 +276,21 @@ class SMSService {
   }
 
   private initializeProviders() {
+    // Always include mock provider for development
     this.providers.set('mock', new MockSMSProvider());
-    this.providers.set('twilio', new TwilioSMSProvider());
-    this.providers.set('textlocal', new TextLocalProvider());
+    
+    // Initialize production providers based on configuration
+    if (process.env.TWILIO_ACCOUNT_SID) {
+      this.providers.set('twilio', new TwilioSMSProvider());
+    }
+    
+    if (process.env.MSG91_API_KEY) {
+      this.providers.set('msg91', new MSG91Provider());
+    }
 
     log.info('SMS providers initialized', {
-      providers: Array.from(this.providers.keys())
+      providers: Array.from(this.providers.keys()),
+      primary: this.primaryProvider
     });
   }
 
@@ -287,7 +399,7 @@ class SMSService {
   async sendSMS(
     to: string,
     message: string,
-    options: { priority?: 'normal' | 'high'; providerId?: string } = {}
+    options: { priority?: 'normal' | 'high'; providerId?: string; isOtp?: boolean; otp?: string } = {}
   ): Promise<SMSResult> {
     const providerId = options.providerId || this.selectProvider(to);
     const provider = this.providers.get(providerId);
@@ -306,7 +418,7 @@ class SMSService {
     }
 
     try {
-      const result = await provider.send(to, message);
+      const result = await provider.send(to, message, options);
       
       log.info('SMS sent', {
         to,
@@ -428,17 +540,35 @@ class SMSService {
   private selectProvider(phoneNumber: string): string {
     const cleanNumber = phoneNumber.replace(/\D/g, '');
     
-    // Use TextLocal for Indian numbers if available
+    // Use MSG91 for Indian numbers if available
     if ((cleanNumber.length === 10 || cleanNumber.startsWith('91')) && 
-        this.providers.has('textlocal')) {
-      return 'textlocal';
+        this.providers.has('msg91')) {
+      return 'msg91';
     }
     
+    // Otherwise use the primary provider
     return this.primaryProvider;
   }
 
   private delay(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Send OTP
+   */
+  async sendOtp(phoneNumber: string, otp: string): Promise<boolean> {
+    const otpTemplate = process.env.SMS_OTP_TEMPLATE || 'Your DesiCargo OTP is: {otp}. Valid for 10 minutes.';
+    const message = otpTemplate.replace('{otp}', otp);
+    
+    // Pass OTP flag for providers that have special OTP handling
+    const result = await this.sendSMS(phoneNumber, message, { 
+      priority: 'high',
+      isOtp: true,
+      otp: otp
+    });
+    
+    return result.success;
   }
 }
 

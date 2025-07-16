@@ -15,8 +15,6 @@ const supabase = createClient(
 );
 
 async function createComprehensiveTestData() {
-  console.log('🚀 Creating comprehensive test data...');
-  console.log('==================================================');
   
   try {
     // 1. Get organization and branches
@@ -39,11 +37,8 @@ async function createComprehensiveTestData() {
     const mumbai_branch = branches.find(b => b.city === 'Mumbai');
     const delhi_branch = branches.find(b => b.city === 'Delhi');
     
-    console.log(`✅ Using organization: ${orgs.name}`);
-    console.log(`✅ Found ${branches.length} branches`);
     
     // 2. Create customers
-    console.log('\n📝 Creating customers...');
     const customers = [
       {
         name: 'Rajesh Textiles Ltd',
@@ -95,14 +90,11 @@ async function createComprehensiveTestData() {
         .insert(customer);
       
       if (error) {
-        console.log(`⚠️  Customer creation skipped: ${error.message}`);
       } else {
-        console.log(`✅ Created customer: ${customer.name}`);
       }
     }
     
     // 3. Create articles
-    console.log('\n📦 Creating articles...');
     const articles = [
       {
         name: 'Cotton Fabric Rolls',
@@ -156,14 +148,11 @@ async function createComprehensiveTestData() {
         .insert(article);
       
       if (error) {
-        console.log(`⚠️  Article creation skipped: ${error.message}`);
       } else {
-        console.log(`✅ Created article: ${article.name}`);
       }
     }
     
     // 4. Create vehicles
-    console.log('\n🚛 Creating vehicles...');
     const vehicles = [
       {
         registration_number: 'MH-01-AB-1234',
@@ -206,14 +195,11 @@ async function createComprehensiveTestData() {
         .insert(vehicle);
       
       if (error) {
-        console.log(`⚠️  Vehicle creation skipped: ${error.message}`);
       } else {
-        console.log(`✅ Created vehicle: ${vehicle.registration_number}`);
       }
     }
     
     // 5. Create sample bookings
-    console.log('\n📋 Creating sample bookings...');
     const { data: createdCustomers } = await supabase
       .from('customers')
       .select('*')
@@ -272,15 +258,12 @@ async function createComprehensiveTestData() {
           .insert(booking);
         
         if (error) {
-          console.log(`⚠️  Booking creation skipped: ${error.message}`);
         } else {
-          console.log(`✅ Created booking: ${booking.lr_number}`);
         }
       }
     }
     
     // 6. Create some warehouse records
-    console.log('\n🏭 Creating warehouse data...');
     const warehouses = [
       {
         name: 'Mumbai Central Warehouse',
@@ -312,14 +295,10 @@ async function createComprehensiveTestData() {
         .insert(warehouse);
       
       if (error) {
-        console.log(`⚠️  Warehouse creation skipped: ${error.message}`);
       } else {
-        console.log(`✅ Created warehouse: ${warehouse.name}`);
       }
     }
     
-    console.log('\n🎉 Comprehensive test data creation completed!');
-    console.log('==================================================');
     
     // Summary
     const { data: finalCustomers } = await supabase.from('customers').select('*', { count: 'exact' });
@@ -328,14 +307,6 @@ async function createComprehensiveTestData() {
     const { data: finalBookings } = await supabase.from('bookings').select('*', { count: 'exact' });
     const { data: finalWarehouses } = await supabase.from('warehouses').select('*', { count: 'exact' });
     
-    console.log('📊 Final data summary:');
-    console.log(`   Organizations: 1`);
-    console.log(`   Branches: ${branches.length}`);
-    console.log(`   Customers: ${finalCustomers?.length || 0}`);
-    console.log(`   Articles: ${finalArticles?.length || 0}`);
-    console.log(`   Vehicles: ${finalVehicles?.length || 0}`);
-    console.log(`   Bookings: ${finalBookings?.length || 0}`);
-    console.log(`   Warehouses: ${finalWarehouses?.length || 0}`);
     
   } catch (error) {
     console.error('❌ Error creating test data:', error.message);

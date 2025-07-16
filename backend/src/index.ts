@@ -1,7 +1,44 @@
 // Initialize Sentry FIRST before any other imports
-// Temporarily disabled for debugging
-// import SentryManager from './config/sentry';
-// SentryManager.initialize();
+import * as Sentry from '@sentry/node';
+import { ProfilingIntegration } from '@sentry/profiling-node';
+
+// Initialize Sentry
+Sentry.init({
+  dsn: process.env.SENTRY_DSN || 'YOUR_BACKEND_DSN_HERE',
+  environment: process.env.NODE_ENV || 'development',
+  integrations: [
+    // Enable HTTP calls tracing
+    new Sentry.Integrations.Http({ tracing: true }),
+    // Enable Express.js middleware tracing
+    new Sentry.Integrations.Express({ app: true, router: true }),
+    // Enable profiling
+    new ProfilingIntegration(),
+    // Additional integrations
+    new Sentry.Integrations.OnUncaughtException({
+      onFatalError: async (err) => {
+        // Optionally perform cleanup tasks
+        console.error('Fatal error:', err);
+      },
+    }),
+    new Sentry.Integrations.OnUnhandledRejection({ mode: 'strict' }),
+  ],
+  // Performance Monitoring
+  tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0, // 10% in production, 100% in development
+  // Session Replay (if needed)
+  profilesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
+  // Set sampling rate for profiling - this is relative to tracesSampleRate
+  beforeSend(event, hint) {
+    // Filter out sensitive data
+    if (event.request?.cookies) {
+      delete event.request.cookies;
+    }
+    if (event.request?.headers) {
+      delete event.request.headers.authorization;
+      delete event.request.headers.cookie;
+    }
+    return event;
+  },
+});
 
 import express from 'express';
 import cors from 'cors';
@@ -25,7 +62,6 @@ import {
 } from './middleware/performance';
 import { databasePoolMiddleware, createHealthCheckEndpoint } from './config/database-pool';
 import { cacheMiddleware, branchCache, dashboardCache, searchCache } from './middleware/cache';
-// import { sentryRequestHandler, sentryTracingHandler, sentryErrorHandler, captureUserContext, performanceBreadcrumbs } from './middleware/sentry';
 // import RedisConfig from './config/redis';
 
 // Import route handlers
@@ -64,9 +100,10 @@ import invoiceRoutes from './routes/invoices';
 
 const app = express();
 
-// Sentry middleware (must be FIRST) - temporarily disabled
-// app.use(sentryRequestHandler());
-// app.use(sentryTracingHandler());
+// Sentry request handler (must be FIRST)
+app.use(Sentry.Handlers.requestHandler());
+// Sentry tracing handler
+app.use(Sentry.Handlers.tracingHandler());
 
 // Security middleware
 app.use(securityHeaders);
@@ -175,9 +212,17 @@ app.use(responseMiddleware);
 app.use(databaseMiddleware);
 app.use(databasePoolMiddleware());
 
-// Performance monitoring - temporarily disabled
-// app.use(performanceBreadcrumbs);
-// app.use(captureUserContext);
+// Capture user context for better error tracking
+app.use((req, res, next) => {
+  if (req.user) {
+    Sentry.setUser({
+      id: req.user.id,
+      email: req.user.email,
+      username: req.user.username,
+    });
+  }
+  next();
+});
 
 // Health checks (mounted early, before auth)
 app.use('/health', healthRoutes);
@@ -242,8 +287,16 @@ app.use('/api/invoices', branchCache(180), invoiceRoutes); // Invoice generation
 // app.use('/api/financial-reports', financialReportsRoutes);
 // app.use('/api/chat', chatRoutes);
 
-// Sentry error handler (must be before other error handlers) - temporarily disabled
-// app.use(sentryErrorHandler());
+// Sentry error handler (must be before other error handlers)
+app.use(Sentry.Handlers.errorHandler({
+  shouldHandleError(error) {
+    // Capture errors with status 400 and above
+    if (error.status && error.status >= 400) {
+      return true;
+    }
+    return true;
+  },
+}));
 
 // Database error handling middleware
 app.use(databaseErrorMiddleware);
@@ -314,7 +367,7 @@ async function startServer() {
       environment: process.env.NODE_ENV || 'development',
       supabase: process.env.SUPABASE_URL ? 'Connected' : 'Not configured',
       redis: process.env.REDIS_HOST ? 'Configured' : 'Not configured',
-      sentry: 'Disabled (debug mode)',
+      sentry: process.env.SENTRY_DSN ? 'Enabled' : 'Disabled (no DSN)',
       url: `http://localhost:${port}`,
       timestamp: new Date().toISOString()
     });
@@ -326,7 +379,7 @@ async function startServer() {
       sanitization: 'enabled',
       securityHeaders: 'enabled',
       caching: 'enabled',
-      errorTracking: 'disabled (debug mode)',
+      errorTracking: process.env.SENTRY_DSN ? 'enabled' : 'disabled (no DSN)',
       databasePool: 'enabled'
     });
     

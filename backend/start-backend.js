@@ -7,7 +7,6 @@ import { dirname, join } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-console.log('🚀 Starting DesiCargo Backend Server...\n');
 
 // Use tsx which handles TypeScript better than ts-node
 const server = spawn('npx', ['tsx', 'src/index.ts'], {
@@ -34,7 +33,6 @@ server.on('exit', (code) => {
 
 // Handle termination
 process.on('SIGINT', () => {
-  console.log('\n⏹️  Shutting down server...');
   server.kill('SIGINT');
 });
 

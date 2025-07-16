@@ -56,21 +56,13 @@ async function setupExecSQL() {
     process.exit(1);
   }
   
-  console.log('Setting up exec_sql function in Supabase...');
   
   try {
     // For the initial setup, we'll need to use the Supabase dashboard SQL editor
     // or connect directly to the database
-    console.log('\n⚠️  To enable automated migrations, please run the following SQL in your Supabase SQL editor:\n');
-    console.log('----------------------------------------');
-    console.log(setupScript);
-    console.log('----------------------------------------\n');
-    console.log('After running this SQL, your migration system will be fully functional.');
-    console.log('\nAlternatively, you can save this to a file and run it through the Supabase CLI.');
     
     // Save to file for convenience
     await fs.writeFile('./migrations/000_setup_exec_sql.sql', setupScript);
-    console.log('\n✓ SQL saved to: ./migrations/000_setup_exec_sql.sql');
     
   } catch (error) {
     console.error('Error:', error.message);

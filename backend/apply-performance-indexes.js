@@ -2,11 +2,9 @@ import 'dotenv/config';
 import helpers from './migration-helpers.js';
 
 async function applyPerformanceIndexes() {
-  console.log('🚀 Applying performance indexes to DesiCargo database...\n');
   
   try {
     // 1. Bookings table indexes
-    console.log('📊 Creating bookings table indexes...');
     
     await helpers.createIndex('bookings', ['branch_id', 'status', 'created_at DESC'], {
       where: null
@@ -22,10 +20,8 @@ async function applyPerformanceIndexes() {
     
     await helpers.createIndex('bookings', ['payment_type', 'branch_id', 'created_at DESC']);
     
-    console.log('✅ Bookings indexes created\n');
     
     // 2. Customers table indexes
-    console.log('👥 Creating customers table indexes...');
     
     await helpers.createIndex('customers', ['branch_id', 'name', 'mobile']);
     
@@ -41,10 +37,8 @@ async function applyPerformanceIndexes() {
       where: 'is_credit_customer = true'
     });
     
-    console.log('✅ Customers indexes created\n');
     
     // 3. Vehicles table indexes
-    console.log('🚛 Creating vehicles table indexes...');
     
     await helpers.createIndex('vehicles', ['branch_id', 'status'], {
       where: 'is_active = true AND is_deleted = false'
@@ -54,26 +48,20 @@ async function applyPerformanceIndexes() {
       where: 'is_deleted = false'
     });
     
-    console.log('✅ Vehicles indexes created\n');
     
     // 4. OGPL table indexes
-    console.log('📦 Creating OGPL table indexes...');
     
     await helpers.createIndex('ogpl', ['branch_id', 'status', 'created_at DESC']);
     
     await helpers.createIndex('ogpl', ['from_station', 'to_station', 'status']);
     
-    console.log('✅ OGPL indexes created\n');
     
     // 5. Loading records indexes
-    console.log('📋 Creating loading records indexes...');
     
     await helpers.createIndex('loading_records', ['ogpl_id', 'booking_id']);
     
-    console.log('✅ Loading records indexes created\n');
     
     // 6. Update table statistics
-    console.log('📈 Updating table statistics...');
     
     const analyzeSQL = `
       ANALYZE bookings;
@@ -85,10 +73,8 @@ async function applyPerformanceIndexes() {
     
     await helpers.executeMigration('update_table_statistics', analyzeSQL);
     
-    console.log('✅ Table statistics updated\n');
     
     // 7. Create performance monitoring functions
-    console.log('🔧 Creating performance monitoring functions...');
     
     const monitoringSQL = `
 -- Function to check index usage
@@ -149,20 +135,7 @@ GRANT EXECUTE ON FUNCTION find_missing_indexes() TO authenticated;
     
     await helpers.executeMigration('create_monitoring_functions', monitoringSQL);
     
-    console.log('✅ Monitoring functions created\n');
     
-    console.log('========================================');
-    console.log('✅ PERFORMANCE INDEXES APPLIED SUCCESSFULLY!');
-    console.log('========================================');
-    console.log('\nExpected improvements:');
-    console.log('- 70-90% faster booking queries');
-    console.log('- 80% faster customer searches');
-    console.log('- 60% faster dashboard loading');
-    console.log('- 50% faster OGPL operations\n');
-    console.log('To check index usage, run:');
-    console.log('SELECT * FROM get_index_usage();');
-    console.log('\nTo find tables needing indexes, run:');
-    console.log('SELECT * FROM find_missing_indexes();');
     
   } catch (error) {
     console.error('❌ Error applying performance indexes:', error);

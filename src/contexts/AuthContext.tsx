@@ -222,7 +222,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Call backend refresh endpoint
-      const response = await fetch('http://localhost:4000/auth/org/refresh', {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/auth/org/refresh`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -259,7 +260,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       setLoading(true);
-      const response = await fetch('http://localhost:4000/api/auth/me', {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/auth/me`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,

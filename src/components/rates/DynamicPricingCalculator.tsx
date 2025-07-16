@@ -87,7 +87,12 @@ export function DynamicPricingCalculator() {
         });
 
         if (response.success) {
-          setCalculation(response.data);
+          if (response.data) {
+            setCalculation(response.data);
+          } else {
+            setCalculation(null);
+            toast.error('No calculation data returned');
+          }
         } else {
           toast.error(response.error || 'Failed to calculate price');
         }
@@ -134,7 +139,7 @@ export function DynamicPricingCalculator() {
             <Label>Customer</Label>
             <CustomerSelect
               value={formData.customer_id}
-              onChange={(value) => updateFormData('customer_id', value)}
+              onChange={(value: string) => updateFormData('customer_id', value)}
             />
           </div>
 
@@ -161,7 +166,7 @@ export function DynamicPricingCalculator() {
             <Label>Article (Optional)</Label>
             <ArticleSelect
               value={formData.article_id}
-              onChange={(value) => updateFormData('article_id', value)}
+              onChange={(value: string) => updateFormData('article_id', value)}
             />
           </div>
 

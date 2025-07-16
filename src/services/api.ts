@@ -70,14 +70,17 @@ api.interceptors.response.use(
   }
 );
 
-// Export as named export for other services
-export { api };
-
 // Export as default for other services
 export default api;
 
+<<<<<<< HEAD
+=======
+// Export as named export for other services
+export { api };
+
+>>>>>>> 1056392 (feat: Implement and test core booking, auth, and RLS systems)
 export async function login(orgId: string, username: string, password: string) {
-  const { data } = await axios.post('/api/login', { orgId, username, password })
+  const { data } = await api.post('/api/login', { orgId, username, password })
   return data.token as string
 }
 
@@ -88,26 +91,26 @@ export async function signUp(options: {
   branchId: string
   role: string
 }) {
-  const { data } = await axios.post('/api/signup', options)
+  const { data } = await api.post('/api/signup', options)
   return data
 }
 
 export async function fetchOrganizations() {
-  const { data } = await axios.get('/api/organizations')
+  const { data } = await api.get('/api/organizations')
   return data
 }
 
 export async function createOrganization(name: string) {
-  const { data } = await axios.post('/api/organizations', { name })
+  const { data } = await api.post('/api/organizations', { name })
   return data
 }
 
 export async function fetchBranches(orgId?: string) {
-  const { data } = await axios.get('/api/branches', { params: { orgId } })
+  const { data } = await api.get('/api/branches', { params: { orgId } })
   return data
 }
 
 export async function createBranch(orgId: string, name: string) {
-  const { data } = await axios.post('/api/branches', { orgId, name })
+  const { data } = await api.post('/api/branches', { orgId, name })
   return data
 }

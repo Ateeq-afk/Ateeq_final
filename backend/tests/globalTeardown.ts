@@ -1,5 +1,4 @@
 export default async function globalTeardown() {
-  console.log('🧹 Cleaning up test environment...');
   
   try {
     // Run all registered cleanup functions
@@ -22,5 +21,4 @@ export default async function globalTeardown() {
     console.warn('⚠️ Global teardown error:', error);
   }
   
-  console.log('🧹 Test environment cleanup complete');
 }

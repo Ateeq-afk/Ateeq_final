@@ -6,26 +6,20 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 async function testBookingCreation() {
-  console.log('🧪 Testing Multi-Article Booking Creation');
-  console.log('=' .repeat(50));
 
   try {
     // Step 1: Verify table exists with proper query
-    console.log('\n1. Checking booking_articles table...');
     const { data: baTest, error: baError } = await supabase
       .from('booking_articles')
       .select('*')
       .limit(0);
     
     if (baError) {
-      console.log('❌ Error accessing booking_articles:', baError.message);
       return;
     } else {
-      console.log('✅ booking_articles table exists');
     }
 
     // Step 2: Get sample data
-    console.log('\n2. Getting test data...');
     
     const { data: orgs } = await supabase
       .from('organizations')
@@ -47,13 +41,8 @@ async function testBookingCreation() {
       .select('id, name, base_rate')
       .limit(2);
 
-    console.log(`   Organizations: ${orgs?.length || 0}`);
-    console.log(`   Branches: ${branches?.length || 0}`);
-    console.log(`   Customers: ${customers?.length || 0}`);
-    console.log(`   Articles: ${articles?.length || 0}`);
 
     if (!orgs || orgs.length === 0) {
-      console.log('\n⚠️  No organizations found. Creating test data...');
       // You could create test data here if needed
       return;
     }
@@ -67,15 +56,10 @@ async function testBookingCreation() {
     const article2 = articles?.[1];
 
     if (!fromBranch || !sender || !article1) {
-      console.log('\n⚠️  Insufficient test data. Please ensure you have:');
-      console.log('   - At least 1 branch');
-      console.log('   - At least 1 customer');
-      console.log('   - At least 1 article');
       return;
     }
 
     // Step 3: Create a test booking directly
-    console.log('\n3. Creating test booking...');
     
     // First create the booking
     const bookingData = {
@@ -102,14 +86,11 @@ async function testBookingCreation() {
       .single();
 
     if (bookingError) {
-      console.log('❌ Error creating booking:', bookingError.message);
       return;
     }
 
-    console.log('✅ Booking created:', booking.lr_number);
 
     // Step 4: Add articles to the booking
-    console.log('\n4. Adding articles to booking...');
     
     const bookingArticles = [
       {
@@ -151,16 +132,13 @@ async function testBookingCreation() {
       .select();
 
     if (articlesError) {
-      console.log('❌ Error adding articles:', articlesError.message);
       // Clean up booking
       await supabase.from('bookings').delete().eq('id', booking.id);
       return;
     }
 
-    console.log(`✅ Added ${insertedArticles.length} articles to booking`);
 
     // Step 5: Verify the calculations
-    console.log('\n5. Verifying calculations...');
     
     const { data: verifyBooking } = await supabase
       .from('bookings')
@@ -169,20 +147,8 @@ async function testBookingCreation() {
       .single();
 
     if (verifyBooking) {
-      console.log(`\n📋 Booking Summary:`);
-      console.log(`   LR Number: ${verifyBooking.lr_number}`);
-      console.log(`   Total Amount: ₹${verifyBooking.total_amount}`);
-      console.log(`   Articles: ${verifyBooking.booking_articles.length}`);
       
-      console.log(`\n💰 Article Details:`);
       verifyBooking.booking_articles.forEach((ba, index) => {
-        console.log(`\n   Article ${index + 1}:`);
-        console.log(`     Quantity: ${ba.quantity}`);
-        console.log(`     Rate Type: ${ba.rate_type}`);
-        console.log(`     Freight: ₹${ba.freight_amount}`);
-        console.log(`     Loading Charges: ₹${ba.total_loading_charges || ba.loading_charge_per_unit * ba.quantity}`);
-        console.log(`     Unloading Charges: ₹${ba.total_unloading_charges || ba.unloading_charge_per_unit * ba.quantity}`);
-        console.log(`     Total: ₹${ba.total_amount}`);
       });
 
       // Calculate expected total
@@ -190,18 +156,13 @@ async function testBookingCreation() {
         return sum + (ba.total_amount || 0);
       }, 0);
 
-      console.log(`\n   Expected Total: ₹${expectedTotal}`);
-      console.log(`   Actual Total: ₹${verifyBooking.total_amount}`);
       
       if (Math.abs(verifyBooking.total_amount - expectedTotal) < 0.01) {
-        console.log('   ✅ Totals match!');
       } else {
-        console.log('   ⚠️  Totals mismatch - trigger may need adjustment');
       }
     }
 
     // Step 6: Test the RPC function
-    console.log('\n6. Testing create_booking_with_articles function...');
     
     const rpcTestData = {
       booking_data: {
@@ -227,18 +188,9 @@ async function testBookingCreation() {
       .rpc('create_booking_with_articles', rpcTestData);
 
     if (rpcError) {
-      console.log('⚠️  RPC function error:', rpcError.message);
     } else if (rpcResult) {
-      console.log('✅ RPC function works!');
-      console.log(`   New LR: ${rpcResult.lr_number}`);
-      console.log(`   Total: ₹${rpcResult.total_amount}`);
     }
 
-    console.log('\n✨ Database setup complete and verified!');
-    console.log('\n🎯 Next Steps:');
-    console.log('1. Frontend integration - Update React components');
-    console.log('2. API testing - Test with real authentication');
-    console.log('3. Migration of existing bookings (if needed)');
 
   } catch (error) {
     console.error('❌ Test failed:', error.message);

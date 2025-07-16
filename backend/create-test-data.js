@@ -6,8 +6,6 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 async function createTestData() {
-  console.log('🔨 Creating test data for booking system...');
-  console.log('=' .repeat(50));
 
   try {
     // Get organization
@@ -17,12 +15,10 @@ async function createTestData() {
       .limit(1);
     
     if (!orgs || orgs.length === 0) {
-      console.log('❌ No organization found');
       return;
     }
 
     const orgId = orgs[0].id;
-    console.log(`✅ Using organization: ${orgs[0].name}`);
 
     // Get branches
     const { data: branches } = await supabase
@@ -31,12 +27,10 @@ async function createTestData() {
       .eq('organization_id', orgId);
     
     if (!branches || branches.length === 0) {
-      console.log('❌ No branches found');
       return;
     }
 
     const branchId = branches[0].id;
-    console.log(`✅ Found ${branches.length} branches`);
 
     // Check existing customers
     const { data: existingCustomers } = await supabase
@@ -44,11 +38,9 @@ async function createTestData() {
       .select('id')
       .eq('organization_id', orgId);
     
-    console.log(`📊 Existing customers: ${existingCustomers?.length || 0}`);
 
     // Create test customers if needed
     if (!existingCustomers || existingCustomers.length < 2) {
-      console.log('\n📝 Creating test customers...');
       
       const testCustomers = [
         {
@@ -89,9 +81,7 @@ async function createTestData() {
         .select();
       
       if (customerError) {
-        console.log('❌ Error creating customers:', customerError.message);
       } else {
-        console.log(`✅ Created ${newCustomers.length} test customers`);
       }
     }
 
@@ -101,11 +91,9 @@ async function createTestData() {
       .select('id, name')
       .eq('organization_id', orgId);
     
-    console.log(`\n📦 Existing articles: ${existingArticles?.length || 0}`);
 
     // Create test articles if needed
     if (!existingArticles || existingArticles.length < 2) {
-      console.log('📝 Creating test articles...');
       
       const testArticles = [
         {
@@ -142,14 +130,11 @@ async function createTestData() {
         .select();
       
       if (articleError) {
-        console.log('❌ Error creating articles:', articleError.message);
       } else {
-        console.log(`✅ Created ${newArticles.length} test articles`);
       }
     }
 
     // Verify final state
-    console.log('\n📊 Final test data summary:');
     
     const { count: customerCount } = await supabase
       .from('customers')
@@ -161,12 +146,7 @@ async function createTestData() {
       .select('*', { count: 'exact', head: true })
       .eq('organization_id', orgId);
     
-    console.log(`   Customers: ${customerCount}`);
-    console.log(`   Articles: ${articleCount}`);
-    console.log(`   Branches: ${branches.length}`);
     
-    console.log('\n✅ Test data setup complete!');
-    console.log('You can now run the booking creation test.');
 
   } catch (error) {
     console.error('❌ Error:', error.message);

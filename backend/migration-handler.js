@@ -24,7 +24,6 @@ class MigrationRunner {
       await fs.access(this.migrationsDir);
     } catch {
       await fs.mkdir(this.migrationsDir, { recursive: true });
-      console.log(`Created migrations directory at ${this.migrationsDir}`);
     }
   }
   
@@ -61,7 +60,6 @@ class MigrationRunner {
 `;
     
     await fs.writeFile(filepath, header + sql);
-    console.log(`✓ Created migration file: ${filename}`);
     
     return { filename, filepath };
   }
@@ -73,7 +71,6 @@ class MigrationRunner {
       // Create migration file first
       const { filename, filepath } = await this.createMigrationFile(name, sql);
       
-      console.log(`⚡ Executing migration: ${filename}`);
       
       // Execute the SQL
       const { data, error } = await this.supabase.rpc('exec_sql', {
@@ -88,7 +85,6 @@ class MigrationRunner {
         }
       }
       
-      console.log(`✓ Migration executed successfully: ${filename}`);
       
       return {
         success: true,
@@ -148,8 +144,6 @@ class MigrationRunner {
       .filter(f => f.endsWith('.sql'))
       .sort();
     
-    console.log(`\nFound ${migrations.length} migration(s):`);
-    migrations.forEach(m => console.log(`  - ${m}`));
     
     return migrations;
   }

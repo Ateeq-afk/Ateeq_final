@@ -1,7 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 
 export default async function globalSetup() {
-  console.log('🧪 Setting up test environment...');
   
   // Initialize test database connection
   const supabaseUrl = process.env.TEST_SUPABASE_URL || process.env.SUPABASE_URL;
@@ -21,7 +20,6 @@ export default async function globalSetup() {
     if (error) {
       console.warn('⚠️ Warning: Could not connect to test database:', error.message);
     } else {
-      console.log('✅ Test database connection successful');
     }
     
     // Set up test data cleanup function
@@ -31,5 +29,4 @@ export default async function globalSetup() {
     console.warn('⚠️ Warning: Test database setup failed:', error);
   }
   
-  console.log('🧪 Test environment setup complete');
 }

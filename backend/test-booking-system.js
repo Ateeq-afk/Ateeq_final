@@ -49,22 +49,15 @@ function makeRequest(path, method = 'GET', data = null) {
 }
 
 async function testBookingSystemAPI() {
-  console.log('🧪 Testing DesiCargo Booking System API');
-  console.log('=' .repeat(50));
 
   try {
     // Test 1: Health Check
-    console.log('\n1. Testing health check...');
     const healthResponse = await makeRequest('/');
-    console.log(`✓ Health check: ${healthResponse.status} - ${healthResponse.body.message}`);
 
     // Test 2: Environment check
-    console.log('\n2. Testing environment configuration...');
     const envResponse = await makeRequest('/test');
-    console.log(`✓ Environment: ${JSON.stringify(envResponse.body, null, 2)}`);
 
     // Test 3: Test new booking schema validation
-    console.log('\n3. Testing booking validation with new schema...');
     
     const testBookingData = {
       lr_type: 'system',
@@ -102,23 +95,16 @@ async function testBookingSystemAPI() {
     };
 
     const bookingResponse = await makeRequest('/api/bookings', 'POST', testBookingData);
-    console.log(`✓ Booking validation test: ${bookingResponse.status}`);
     if (bookingResponse.status >= 400) {
-      console.log(`   Error details: ${JSON.stringify(bookingResponse.body, null, 2)}`);
     } else {
-      console.log(`   Success: Booking schema accepts multi-article data`);
     }
 
     // Test 4: Test OGPL endpoints
-    console.log('\n4. Testing OGPL endpoints...');
     const ogplResponse = await makeRequest('/api/loading/ogpls');
-    console.log(`✓ OGPL list: ${ogplResponse.status}`);
     if (ogplResponse.status >= 400) {
-      console.log(`   Error: ${JSON.stringify(ogplResponse.body, null, 2)}`);
     }
 
     // Test 5: Test rate calculation logic
-    console.log('\n5. Testing rate calculation logic...');
     
     // Per-kg calculation: 26.0 kg * ₹50 = ₹1300 freight + (10 * ₹5) loading + (10 * ₹5) unloading = ₹1400
     const perKgExpected = 26.0 * 50 + 10 * 5 + 10 * 5;
@@ -128,18 +114,7 @@ async function testBookingSystemAPI() {
     
     const totalExpected = perKgExpected + perQtyExpected;
     
-    console.log(`   Expected calculations:`);
-    console.log(`   - Article 1 (per-kg): ₹${perKgExpected}`);
-    console.log(`   - Article 2 (per-qty): ₹${perQtyExpected}`);
-    console.log(`   - Total: ₹${totalExpected}`);
 
-    console.log('\n✅ All API structure tests completed!');
-    console.log('\n📋 Summary of improvements:');
-    console.log('   • Multi-article booking support ✓');
-    console.log('   • Per-kg vs per-quantity rate types ✓');
-    console.log('   • Enhanced OGPL loading with article-level tracking ✓');
-    console.log('   • Comprehensive business validations ✓');
-    console.log('   • Loading/unloading charges multiplied by quantity ✓');
 
   } catch (error) {
     console.error('❌ Test failed:', error.message);

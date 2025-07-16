@@ -49,7 +49,6 @@ export class Transaction {
 
   // Rollback completed operations
   private async rollback(failedOperationIndex: number) {
-    console.log(`Rolling back ${failedOperationIndex} operations...`);
     
     // Execute rollback operations for completed operations only
     const rollbacksToExecute = this.rollbackOperations.slice(

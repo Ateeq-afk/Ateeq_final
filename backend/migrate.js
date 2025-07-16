@@ -25,7 +25,6 @@ async function runMigrations() {
       .filter(file => file.endsWith('.sql'))
       .sort();
     
-    console.log(`Found ${files.length} migration files`);
     
     // Run the key migrations we need
     const keyMigrations = [
@@ -35,7 +34,6 @@ async function runMigrations() {
     
     for (const filename of keyMigrations) {
       if (files.includes(filename)) {
-        console.log(`Running migration: ${filename}`);
         
         const migrationPath = join(migrationsDir, filename);
         const migrationSQL = readFileSync(migrationPath, 'utf8');
@@ -68,13 +66,10 @@ async function runMigrations() {
           }
         }
         
-        console.log(`✓ Completed migration: ${filename}`);
       } else {
-        console.log(`⚠ Migration not found: ${filename}`);
       }
     }
     
-    console.log('✓ All key migrations completed successfully');
     
   } catch (error) {
     console.error('Migration failed:', error);

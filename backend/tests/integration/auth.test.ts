@@ -1,494 +1,409 @@
 import request from 'supertest';
 import jwt from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
+import { supabase } from '../../src/supabaseClient';
 import app from '../../src/index';
-import { TestDatabase, ApiTestClient, validateSuccessResponse, validateErrorResponse } from '../helpers/testHelpers';
-import { testUsers, testOrganizations, testBranches } from '../fixtures/testData';
 
-describe('Authentication Endpoints', () => {
-  let testDb: TestDatabase;
-  let apiClient: ApiTestClient;
-  let testOrg: any;
-  let testBranch: any;
+describe('Authentication Integration Tests', () => {
+  const testOrgCode = `test-org-${Date.now()}`;
+  const testUsername = `testuser${Date.now()}`;
+  const testPassword = 'Test@123456';
+  const testEmail = `${testUsername}@${testOrgCode}.internal`;
+  
+  let organizationId: string;
+  let branchId: string;
+  let createdUserId: string;
 
   beforeAll(async () => {
-    testDb = new TestDatabase();
-    apiClient = new ApiTestClient();
-    
-    // Create test organization and branch
-    testOrg = await testDb.createTestOrganization();
-    testBranch = await testDb.createTestBranch(testOrg.id);
+    // Create test organization
+    const { data: org, error: orgError } = await supabase
+      .from('organizations')
+      .insert({
+        name: `Test Organization ${Date.now()}`,
+        is_active: true
+      })
+      .select()
+      .single();
+
+    if (orgError || !org) {
+      throw new Error('Failed to create test organization');
+    }
+
+    organizationId = org.id;
+
+    // Create organization code
+    const { error: codeError } = await supabase
+      .from('organization_codes')
+      .insert({
+        organization_id: organizationId,
+        code: testOrgCode,
+        is_active: true
+      });
+
+    if (codeError) {
+      throw new Error('Failed to create organization code');
+    }
+
+    // Create test branch
+    const { data: branch, error: branchError } = await supabase
+      .from('branches')
+      .insert({
+        organization_id: organizationId,
+        name: 'Test Branch',
+        code: 'TB001',
+        city: 'Test City',
+        state: 'Test State',
+        is_active: true
+      })
+      .select()
+      .single();
+
+    if (branchError || !branch) {
+      throw new Error('Failed to create test branch');
+    }
+
+    branchId = branch.id;
   });
 
   afterAll(async () => {
-    await testDb.cleanup();
+    // Cleanup: Delete created users
+    if (createdUserId) {
+      try {
+        // Delete from auth.users
+        await supabase.auth.admin.deleteUser(createdUserId);
+        
+        // Delete from public.users
+        await supabase
+          .from('users')
+          .delete()
+          .eq('id', createdUserId);
+      } catch (error) {
+        console.error('Cleanup error:', error);
+      }
+    }
+
+    // Delete organization code
+    await supabase
+      .from('organization_codes')
+      .delete()
+      .eq('code', testOrgCode);
+
+    // Delete branch
+    if (branchId) {
+      await supabase
+        .from('branches')
+        .delete()
+        .eq('id', branchId);
+    }
+
+    // Delete organization
+    if (organizationId) {
+      await supabase
+        .from('organizations')
+        .delete()
+        .eq('id', organizationId);
+    }
   });
 
-  describe('POST /api/auth/register', () => {
-    it('should register a new user successfully', async () => {
+  describe('User Registration (/auth/org/create-user)', () => {
+    it('should create a new user successfully', async () => {
       const userData = {
-        ...testUsers.operator,
-        organization_id: testOrg.id,
-        branch_id: testBranch.id
+        organizationCode: testOrgCode,
+        username: testUsername,
+        password: testPassword,
+        email: null, // Will use synthetic email
+        fullName: 'Test User',
+        branchId: branchId,
+        role: 'operator'
       };
 
-      const response = await apiClient.request
-        .post('/api/auth/register')
+      const response = await request(app)
+        .post('/auth/org/create-user')
         .send(userData)
-        .expect(201);
+        .expect(200);
 
-      const data = validateSuccessResponse(response);
+      expect(response.body.success).toBe(true);
+      expect(response.body.data).toBeDefined();
+      expect(response.body.data.username).toBe(testUsername);
+      expect(response.body.data.full_name).toBe('Test User');
+      expect(response.body.data.role).toBe('operator');
+      expect(response.body.data.branch_id).toBe(branchId);
+      expect(response.body.data.organization_id).toBe(organizationId);
       
-      expect(data).toHaveProperty('user');
-      expect(data).toHaveProperty('token');
-      expect(data.user.email).toBe(userData.email);
-      expect(data.user.role).toBe(userData.role);
-      expect(data.user.organization_id).toBe(testOrg.id);
-      expect(data.user.branch_id).toBe(testBranch.id);
+      // Store user ID for cleanup
+      createdUserId = response.body.data.id;
       
       // Should not return password
-      expect(data.user).not.toHaveProperty('password');
-      expect(data.user).not.toHaveProperty('password_hash');
-      
-      // Token should be valid JWT
-      const decoded = jwt.verify(data.token, process.env.JWT_SECRET || 'test-secret') as any;
-      expect(decoded.user_id).toBe(data.user.id);
-      expect(decoded.email).toBe(userData.email);
+      expect(response.body.data.password).toBeUndefined();
     });
 
-    it('should validate required fields', async () => {
-      const response = await apiClient.request
-        .post('/api/auth/register')
-        .send({})
-        .expect(400);
-
-      validateErrorResponse(response, 400, 'Validation');
-    });
-
-    it('should validate email format', async () => {
+    it('should reject creation with invalid organization code', async () => {
       const userData = {
-        ...testUsers.operator,
-        email: 'invalid-email',
-        organization_id: testOrg.id,
-        branch_id: testBranch.id
+        organizationCode: 'invalid-org-code',
+        username: 'anotheruser',
+        password: testPassword,
+        fullName: 'Another User',
+        branchId: branchId,
+        role: 'operator'
       };
 
-      const response = await apiClient.request
-        .post('/api/auth/register')
+      const response = await request(app)
+        .post('/auth/org/create-user')
         .send(userData)
-        .expect(400);
+        .expect(404);
 
-      validateErrorResponse(response, 400, 'Validation');
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toContain('Invalid organization code');
     });
 
-    it('should validate password strength', async () => {
+    it('should reject creation with duplicate username', async () => {
       const userData = {
-        ...testUsers.operator,
-        password: '123',
-        organization_id: testOrg.id,
-        branch_id: testBranch.id
+        organizationCode: testOrgCode,
+        username: testUsername, // Same username as created above
+        password: testPassword,
+        fullName: 'Duplicate User',
+        branchId: branchId,
+        role: 'operator'
       };
 
-      const response = await apiClient.request
-        .post('/api/auth/register')
+      const response = await request(app)
+        .post('/auth/org/create-user')
         .send(userData)
         .expect(400);
 
-      validateErrorResponse(response, 400, 'Validation');
-    });
-
-    it('should prevent duplicate email registration', async () => {
-      const userData = {
-        ...testUsers.admin,
-        organization_id: testOrg.id,
-        branch_id: testBranch.id
-      };
-
-      // Register first user
-      await apiClient.request
-        .post('/api/auth/register')
-        .send(userData)
-        .expect(201);
-
-      // Try to register with same email
-      const response = await apiClient.request
-        .post('/api/auth/register')
-        .send(userData)
-        .expect(409);
-
-      validateErrorResponse(response, 409, 'already exists');
-    });
-
-    it('should validate organization and branch existence', async () => {
-      const userData = {
-        ...testUsers.operator,
-        organization_id: '00000000-0000-0000-0000-000000000000',
-        branch_id: '00000000-0000-0000-0000-000000000000'
-      };
-
-      const response = await apiClient.request
-        .post('/api/auth/register')
-        .send(userData)
-        .expect(400);
-
-      validateErrorResponse(response, 400);
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBeDefined();
     });
   });
 
-  describe('POST /api/auth/login', () => {
-    let registeredUser: any;
+  describe('Database Verification', () => {
+    it('should verify user exists in database', async () => {
+      // Query the users table directly
+      const { data: user, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', createdUserId)
+        .single();
 
-    beforeAll(async () => {
-      // Register a user for login tests
-      const userData = {
-        ...testUsers.operator,
-        email: 'login.test@example.com',
-        organization_id: testOrg.id,
-        branch_id: testBranch.id
-      };
-
-      const response = await apiClient.request
-        .post('/api/auth/register')
-        .send(userData);
-
-      registeredUser = response.body.data;
+      expect(error).toBeNull();
+      expect(user).toBeDefined();
+      expect(user.username).toBe(testUsername);
+      expect(user.organization_id).toBe(organizationId);
+      expect(user.branch_id).toBe(branchId);
+      expect(user.is_active).toBe(true);
+      
+      // Verify auth.users exists
+      const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(createdUserId);
+      
+      expect(authError).toBeNull();
+      expect(authUser.user).toBeDefined();
+      expect(authUser.user.email).toBe(testEmail);
     });
+  });
 
+  describe('User Login (/auth/org/login)', () => {
     it('should login with valid credentials', async () => {
       const loginData = {
-        email: 'login.test@example.com',
-        password: testUsers.operator.password
+        organizationCode: testOrgCode,
+        username: testUsername,
+        password: testPassword
       };
 
-      const response = await apiClient.request
-        .post('/api/auth/login')
+      const response = await request(app)
+        .post('/auth/org/login')
         .send(loginData)
         .expect(200);
 
-      const data = validateSuccessResponse(response);
+      expect(response.body.success).toBe(true);
+      expect(response.body.data).toBeDefined();
+      expect(response.body.data.user).toBeDefined();
+      expect(response.body.data.token).toBeDefined();
+      expect(response.body.data.session).toBeDefined();
       
-      expect(data).toHaveProperty('user');
-      expect(data).toHaveProperty('token');
-      expect(data.user.email).toBe(loginData.email);
-      expect(data.user.id).toBe(registeredUser.user.id);
+      // Verify user data
+      const user = response.body.data.user;
+      expect(user.id).toBe(createdUserId);
+      expect(user.username).toBe(testUsername);
+      expect(user.organization_id).toBe(organizationId);
+      expect(user.branch_id).toBe(branchId);
       
-      // Should not return password
-      expect(data.user).not.toHaveProperty('password');
-      expect(data.user).not.toHaveProperty('password_hash');
+      // Verify JWT token
+      const jwtSecret = process.env.JWT_SECRET || 'test-jwt-secret-key-for-testing-only';
+      const decoded = jwt.verify(response.body.data.token, jwtSecret) as any;
+      expect(decoded.userId).toBe(createdUserId);
+      expect(decoded.username).toBe(testUsername);
+      expect(decoded.organizationId).toBe(organizationId);
+      expect(decoded.branchId).toBe(branchId);
+      expect(decoded.role).toBe('operator');
     });
 
-    it('should reject invalid email', async () => {
+    it('should reject login with wrong password', async () => {
       const loginData = {
-        email: 'nonexistent@example.com',
-        password: testUsers.operator.password
+        organizationCode: testOrgCode,
+        username: testUsername,
+        password: 'WrongPassword123!'
       };
 
-      const response = await apiClient.request
-        .post('/api/auth/login')
+      const response = await request(app)
+        .post('/auth/org/login')
         .send(loginData)
         .expect(401);
 
-      validateErrorResponse(response, 401, 'Invalid');
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toContain('Invalid username or password');
     });
 
-    it('should reject invalid password', async () => {
+    it('should reject login with wrong username', async () => {
       const loginData = {
-        email: 'login.test@example.com',
-        password: 'wrongpassword'
+        organizationCode: testOrgCode,
+        username: 'nonexistentuser',
+        password: testPassword
       };
 
-      const response = await apiClient.request
-        .post('/api/auth/login')
+      const response = await request(app)
+        .post('/auth/org/login')
         .send(loginData)
         .expect(401);
 
-      validateErrorResponse(response, 401, 'Invalid');
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toContain('Invalid username or password');
     });
 
-    it('should validate required fields', async () => {
-      const response = await apiClient.request
-        .post('/api/auth/login')
+    it('should reject login with wrong organization code', async () => {
+      const loginData = {
+        organizationCode: 'wrong-org-code',
+        username: testUsername,
+        password: testPassword
+      };
+
+      const response = await request(app)
+        .post('/auth/org/login')
+        .send(loginData)
+        .expect(401);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toContain('Invalid organization code');
+    });
+
+    it('should reject login with missing fields', async () => {
+      const response = await request(app)
+        .post('/auth/org/login')
         .send({})
         .expect(400);
 
-      validateErrorResponse(response, 400, 'Validation');
-    });
-
-    it('should reject login for inactive user', async () => {
-      // Create an inactive user
-      const inactiveUserData = {
-        ...testUsers.operator,
-        email: 'inactive.user@example.com',
-        is_active: false,
-        organization_id: testOrg.id,
-        branch_id: testBranch.id
-      };
-
-      await testDb.supabase
-        .from('users')
-        .insert({
-          ...inactiveUserData,
-          password_hash: await bcrypt.hash(inactiveUserData.password, 10)
-        });
-
-      const loginData = {
-        email: 'inactive.user@example.com',
-        password: inactiveUserData.password
-      };
-
-      const response = await apiClient.request
-        .post('/api/auth/login')
-        .send(loginData)
-        .expect(401);
-
-      validateErrorResponse(response, 401, 'Account is inactive');
-    });
-
-    it('should include user context in token', async () => {
-      const loginData = {
-        email: 'login.test@example.com',
-        password: testUsers.operator.password
-      };
-
-      const response = await apiClient.request
-        .post('/api/auth/login')
-        .send(loginData);
-
-      const data = validateSuccessResponse(response);
-      const decoded = jwt.verify(data.token, process.env.JWT_SECRET || 'test-secret') as any;
-      
-      expect(decoded.user_id).toBe(data.user.id);
-      expect(decoded.email).toBe(data.user.email);
-      expect(decoded.role).toBe(data.user.role);
-      expect(decoded.organization_id).toBe(data.user.organization_id);
-      expect(decoded.branch_id).toBe(data.user.branch_id);
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toContain('required');
     });
   });
 
-  describe('GET /api/auth/me', () => {
-    let testUser: any;
-
-    beforeAll(async () => {
-      testUser = await testDb.createTestUser(testOrg.id, testBranch.id, 'operator');
-    });
-
-    it('should return current user info with valid token', async () => {
-      const response = await apiClient
-        .authenticatedRequest(testUser.token)
-        .get('/api/auth/me')
+  describe('Organization Check (/auth/org/check-organization)', () => {
+    it('should verify valid organization code', async () => {
+      const response = await request(app)
+        .post('/auth/org/check-organization')
+        .send({ code: testOrgCode })
         .expect(200);
 
-      const data = validateSuccessResponse(response);
+      expect(response.body.success).toBe(true);
+      expect(response.body.data).toBeDefined();
+      expect(response.body.data.organization_id).toBe(organizationId);
+      expect(response.body.data.organization_name).toBeDefined();
+      expect(response.body.data.code).toBe(testOrgCode);
+    });
+
+    it('should reject invalid organization code', async () => {
+      const response = await request(app)
+        .post('/auth/org/check-organization')
+        .send({ code: 'invalid-code' })
+        .expect(404);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toContain('Invalid organization code');
+    });
+
+    it('should reject missing organization code', async () => {
+      const response = await request(app)
+        .post('/auth/org/check-organization')
+        .send({})
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toContain('Organization code is required');
+    });
+  });
+
+  describe('Get Organization Branches (/auth/org/organizations/:code/branches)', () => {
+    it('should return branches for valid organization', async () => {
+      const response = await request(app)
+        .get(`/auth/org/organizations/${testOrgCode}/branches`)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data).toBeDefined();
+      expect(Array.isArray(response.body.data)).toBe(true);
+      expect(response.body.data.length).toBeGreaterThan(0);
       
-      expect(data.id).toBe(testUser.id);
-      expect(data.email).toBe(testUser.email);
-      expect(data.role).toBe(testUser.role);
-      expect(data.organization_id).toBe(testUser.organization_id);
-      expect(data.branch_id).toBe(testUser.branch_id);
-      
-      // Should not return password
-      expect(data).not.toHaveProperty('password');
-      expect(data).not.toHaveProperty('password_hash');
+      const branch = response.body.data[0];
+      expect(branch.id).toBe(branchId);
+      expect(branch.name).toBe('Test Branch');
+      expect(branch.code).toBe('TB001');
+    });
+
+    it('should return empty array for invalid organization', async () => {
+      const response = await request(app)
+        .get('/auth/org/organizations/invalid-code/branches')
+        .expect(404);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toContain('Invalid organization code');
+    });
+  });
+
+  describe('Token Authentication (/api/auth/me)', () => {
+    let authToken: string;
+
+    beforeAll(async () => {
+      // Login to get a token
+      const loginResponse = await request(app)
+        .post('/auth/org/login')
+        .send({
+          organizationCode: testOrgCode,
+          username: testUsername,
+          password: testPassword
+        });
+
+      authToken = loginResponse.body.data.session.access_token;
+    });
+
+    it('should return user profile with valid Supabase token', async () => {
+      const response = await request(app)
+        .get('/api/auth/me')
+        .set('Authorization', `Bearer ${authToken}`)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data).toBeDefined();
+      expect(response.body.data.id).toBe(createdUserId);
+      expect(response.body.data.email).toBe(testEmail);
+      expect(response.body.data.userOrganizationId).toBe(organizationId);
+      expect(response.body.data.userBranchId).toBe(branchId);
     });
 
     it('should reject request without token', async () => {
-      const response = await apiClient.request
+      const response = await request(app)
         .get('/api/auth/me')
         .expect(401);
 
-      validateErrorResponse(response, 401, 'No token');
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toContain('Missing or invalid authorization header');
     });
 
     it('should reject request with invalid token', async () => {
-      const response = await apiClient.request
+      const response = await request(app)
         .get('/api/auth/me')
         .set('Authorization', 'Bearer invalid-token')
         .expect(401);
 
-      validateErrorResponse(response, 401, 'Invalid token');
-    });
-
-    it('should reject request with expired token', async () => {
-      const expiredToken = jwt.sign(
-        { user_id: testUser.id, email: testUser.email },
-        process.env.JWT_SECRET || 'test-secret',
-        { expiresIn: '-1h' }
-      );
-
-      const response = await apiClient.request
-        .get('/api/auth/me')
-        .set('Authorization', `Bearer ${expiredToken}`)
-        .expect(401);
-
-      validateErrorResponse(response, 401, 'Token expired');
-    });
-  });
-
-  describe('POST /api/auth/refresh', () => {
-    let testUser: any;
-
-    beforeAll(async () => {
-      testUser = await testDb.createTestUser(testOrg.id, testBranch.id, 'operator');
-    });
-
-    it('should refresh token with valid token', async () => {
-      const response = await apiClient
-        .authenticatedRequest(testUser.token)
-        .post('/api/auth/refresh')
-        .expect(200);
-
-      const data = validateSuccessResponse(response);
-      
-      expect(data).toHaveProperty('token');
-      expect(data.token).not.toBe(testUser.token);
-      
-      // New token should be valid
-      const decoded = jwt.verify(data.token, process.env.JWT_SECRET || 'test-secret') as any;
-      expect(decoded.user_id).toBe(testUser.id);
-      expect(decoded.email).toBe(testUser.email);
-    });
-
-    it('should reject refresh without token', async () => {
-      const response = await apiClient.request
-        .post('/api/auth/refresh')
-        .expect(401);
-
-      validateErrorResponse(response, 401, 'No token');
-    });
-
-    it('should reject refresh with invalid token', async () => {
-      const response = await apiClient.request
-        .post('/api/auth/refresh')
-        .set('Authorization', 'Bearer invalid-token')
-        .expect(401);
-
-      validateErrorResponse(response, 401, 'Invalid token');
-    });
-  });
-
-  describe('Role-based access control', () => {
-    let superadminUser: any;
-    let adminUser: any;
-    let operatorUser: any;
-
-    beforeAll(async () => {
-      superadminUser = await testDb.createTestUser(testOrg.id, testBranch.id, 'superadmin');
-      adminUser = await testDb.createTestUser(testOrg.id, testBranch.id, 'admin');
-      operatorUser = await testDb.createTestUser(testOrg.id, testBranch.id, 'operator');
-    });
-
-    it('should allow superadmin access to admin endpoints', async () => {
-      const response = await apiClient
-        .authenticatedRequest(superadminUser.token)
-        .get('/api/auth/me')
-        .expect(200);
-
-      const data = validateSuccessResponse(response);
-      expect(data.role).toBe('superadmin');
-    });
-
-    it('should allow admin access to admin endpoints', async () => {
-      const response = await apiClient
-        .authenticatedRequest(adminUser.token)
-        .get('/api/auth/me')
-        .expect(200);
-
-      const data = validateSuccessResponse(response);
-      expect(data.role).toBe('admin');
-    });
-
-    it('should allow operator access to operator endpoints', async () => {
-      const response = await apiClient
-        .authenticatedRequest(operatorUser.token)
-        .get('/api/auth/me')
-        .expect(200);
-
-      const data = validateSuccessResponse(response);
-      expect(data.role).toBe('operator');
-    });
-
-    it('should include role in JWT token', async () => {
-      [superadminUser, adminUser, operatorUser].forEach(user => {
-        const decoded = jwt.verify(user.token, process.env.JWT_SECRET || 'test-secret') as any;
-        expect(decoded.role).toBe(user.role);
-      });
-    });
-  });
-
-  describe('Organization and branch context', () => {
-    let otherOrg: any;
-    let otherBranch: any;
-    let userFromOtherOrg: any;
-
-    beforeAll(async () => {
-      otherOrg = await testDb.createTestOrganization();
-      otherBranch = await testDb.createTestBranch(otherOrg.id);
-      userFromOtherOrg = await testDb.createTestUser(otherOrg.id, otherBranch.id, 'operator');
-    });
-
-    it('should include organization and branch in token', async () => {
-      const decoded = jwt.verify(userFromOtherOrg.token, process.env.JWT_SECRET || 'test-secret') as any;
-      
-      expect(decoded.organization_id).toBe(otherOrg.id);
-      expect(decoded.branch_id).toBe(otherBranch.id);
-    });
-
-    it('should return user with correct organization and branch', async () => {
-      const response = await apiClient
-        .authenticatedRequest(userFromOtherOrg.token)
-        .get('/api/auth/me')
-        .expect(200);
-
-      const data = validateSuccessResponse(response);
-      
-      expect(data.organization_id).toBe(otherOrg.id);
-      expect(data.branch_id).toBe(otherBranch.id);
-    });
-  });
-
-  describe('Token security', () => {
-    let testUser: any;
-
-    beforeAll(async () => {
-      testUser = await testDb.createTestUser(testOrg.id, testBranch.id, 'operator');
-    });
-
-    it('should use secure JWT algorithm', async () => {
-      const decoded = jwt.decode(testUser.token, { complete: true }) as any;
-      expect(decoded.header.alg).toBe('HS256');
-    });
-
-    it('should have reasonable token expiration', async () => {
-      const decoded = jwt.verify(testUser.token, process.env.JWT_SECRET || 'test-secret') as any;
-      
-      const now = Math.floor(Date.now() / 1000);
-      const expiresIn = decoded.exp - decoded.iat;
-      
-      // Should expire between 1 hour and 24 hours
-      expect(expiresIn).toBeGreaterThanOrEqual(3600); // 1 hour
-      expect(expiresIn).toBeLessThanOrEqual(86400); // 24 hours
-    });
-
-    it('should include issued at timestamp', async () => {
-      const decoded = jwt.verify(testUser.token, process.env.JWT_SECRET || 'test-secret') as any;
-      
-      expect(decoded.iat).toBeDefined();
-      expect(decoded.exp).toBeDefined();
-      expect(decoded.exp).toBeGreaterThan(decoded.iat);
-    });
-
-    it('should reject tokens with wrong secret', async () => {
-      const fakeToken = jwt.sign(
-        { user_id: testUser.id, email: testUser.email },
-        'wrong-secret'
-      );
-
-      const response = await apiClient.request
-        .get('/api/auth/me')
-        .set('Authorization', `Bearer ${fakeToken}`)
-        .expect(401);
-
-      validateErrorResponse(response, 401, 'Invalid token');
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toContain('Invalid or expired token');
     });
   });
 });

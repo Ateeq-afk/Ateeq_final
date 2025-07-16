@@ -387,4 +387,10 @@ router.get('/performance', async (req: Request, res: Response) => {
   }
 });
 
+// Sentry test endpoint - FOR TESTING ONLY
+router.get('/sentry-test', (req: Request, res: Response) => {
+  // This endpoint intentionally throws an error to test Sentry integration
+  throw new Error('Sentry Backend Test - DesiCargo ' + new Date().toISOString());
+});
+
 export default router;

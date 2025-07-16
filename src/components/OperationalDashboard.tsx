@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Button } from '@/components/ui/button';
 import { operationalDashboardService } from '@/services/operationalDashboard';
 import { useBranchSelection } from '@/contexts/BranchSelectionContext';
 import CreditMonitoringWidget from '@/components/credit/CreditMonitoringWidget';
@@ -242,6 +243,17 @@ const OperationalDashboard: React.FC = () => {
                 className="h-2"
               />
             </div>
+            {/* Sentry Test Button */}
+            <Button
+              onClick={() => {
+                throw new Error('Sentry Frontend Test - DesiCargo ' + new Date().toISOString());
+              }}
+              variant="destructive"
+              size="sm"
+              className="mt-4 w-full"
+            >
+              Test Frontend Error
+            </Button>
           </CardContent>
         </Card>
 

@@ -21,7 +21,6 @@ if (!supabaseUrl || !supabaseKey) {
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function applyPerformanceIndexes() {
-  console.log('🚀 Starting performance index migration...\n');
   
   try {
     // Read the migration file
@@ -34,7 +33,6 @@ async function applyPerformanceIndexes() {
       .map(stmt => stmt.trim())
       .filter(stmt => stmt.length > 0 && !stmt.startsWith('--'));
     
-    console.log(`📊 Found ${statements.length} SQL statements to execute\n`);
     
     let successCount = 0;
     let errorCount = 0;
@@ -57,34 +55,23 @@ async function applyPerformanceIndexes() {
         if (error) {
           // Check if it's just an "already exists" error
           if (error.message.includes('already exists')) {
-            console.log(' ✅ Already exists (skipped)');
             successCount++;
           } else {
-            console.log(` ❌ Error: ${error.message}`);
             errorCount++;
           }
         } else {
           const duration = Date.now() - startStmt;
-          console.log(` ✅ Success (${duration}ms)`);
           successCount++;
         }
       } catch (err) {
-        console.log(` ❌ Error: ${err.message}`);
         errorCount++;
       }
     }
     
     const totalDuration = Date.now() - startTime;
     
-    console.log('\n' + '='.repeat(60));
-    console.log('📈 Migration Complete!');
-    console.log('='.repeat(60));
-    console.log(`✅ Successful: ${successCount}`);
-    console.log(`❌ Failed: ${errorCount}`);
-    console.log(`⏱️  Total time: ${(totalDuration / 1000).toFixed(2)} seconds`);
     
     // Check index usage stats
-    console.log('\n📊 Fetching index statistics...\n');
     
     const { data: indexStats, error: statsError } = await supabase
       .rpc('exec_sql', {
@@ -102,12 +89,8 @@ async function applyPerformanceIndexes() {
       });
     
     if (!statsError && indexStats) {
-      console.log('Top 20 Indexes by Size:');
-      console.log('Table'.padEnd(25) + 'Index'.padEnd(40) + 'Size');
-      console.log('-'.repeat(80));
       
       indexStats.forEach(idx => {
-        console.log(
           idx.tablename.padEnd(25) + 
           idx.indexname.padEnd(40) + 
           idx.size
@@ -116,12 +99,6 @@ async function applyPerformanceIndexes() {
     }
     
     // Performance recommendations
-    console.log('\n💡 Performance Recommendations:');
-    console.log('1. Monitor slow queries using pg_stat_statements');
-    console.log('2. Run VACUUM ANALYZE on large tables periodically');
-    console.log('3. Consider partitioning for tables > 10GB');
-    console.log('4. Set up alerting for long-running queries (> 5s)');
-    console.log('5. Review index usage weekly and drop unused indexes');
     
   } catch (error) {
     console.error('\n❌ Migration failed:', error.message);
@@ -151,7 +128,5 @@ async function executeSQL(sql) {
 }
 
 // Run the migration
-console.log('🔧 DesiCargo Performance Index Migration');
-console.log('========================================\n');
 
 applyPerformanceIndexes().catch(console.error);

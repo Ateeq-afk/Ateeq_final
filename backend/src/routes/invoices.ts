@@ -153,7 +153,6 @@ router.post('/generate', requireOrgBranch, async (req, res) => {
       branch_id: branchId
     };
 
-    console.log('Generating invoice with filters:', filters);
 
     // Generate the complete invoice
     const result = await invoiceService.generateInvoice(filters);

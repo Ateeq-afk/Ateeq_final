@@ -110,11 +110,11 @@ const EnhancedMetricCard = ({
   title, 
   value, 
   change, 
-  trend,
+  trend = 'up',
   icon: Icon, 
   color = 'blue',
   subtitle,
-  onClick,
+  onClick = () => {},
   loading = false,
   sparklineData = [],
   target,
@@ -357,10 +357,13 @@ export default function AppleExecutiveDashboard() {
     queryKey: ['executive-dashboard', selectedBranch, timeRange],
     queryFn: async () => {
       try {
-        const [metricsData, operationalData] = await Promise.all([
-          dashboardService.getMetrics({ branchId: selectedBranch, timeRange }),
-          operationalDashboardService.getMetrics({ branchId: selectedBranch })
+        const branchId = selectedBranch || undefined;
+        const [metricsResponse, operationalData] = await Promise.all([
+          dashboardService.getMetrics(branchId),
+          operationalDashboardService.getOperationalData(branchId)
         ]);
+
+        const metricsData = metricsResponse.data;
 
         // Enhanced data processing with insights
         return {
@@ -383,7 +386,7 @@ export default function AppleExecutiveDashboard() {
             successRate: metricsData.deliverySuccessRate || 0
           },
           realtime: {
-            activeDeliveries: operationalData.activeVehicles || 0,
+            activeDeliveries: operationalData.operations.fleet.activeVehicles || 0,
             vehiclesInTransit: metricsData.vehiclesInTransit || 0,
             liveBookings: metricsData.todayBookings || 0,
             todayRevenue: metricsData.todayRevenue || 0,
@@ -399,7 +402,17 @@ export default function AppleExecutiveDashboard() {
               { month: 'May', revenue: 165000, bookings: 610 },
               { month: 'Jun', revenue: 178000, bookings: 680 }
             ],
-            popularRoutes: metricsData.popularRoutes?.slice(0, 5) || [],
+            popularRoutes: metricsData.popularRoutes?.slice(0, 5).map(route => ({
+              route: `${route.from} to ${route.to}`,
+              count: route.count,
+              revenue: route.revenue,
+              growth: 15.5 // Default growth value
+            })) || [],
+            topPerformers: [
+              { name: 'Delhi Branch', metric: 85000, type: 'revenue' },
+              { name: 'Mumbai Branch', metric: 78000, type: 'revenue' },
+              { name: 'Bangalore Branch', metric: 65000, type: 'revenue' }
+            ],
             customerSegments: [
               { segment: 'Enterprise', revenue: 450000, percentage: 45 },
               { segment: 'SMB', revenue: 320000, percentage: 32 },
@@ -421,7 +434,7 @@ export default function AppleExecutiveDashboard() {
               { metric: 'Cost per KM', current: 12.5, expected: 10.8, variance: 16 }
             ]
           }
-        } as AdvancedMetrics;
+        };
       } catch (err) {
         console.error('Dashboard data fetch error:', err);
         throw err;
@@ -484,7 +497,7 @@ export default function AppleExecutiveDashboard() {
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="max-w-[1600px] mx-auto p-6 space-y-8"
+        className="max-w-[1600px] xl:max-w-[1920px] 2xl:max-w-full mx-auto p-4 md:p-6 lg:p-8 space-y-6 lg:space-y-8"
       >
         {/* Enhanced Header */}
         <motion.div 
@@ -591,7 +604,7 @@ export default function AppleExecutiveDashboard() {
               {/* Key Metrics */}
               <motion.div 
                 variants={itemVariants}
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4 gap-4 lg:gap-6"
               >
                 <EnhancedMetricCard
                   title="Total Revenue"
@@ -604,6 +617,7 @@ export default function AppleExecutiveDashboard() {
                   loading={isLoading}
                   sparklineData={[45, 52, 38, 65, 72, 68, 80]}
                   target="₹2.5M"
+                  trend={dashboardData?.overview.revenueGrowth > 0 ? 'up' : 'down'}
                 />
 
                 <EnhancedMetricCard
@@ -616,6 +630,7 @@ export default function AppleExecutiveDashboard() {
                   onClick={() => navigate('/dashboard/bookings')}
                   loading={isLoading}
                   sparklineData={[120, 135, 148, 142, 165, 178, 195]}
+                  trend={dashboardData?.overview.bookingGrowth > 0 ? 'up' : 'down'}
                 />
 
                 <EnhancedMetricCard
@@ -628,6 +643,7 @@ export default function AppleExecutiveDashboard() {
                   onClick={() => navigate('/dashboard/customers')}
                   loading={isLoading}
                   sparklineData={[85, 92, 88, 95, 102, 98, 108]}
+                  trend={dashboardData?.overview.customerGrowth > 0 ? 'up' : 'down'}
                 />
 
                 <EnhancedMetricCard
@@ -640,6 +656,7 @@ export default function AppleExecutiveDashboard() {
                   onClick={() => navigate('/dashboard/vehicles')}
                   loading={isLoading}
                   target="90%"
+                  trend={(dashboardData?.overview.vehicleUtilization || 0) > 75 ? 'up' : 'down'}
                 />
               </motion.div>
 
@@ -663,7 +680,6 @@ export default function AppleExecutiveDashboard() {
                       <AppleLineChart 
                         data={dashboardData?.trends.revenueByMonth || []}
                         loading={isLoading}
-                        colors={['#3B82F6', '#10B981']}
                       />
                     </div>
                   </CardContent>
@@ -671,7 +687,7 @@ export default function AppleExecutiveDashboard() {
               </motion.div>
 
               {/* Popular Routes & Customer Segments */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-3 gap-6">
                 <motion.div variants={itemVariants}>
                   <Card className="p-6 border-0 shadow-lg bg-white/80 backdrop-blur-xl h-full">
                     <CardHeader className="pb-4">
@@ -693,7 +709,7 @@ export default function AppleExecutiveDashboard() {
                                 {index + 1}
                               </div>
                               <div>
-                                <p className="font-medium text-gray-900">{route.from} → {route.to}</p>
+                                <p className="font-medium text-gray-900">{route.route}</p>
                                 <p className="text-sm text-gray-500">{route.count} bookings</p>
                               </div>
                             </div>
@@ -750,7 +766,7 @@ export default function AppleExecutiveDashboard() {
             <TabsContent value="performance" className="space-y-6">
               <motion.div 
                 variants={itemVariants}
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-6 gap-4 lg:gap-6"
               >
                 <EnhancedMetricCard
                   title="On-Time Delivery"
@@ -761,6 +777,7 @@ export default function AppleExecutiveDashboard() {
                   subtitle="Last 30 days"
                   loading={isLoading}
                   target="95%"
+                  trend="up"
                 />
 
                 <EnhancedMetricCard
@@ -772,6 +789,7 @@ export default function AppleExecutiveDashboard() {
                   subtitle="Average rating: 4.7/5"
                   loading={isLoading}
                   target="96%"
+                  trend="up"
                 />
 
                 <EnhancedMetricCard
@@ -783,6 +801,7 @@ export default function AppleExecutiveDashboard() {
                   subtitle="Cost optimization index"
                   loading={isLoading}
                   target="92%"
+                  trend="down"
                 />
 
                 <EnhancedMetricCard
@@ -793,6 +812,8 @@ export default function AppleExecutiveDashboard() {
                   color="blue"
                   subtitle="Including fuel & overhead"
                   loading={isLoading}
+                  trend="down"
+                  target="₹140"
                 />
 
                 <EnhancedMetricCard
@@ -804,6 +825,7 @@ export default function AppleExecutiveDashboard() {
                   subtitle="Door to door"
                   loading={isLoading}
                   target="2.0 days"
+                  trend="down"
                 />
 
                 <EnhancedMetricCard
@@ -815,13 +837,14 @@ export default function AppleExecutiveDashboard() {
                   subtitle="Successful deliveries"
                   loading={isLoading}
                   target="99%"
+                  trend="up"
                 />
               </motion.div>
             </TabsContent>
 
             {/* AI Insights Tab */}
             <TabsContent value="insights" className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-3 gap-6">
                 {/* Predictions */}
                 <motion.div variants={itemVariants}>
                   <Card className="p-6 border-0 shadow-lg bg-white/80 backdrop-blur-xl h-full">
@@ -901,42 +924,54 @@ export default function AppleExecutiveDashboard() {
             <TabsContent value="realtime" className="space-y-6">
               <motion.div 
                 variants={itemVariants}
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4 gap-4 lg:gap-6"
               >
                 <EnhancedMetricCard
                   title="Active Deliveries"
                   value={(dashboardData?.realtime.activeDeliveries || 0).toString()}
+                  change={0}
+                  trend="up"
                   icon={Truck}
                   color="blue"
                   subtitle="In progress"
                   loading={isLoading}
+                  target="50"
                 />
 
                 <EnhancedMetricCard
                   title="Live Bookings"
                   value={(dashboardData?.realtime.liveBookings || 0).toString()}
+                  change={0}
+                  trend="up"
                   icon={Package}
                   color="green"
                   subtitle="Today"
                   loading={isLoading}
+                  target="100"
                 />
 
                 <EnhancedMetricCard
                   title="Today's Revenue"
                   value={`₹${(dashboardData?.realtime.todayRevenue || 0).toLocaleString()}`}
+                  change={0}
+                  trend="up"
                   icon={IndianRupee}
                   color="purple"
                   subtitle="Real-time"
                   loading={isLoading}
+                  target="₹50K"
                 />
 
                 <EnhancedMetricCard
                   title="System Health"
                   value={`${(dashboardData?.realtime.systemHealth || 0).toFixed(1)}%`}
+                  change={0}
+                  trend="up"
                   icon={Shield}
                   color="green"
                   subtitle="All systems operational"
                   loading={isLoading}
+                  target="99.9%"
                 />
               </motion.div>
 

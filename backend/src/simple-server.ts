@@ -64,5 +64,4 @@ app.get('/credit-alerts', (req, res) => {
 const port = process.env.PORT || 4000;
 
 app.listen(port, () => {
-  console.log(`Simple server running on http://localhost:${port}`);
 });

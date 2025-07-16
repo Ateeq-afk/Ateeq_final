@@ -284,4 +284,51 @@ export const authService = {
       throw error;
     }
   },
+
+  // Request OTP
+  async requestOtp(phoneNumber: string) {
+    const response = await fetch(`${API_URL}/auth/otp/send`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ phone_number: phoneNumber }),
+    });
+
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to send OTP');
+    }
+
+    return data.data;
+  },
+
+  // Verify OTP
+  async verifyOtp(phoneNumber: string, otp: string) {
+    const response = await fetch(`${API_URL}/auth/otp/verify`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ 
+        phone_number: phoneNumber,
+        otp 
+      }),
+    });
+
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to verify OTP');
+    }
+
+    // Store the token and user data
+    if (data.data.token) {
+      localStorage.setItem('authToken', data.data.token);
+      localStorage.setItem('userData', JSON.stringify(data.data.user));
+    }
+
+    return data.data;
+  },
 };

@@ -3,41 +3,70 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Truck, Mail, Lock, Eye, EyeOff, ArrowRight, Loader2, Shield, CheckCircle2, Globe, Users, Package, TrendingUp, Chrome } from 'lucide-react';
+import { Truck, Mail, Lock, Eye, EyeOff, ArrowRight, Loader2, Shield, CheckCircle2, Globe, Users, Package, TrendingUp, Chrome, Phone, Hash } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Link, useNavigate } from 'react-router-dom';
 import { authService } from '@/services/auth';
 import { useTheme } from '@/contexts/ThemeContext';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-const formSchema = z.object({
+const emailFormSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
 });
 
-type FormValues = z.infer<typeof formSchema>;
+const otpRequestSchema = z.object({
+  phoneNumber: z.string().regex(/^\+?[1-9]\d{9,14}$/, 'Please enter a valid phone number'),
+});
+
+const otpVerifySchema = z.object({
+  phoneNumber: z.string().regex(/^\+?[1-9]\d{9,14}$/, 'Please enter a valid phone number'),
+  otp: z.string().length(6, 'OTP must be 6 digits'),
+});
+
+type EmailFormValues = z.infer<typeof emailFormSchema>;
+type OtpRequestValues = z.infer<typeof otpRequestSchema>;
+type OtpVerifyValues = z.infer<typeof otpVerifySchema>;
 
 export default function SignInPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loginMethod, setLoginMethod] = useState<'password' | 'otp'>('password');
+  const [otpSent, setOtpSent] = useState(false);
+  const [phoneNumberForOtp, setPhoneNumberForOtp] = useState('');
   const navigate = useNavigate();
   useTheme();
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
+  // Email/Password form
+  const emailForm = useForm<EmailFormValues>({
+    resolver: zodResolver(emailFormSchema),
     defaultValues: {
       email: '',
       password: '',
     },
   });
 
-  const onSubmit = async (data: FormValues) => {
+  // OTP Request form
+  const otpRequestForm = useForm<OtpRequestValues>({
+    resolver: zodResolver(otpRequestSchema),
+    defaultValues: {
+      phoneNumber: '',
+    },
+  });
+
+  // OTP Verify form
+  const otpVerifyForm = useForm<OtpVerifyValues>({
+    resolver: zodResolver(otpVerifySchema),
+    defaultValues: {
+      phoneNumber: '',
+      otp: '',
+    },
+  });
+
+  const onEmailSubmit = async (data: EmailFormValues) => {
     try {
       setIsLoading(true);
       setError(null);
@@ -52,6 +81,41 @@ export default function SignInPage() {
     } catch (err) {
       console.error('Sign in failed', err);
       setError(err instanceof Error ? err.message : 'Failed to sign in');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleOtpRequest = async (data: OtpRequestValues) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      await authService.requestOtp(data.phoneNumber);
+      setPhoneNumberForOtp(data.phoneNumber);
+      otpVerifyForm.setValue('phoneNumber', data.phoneNumber);
+      setOtpSent(true);
+    } catch (err) {
+      console.error('OTP request failed', err);
+      setError(err instanceof Error ? err.message : 'Failed to send OTP');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleOtpVerify = async (data: OtpVerifyValues) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      const response = await authService.verifyOtp(data.phoneNumber, data.otp);
+      
+      if (response.token) {
+        navigate('/dashboard');
+      }
+    } catch (err) {
+      console.error('OTP verification failed', err);
+      setError(err instanceof Error ? err.message : 'Failed to verify OTP');
     } finally {
       setIsLoading(false);
     }
@@ -130,7 +194,14 @@ export default function SignInPage() {
             )}
           </AnimatePresence>
           
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          <Tabs value={loginMethod} onValueChange={(value) => setLoginMethod(value as 'password' | 'otp')} className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-6">
+              <TabsTrigger value="password">Email & Password</TabsTrigger>
+              <TabsTrigger value="otp">Mobile OTP</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="password">
+              <form onSubmit={emailForm.handleSubmit(onEmailSubmit)} className="space-y-6">
             <motion.div 
               className="space-y-2"
               initial={{ opacity: 0, x: -20 }}
@@ -145,17 +216,17 @@ export default function SignInPage() {
                   type="email" 
                   placeholder="you@company.com"
                   className="pl-12 pr-4 py-3 h-12 bg-gray-50/50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-800 transition-all duration-200 rounded-xl"
-                  {...register('email')}
+                  {...emailForm.register('email')}
                 />
               </div>
-              {errors.email && (
+              {emailForm.formState.errors.email && (
                 <motion.p 
                   className="text-sm text-red-500 mt-1 flex items-center gap-1"
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                 >
                   <span className="inline-block w-1 h-1 bg-red-500 rounded-full"></span>
-                  {errors.email.message}
+                  {emailForm.formState.errors.email.message}
                 </motion.p>
               )}
             </motion.div>
@@ -179,7 +250,7 @@ export default function SignInPage() {
                   type={showPassword ? "text" : "password"} 
                   placeholder="••••••••"
                   className="pl-12 pr-12 py-3 h-12 bg-gray-50/50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-800 transition-all duration-200 rounded-xl"
-                  {...register('password')}
+                  {...emailForm.register('password')}
                 />
                 <button 
                   type="button"
@@ -189,14 +260,14 @@ export default function SignInPage() {
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
-              {errors.password && (
+              {emailForm.formState.errors.password && (
                 <motion.p 
                   className="text-sm text-red-500 mt-1 flex items-center gap-1"
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                 >
                   <span className="inline-block w-1 h-1 bg-red-500 rounded-full"></span>
-                  {errors.password.message}
+                  {emailForm.formState.errors.password.message}
                 </motion.p>
               )}
             </motion.div>
@@ -224,7 +295,148 @@ export default function SignInPage() {
                 )}
               </Button>
             </motion.div>
-          </form>
+              </form>
+            </TabsContent>
+            
+            <TabsContent value="otp">
+              {!otpSent ? (
+                <form onSubmit={otpRequestForm.handleSubmit(handleOtpRequest)} className="space-y-6">
+                  <motion.div 
+                    className="space-y-2"
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.5 }}
+                  >
+                    <Label htmlFor="phoneNumber" className="text-gray-700 dark:text-gray-300 font-medium text-sm">Mobile Number</Label>
+                    <div className="relative group">
+                      <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 transition-colors group-focus-within:text-brand-600" />
+                      <Input 
+                        id="phoneNumber" 
+                        type="tel" 
+                        placeholder="+91 98765 43210"
+                        className="pl-12 pr-4 py-3 h-12 bg-gray-50/50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-800 transition-all duration-200 rounded-xl"
+                        {...otpRequestForm.register('phoneNumber')}
+                      />
+                    </div>
+                    {otpRequestForm.formState.errors.phoneNumber && (
+                      <motion.p 
+                        className="text-sm text-red-500 mt-1 flex items-center gap-1"
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                      >
+                        <span className="inline-block w-1 h-1 bg-red-500 rounded-full"></span>
+                        {otpRequestForm.formState.errors.phoneNumber.message}
+                      </motion.p>
+                    )}
+                  </motion.div>
+                  
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2, duration: 0.5 }}
+                  >
+                    <Button 
+                      type="submit" 
+                      className="w-full h-12 bg-gradient-to-r from-brand-600 via-brand-500 to-blue-600 hover:from-brand-700 hover:via-brand-600 hover:to-blue-700 text-white shadow-lg shadow-brand-500/25 hover:shadow-xl hover:shadow-brand-500/30 transition-all duration-300 font-medium text-base rounded-xl"
+                      disabled={isLoading}
+                    >
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Sending OTP...
+                        </>
+                      ) : (
+                        <>
+                          Send OTP
+                          <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
+                        </>
+                      )}
+                    </Button>
+                  </motion.div>
+                </form>
+              ) : (
+                <form onSubmit={otpVerifyForm.handleSubmit(handleOtpVerify)} className="space-y-6">
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.3 }}
+                    className="bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 px-4 py-3 rounded-lg mb-4"
+                  >
+                    OTP sent to {phoneNumberForOtp}
+                  </motion.div>
+                  
+                  <motion.div 
+                    className="space-y-2"
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.5 }}
+                  >
+                    <Label htmlFor="otp" className="text-gray-700 dark:text-gray-300 font-medium text-sm">Enter OTP</Label>
+                    <div className="relative group">
+                      <Hash className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 transition-colors group-focus-within:text-brand-600" />
+                      <Input 
+                        id="otp" 
+                        type="text" 
+                        placeholder="123456"
+                        maxLength={6}
+                        className="pl-12 pr-4 py-3 h-12 bg-gray-50/50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-800 transition-all duration-200 rounded-xl font-mono text-lg tracking-wider"
+                        {...otpVerifyForm.register('otp')}
+                      />
+                    </div>
+                    {otpVerifyForm.formState.errors.otp && (
+                      <motion.p 
+                        className="text-sm text-red-500 mt-1 flex items-center gap-1"
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                      >
+                        <span className="inline-block w-1 h-1 bg-red-500 rounded-full"></span>
+                        {otpVerifyForm.formState.errors.otp.message}
+                      </motion.p>
+                    )}
+                  </motion.div>
+                  
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2, duration: 0.5 }}
+                  >
+                    <Button 
+                      type="submit" 
+                      className="w-full h-12 bg-gradient-to-r from-brand-600 via-brand-500 to-blue-600 hover:from-brand-700 hover:via-brand-600 hover:to-blue-700 text-white shadow-lg shadow-brand-500/25 hover:shadow-xl hover:shadow-brand-500/30 transition-all duration-300 font-medium text-base rounded-xl"
+                      disabled={isLoading}
+                    >
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Verifying...
+                        </>
+                      ) : (
+                        <>
+                          Verify & Sign In
+                          <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
+                        </>
+                      )}
+                    </Button>
+                  </motion.div>
+                  
+                  <div className="text-center">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOtpSent(false);
+                        otpRequestForm.reset();
+                        otpVerifyForm.reset();
+                        setError(null);
+                      }}
+                      className="text-sm text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 font-medium transition-colors"
+                    >
+                      Change phone number
+                    </button>
+                  </div>
+                </form>
+              )}
+            </TabsContent>
+          </Tabs>
           
           {/* Social Login Divider */}
           <div className="relative my-8">

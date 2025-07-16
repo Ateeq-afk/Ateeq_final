@@ -15,12 +15,9 @@ const supabase = createClient(
 );
 
 async function setupInitialData() {
-  console.log('🚀 Setting up initial data...');
-  console.log('==================================================');
   
   try {
     // 1. Create organization
-    console.log('🏢 Creating organization...');
     const { data: org, error: orgError } = await supabase
       .from('organizations')
       .upsert({
@@ -40,10 +37,8 @@ async function setupInitialData() {
       return;
     }
     
-    console.log('✅ Organization created:', org.name);
     
     // 2. Create organization code
-    console.log('🔑 Creating organization code...');
     const { error: codeError } = await supabase
       .from('organization_codes')
       .upsert({
@@ -56,13 +51,10 @@ async function setupInitialData() {
       });
     
     if (codeError) {
-      console.log('⚠️  Organization code creation skipped:', codeError.message);
     } else {
-      console.log('✅ Organization code created: k2k-logistics');
     }
     
     // 3. Create branches
-    console.log('🏪 Creating branches...');
     const branches = [
       {
         name: 'Mumbai Central',
@@ -123,13 +115,10 @@ async function setupInitialData() {
         });
       
       if (error) {
-        console.log(`⚠️  Branch creation skipped: ${error.message}`);
       } else {
-        console.log(`✅ Created branch: ${branch.name} (${branch.code})`);
       }
     }
     
-    console.log('\n🎉 Initial data setup completed!');
     
   } catch (error) {
     console.error('❌ Error setting up initial data:', error.message);

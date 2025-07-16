@@ -15,23 +15,18 @@ const supabase = createClient(
 );
 
 async function createMinimalData() {
-  console.log('🚀 Creating minimal test data...');
-  console.log('==================================================');
   
   try {
     // First, let's check what organizations exist
-    console.log('🔍 Checking existing data...');
     const { data: existingOrgs } = await supabase
       .from('organizations')
       .select('*');
     
-    console.log('Existing organizations:', existingOrgs);
     
     // Get the first organization (should be from the seed data)
     let org = existingOrgs?.[0];
     
     if (!org) {
-      console.log('🏢 Creating organization...');
       const { data: newOrg, error: orgError } = await supabase
         .from('organizations')
         .insert({
@@ -47,7 +42,6 @@ async function createMinimalData() {
       org = newOrg;
     }
     
-    console.log('✅ Using organization:', org.name);
     
     // Check branches
     const { data: branches } = await supabase
@@ -55,10 +49,8 @@ async function createMinimalData() {
       .select('*')
       .eq('organization_id', org.id);
     
-    console.log(`✅ Found ${branches?.length || 0} branches`);
     
     // Create customers
-    console.log('\n📝 Creating customers...');
     const customers = [
       {
         name: 'ABC Textiles Ltd',
@@ -84,14 +76,11 @@ async function createMinimalData() {
         .insert(customer);
       
       if (error) {
-        console.log(`⚠️  Customer creation skipped: ${error.message}`);
       } else {
-        console.log(`✅ Created customer: ${customer.name}`);
       }
     }
     
     // Create articles
-    console.log('\n📦 Creating articles...');
     const articles = [
       {
         name: 'Cotton Fabric',
@@ -113,14 +102,11 @@ async function createMinimalData() {
         .insert(article);
       
       if (error) {
-        console.log(`⚠️  Article creation skipped: ${error.message}`);
       } else {
-        console.log(`✅ Created article: ${article.name}`);
       }
     }
     
     // Create vehicles
-    console.log('\n🚛 Creating vehicles...');
     const vehicles = [
       {
         registration_number: 'MH-01-AB-1234',
@@ -146,14 +132,11 @@ async function createMinimalData() {
         .insert(vehicle);
       
       if (error) {
-        console.log(`⚠️  Vehicle creation skipped: ${error.message}`);
       } else {
-        console.log(`✅ Created vehicle: ${vehicle.registration_number}`);
       }
     }
     
     // Create sample bookings
-    console.log('\n📋 Creating sample bookings...');
     const { data: createdCustomers } = await supabase
       .from('customers')
       .select('*')
@@ -196,15 +179,11 @@ async function createMinimalData() {
           .insert(booking);
         
         if (error) {
-          console.log(`⚠️  Booking creation skipped: ${error.message}`);
         } else {
-          console.log(`✅ Created booking: ${booking.lr_number}`);
         }
       }
     }
     
-    console.log('\n🎉 Minimal test data creation completed!');
-    console.log('==================================================');
     
     // Summary
     const { data: finalCustomers } = await supabase.from('customers').select('*', { count: 'exact' });
@@ -212,13 +191,6 @@ async function createMinimalData() {
     const { data: finalVehicles } = await supabase.from('vehicles').select('*', { count: 'exact' });
     const { data: finalBookings } = await supabase.from('bookings').select('*', { count: 'exact' });
     
-    console.log('📊 Final data summary:');
-    console.log(`   Organizations: 1`);
-    console.log(`   Branches: ${branches?.length || 0}`);
-    console.log(`   Customers: ${finalCustomers?.length || 0}`);
-    console.log(`   Articles: ${finalArticles?.length || 0}`);
-    console.log(`   Vehicles: ${finalVehicles?.length || 0}`);
-    console.log(`   Bookings: ${finalBookings?.length || 0}`);
     
   } catch (error) {
     console.error('❌ Error creating test data:', error.message);
